@@ -559,3 +559,15 @@ function findMarkerTrace(
     return undefined;
   }
 }
+
+/** Removes a signer's retained document from a changed copy. @internal */
+export function clearRetainedSignedRepresentation(target: object): void {
+  if (
+    !Reflect.deleteProperty(target, RETAINED_SIGNED_REPRESENTATION) ||
+    RETAINED_SIGNED_REPRESENTATION in target
+  ) {
+    throw new TypeError(
+      "Cannot clear the retained signed representation of the clone.",
+    );
+  }
+}

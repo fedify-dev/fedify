@@ -71,49 +71,93 @@ export type RetainedRawProperties = Readonly<
  * Copies a JSON value without recursion, so that values nested more deeply
  * than the call stack allows, such as `@json` literals, can be copied too.
  * Unlike `structuredClone()`, it also copies frozen values without slowing
- * down or overflowing.
+ * down or overflowing. Shared acyclic subtrees remain shared within each
+ * detached copy by default, and cycles are rejected.
  *
  * @param value The JSON value to copy.
  * @param freeze Whether to deeply freeze the copy.
+ * @param preserveSharing Whether repeated references reuse a completed copy.
+ *                        Disable this when each path must become an independently
+ *                        mutable received-document cache.
  * @returns The copy.
  *
  * @internal Technically exported for generated vocabulary classes, but not
  * part of the public API contract.  This is not considered public API for
  * Semantic Versioning decisions.
  */
-export function copyJsonValue<T>(value: T, freeze = false): T {
-  if (value == null || typeof value !== "object") return value;
-  const root: unknown = Array.isArray(value) ? [] : {};
-  const pending: [unknown, Record<string, unknown> | unknown[]][] = [
-    [value, root as Record<string, unknown>],
+export function copyJsonValue<T>(
+  value: T,
+  freeze = false,
+  preserveSharing = true,
+): T {
+  let result: unknown;
+  const active = new WeakSet<object>();
+  const completed = preserveSharing ? new WeakMap<object, object>() : undefined;
+  const pending: {
+    value: unknown;
+    assign: (value: unknown) => void;
+    exit?: object;
+  }[] = [
+    {
+      value,
+      assign: (copy) => {
+        result = copy;
+      },
+    },
   ];
-  const created: object[] = [];
   while (pending.length > 0) {
-    const [source, target] = pending.pop()!;
-    created.push(target);
-    for (const [key, child] of Object.entries(source as object)) {
-      let copy: unknown = child;
-      if (child != null && typeof child === "object") {
-        copy = Array.isArray(child) ? [] : {};
-        pending.push([child, copy as Record<string, unknown>]);
-      }
-      if (Array.isArray(target)) target.push(copy);
-      // An own __proto__ member, as JSON.parse() makes, would otherwise set
-      // the prototype of the copy instead:
-      else {
-        Object.defineProperty(target, key, {
-          value: copy,
-          writable: true,
-          enumerable: true,
-          configurable: true,
-        });
-      }
+    const task = pending.pop()!;
+    if (task.exit != null) {
+      active.delete(task.exit);
+      task.assign(undefined);
+      continue;
+    }
+    const source = task.value;
+    if (source == null || typeof source !== "object") {
+      task.assign(source);
+      continue;
+    }
+    if (active.has(source))
+      throw new TypeError("Cannot copy cyclic JSON values.");
+    const existing = completed?.get(source);
+    if (existing != null) {
+      task.assign(existing);
+      continue;
+    }
+    active.add(source);
+    const copy: Record<string, unknown> | unknown[] = Array.isArray(source)
+      ? []
+      : {};
+    task.assign(copy);
+    pending.push({
+      value: undefined,
+      exit: source,
+      assign: () => {
+        if (freeze) Object.freeze(copy);
+        completed?.set(source, copy);
+      },
+    });
+    const entries = Object.entries(source);
+    // Reverse the work stack to retain the source's enumeration order.
+    for (let index = entries.length - 1; index >= 0; index--) {
+      const [key, child] = entries[index];
+      pending.push({
+        value: child,
+        assign: (value) => {
+          if (Array.isArray(copy)) copy.push(value);
+          // Own __proto__ members must remain data properties.
+          else
+            Object.defineProperty(copy, key, {
+              value,
+              writable: true,
+              enumerable: true,
+              configurable: true,
+            });
+        },
+      });
     }
   }
-  if (freeze) {
-    for (const object of created) Object.freeze(object);
-  }
-  return root as T;
+  return result as T;
 }
 
 /**
@@ -457,4 +501,340 @@ export async function readRawPropertyValues(
     { candidates, stack: new Set([object as object]) },
   );
   return copyJsonValue(values) as RawPropertyValue[];
+}
+
+/** The independent, cross-module raw write protocol. @internal */
+export const RAW_PROPERTY_WRITE_PROTOCOL: unique symbol = Symbol.for(
+  "@fedify/vocab-runtime.rawPropertyWriteProtocol.v1",
+) as never;
+
+/** A synchronously captured raw write. @internal */
+export interface RawPropertyWriteEntry {
+  readonly candidates: readonly string[];
+  readonly values: readonly unknown[];
+}
+
+/** Validates and snapshots plain JSON without recursion or depth limits. */
+function snapshotJson(value: unknown): unknown {
+  let result: unknown;
+  const active = new WeakSet<object>();
+  const completed = new WeakMap<object, object>();
+  const pending: {
+    value: unknown;
+    assign: (value: unknown) => void;
+    exit?: object;
+  }[] = [
+    {
+      value,
+      assign: (copy) => {
+        result = copy;
+      },
+    },
+  ];
+  while (pending.length > 0) {
+    const task = pending.pop()!;
+    if (task.exit != null) {
+      active.delete(task.exit);
+      task.assign(undefined);
+      continue;
+    }
+    const input = task.value;
+    if (
+      input === null ||
+      typeof input === "string" ||
+      typeof input === "boolean" ||
+      (typeof input === "number" && Number.isFinite(input))
+    ) {
+      task.assign(input);
+      continue;
+    }
+    if (typeof input !== "object" || input == null) {
+      throw new TypeError("Raw property values must contain only plain JSON.");
+    }
+    const array = Array.isArray(input);
+    if (array && Object.getPrototypeOf(input) !== Array.prototype) {
+      throw new TypeError(
+        "Raw property values must contain only plain JSON arrays.",
+      );
+    }
+    if (
+      !array &&
+      Object.getPrototypeOf(input) !== Object.prototype &&
+      Object.getPrototypeOf(input) !== null
+    ) {
+      throw new TypeError(
+        "Raw property values must contain only plain JSON objects.",
+      );
+    }
+    if (active.has(input))
+      throw new TypeError("Raw property values must not contain cycles.");
+    const existing = completed.get(input);
+    if (existing != null) {
+      task.assign(existing);
+      continue;
+    }
+    active.add(input);
+    const copy: Record<string, unknown> | unknown[] = array ? [] : {};
+    task.assign(copy);
+    pending.push({
+      value: undefined,
+      exit: input,
+      assign: () => {
+        Object.freeze(copy);
+        completed.set(input, copy);
+      },
+    });
+    const keys = Reflect.ownKeys(input);
+    if (array && keys.length !== (input as unknown[]).length + 1) {
+      throw new TypeError("Raw property arrays must be dense JSON arrays.");
+    }
+    // Stack tasks run last-in first-out; reverse pushes preserve JSON key order.
+    for (let index = keys.length - 1; index >= 0; index--) {
+      const key = keys[index];
+      if (array && key === "length") continue;
+      const descriptor = Object.getOwnPropertyDescriptor(input, key)!;
+      if (
+        typeof key !== "string" ||
+        !("value" in descriptor) ||
+        !descriptor.enumerable ||
+        (array &&
+          (!/^(0|[1-9][0-9]*)$/.test(key) ||
+            Number(key) >= (input as unknown[]).length))
+      ) {
+        throw new TypeError(
+          "Raw property values must not contain accessors or non-JSON members.",
+        );
+      }
+      pending.push({
+        value: descriptor.value,
+        assign: (child) => {
+          Object.defineProperty(copy, key, {
+            value: child,
+            enumerable: true,
+            writable: true,
+            configurable: true,
+          });
+        },
+      });
+    }
+  }
+  return result;
+}
+
+/** Checks expanded value/list/node shapes, treating JSON literals as opaque. */
+function validateExpandedValues(values: readonly unknown[]): void {
+  // Node-only positions (graph, included, reverse) impose stricter rules
+  // than property/list values, so sharing must be memoized separately.
+  const visitedValues = new WeakSet<object>();
+  const visitedNodes = new WeakSet<object>();
+  const visitedIncludedArrays = new WeakSet<object>();
+  const pending = [...values].map((value) => ({
+    value,
+    nodeOnly: false,
+  }));
+  const fail = (): never => {
+    throw new TypeError("Expected expanded JSON-LD raw property values.");
+  };
+  const pushNodes = (
+    value: unknown,
+    nodeOnly = false,
+    included = false,
+  ): void => {
+    if (!Array.isArray(value)) fail();
+    // @included requires subjects, unlike graph/reverse positions which also
+    // accept references. Check before either array or node memoization can
+    // reuse validation performed in one of those less restrictive positions.
+    if (included && !visitedIncludedArrays.has(value as object)) {
+      for (const subject of value as unknown[]) {
+        if (
+          subject != null &&
+          typeof subject === "object" &&
+          Object.hasOwn(subject, "@id") &&
+          Object.entries(subject).every(
+            ([key, child]) =>
+              key === "@id" ||
+              // Expansion removes these empty members, leaving a reference.
+              (key === "@type" && Array.isArray(child) && child.length === 0) ||
+              (key === "@reverse" &&
+                child != null &&
+                typeof child === "object" &&
+                !Array.isArray(child) &&
+                Object.keys(child).length === 0),
+          )
+        )
+          fail();
+      }
+      visitedIncludedArrays.add(value as object);
+    }
+    const visited = nodeOnly ? visitedNodes : visitedValues;
+    if (visited.has(value as object)) return;
+    visited.add(value as object);
+    for (const child of value as unknown[])
+      pending.push({ value: child, nodeOnly });
+  };
+  const expandedIri = (key: string): boolean =>
+    key.startsWith("_:") ||
+    (SCHEME_PATTERN.test(key) &&
+      isIriSyntax(key.substring(key.indexOf(":") + 1)));
+  const expandedKey = (key: string): boolean =>
+    // The processor drops IRI properties containing Unicode whitespace.
+    !/\s/.test(key) && expandedIri(key);
+  while (pending.length > 0) {
+    const { value, nodeOnly } = pending.pop()!;
+    if (value == null || typeof value !== "object" || Array.isArray(value))
+      fail();
+    const visited = nodeOnly ? visitedNodes : visitedValues;
+    if (visited.has(value as object)) continue;
+    visited.add(value as object);
+    const node = value as Record<string, unknown>;
+    const valueObject = Object.hasOwn(node, "@value");
+    const listObject = Object.hasOwn(node, "@list");
+    if (
+      (valueObject && listObject) ||
+      (nodeOnly && (valueObject || listObject))
+    )
+      fail();
+    if (valueObject) {
+      const allowed = new Set([
+        "@value",
+        "@type",
+        "@language",
+        "@direction",
+        "@index",
+      ]);
+      if (Object.keys(node).some((key) => !allowed.has(key))) fail();
+      if (node["@type"] === "@json") {
+        if ("@language" in node || "@direction" in node) fail();
+      } else {
+        const scalar = node["@value"];
+        if (scalar === null || typeof scalar === "object") fail();
+        if (
+          "@type" in node &&
+          (typeof node["@type"] !== "string" ||
+            !expandedKey(node["@type"] as string) ||
+            (node["@type"] as string).startsWith("_:") ||
+            "@language" in node ||
+            "@direction" in node)
+        )
+          fail();
+        if (
+          ("@language" in node || "@direction" in node) &&
+          typeof scalar !== "string"
+        )
+          fail();
+        if ("@language" in node && typeof node["@language"] !== "string")
+          fail();
+        if (
+          "@direction" in node &&
+          node["@direction"] !== "ltr" &&
+          node["@direction"] !== "rtl"
+        )
+          fail();
+      }
+      if ("@index" in node && typeof node["@index"] !== "string") fail();
+      continue;
+    }
+    if (listObject) {
+      if (Object.keys(node).some((key) => key !== "@list" && key !== "@index"))
+        fail();
+      if ("@index" in node && typeof node["@index"] !== "string") fail();
+      pushNodes(node["@list"]);
+      continue;
+    }
+    for (const [key, child] of Object.entries(node)) {
+      if (key === "@id" || key === "@index") {
+        if (typeof child !== "string") fail();
+        if (key === "@id" && /^@[a-zA-Z]+$/.test(child as string)) fail();
+      } else if (key === "@type") {
+        if (
+          !Array.isArray(child) ||
+          child.some((type) => typeof type !== "string" || !expandedIri(type))
+        )
+          fail();
+      } else if (key === "@graph" || key === "@included") {
+        pushNodes(child, true, key === "@included");
+      } else if (key === "@reverse") {
+        if (child == null || typeof child !== "object" || Array.isArray(child))
+          fail();
+        for (const [reverseKey, reverseValues] of Object.entries(
+          child as object,
+        )) {
+          if (!expandedKey(reverseKey)) fail();
+          pushNodes(reverseValues, true);
+        }
+      } else {
+        if (!expandedKey(key)) fail();
+        pushNodes(child);
+      }
+    }
+  }
+}
+
+/** Snapshots entries before dispatching into the object's owning module. @internal */
+export async function writeRawPropertyValues<T extends object>(
+  object: T,
+  entries: unknown,
+  functionName: string,
+): Promise<T> {
+  if (entries == null || typeof entries !== "object") {
+    throw new TypeError(
+      "Raw property entries must be a record or an iterable of pairs.",
+    );
+  }
+  const captured: RawPropertyWriteEntry[] = [];
+  const capture = (iri: unknown, value: unknown): void => {
+    const candidates = parseRawPropertyIri(iri, functionName);
+    if (value != null && !Array.isArray(value)) {
+      throw new TypeError(
+        "Raw property values must be an array, null, or undefined.",
+      );
+    }
+    const values =
+      value == null ? [] : (snapshotJson(value) as readonly unknown[]);
+    validateExpandedValues(values);
+    captured.push({ candidates, values });
+  };
+  if (Symbol.iterator in entries) {
+    if (typeof (entries as Iterable<unknown>)[Symbol.iterator] !== "function") {
+      throw new TypeError(
+        "Raw property entries must have a callable iterator.",
+      );
+    }
+    for (const pair of entries as Iterable<unknown>) {
+      if (!Array.isArray(pair) || pair.length !== 2) {
+        throw new TypeError("Raw property entries must be pairs.");
+      }
+      const descriptors = Object.getOwnPropertyDescriptors(pair);
+      if (
+        !("value" in (descriptors["0"] ?? {})) ||
+        !("value" in (descriptors["1"] ?? {}))
+      ) {
+        throw new TypeError("Raw property pairs must have data members.");
+      }
+      capture(descriptors["0"].value, descriptors["1"].value);
+    }
+  } else {
+    if (
+      Object.getPrototypeOf(entries) !== Object.prototype &&
+      Object.getPrototypeOf(entries) !== null
+    ) {
+      throw new TypeError("Raw property entries must be a plain record.");
+    }
+    for (const key of Object.keys(entries)) {
+      const descriptor = Object.getOwnPropertyDescriptor(entries, key)!;
+      if (!("value" in descriptor))
+        throw new TypeError("Raw property entries must not be accessors.");
+      capture(key, descriptor.value);
+    }
+  }
+  const method =
+    object != null && typeof object === "object"
+      ? (object as Record<symbol, unknown>)[RAW_PROPERTY_WRITE_PROTOCOL]
+      : undefined;
+  if (typeof method !== "function") {
+    throw new TypeError(
+      `${functionName}() requires a vocabulary object generated with raw property write support.`,
+    );
+  }
+  return (await method.call(object, captured)) as T;
 }

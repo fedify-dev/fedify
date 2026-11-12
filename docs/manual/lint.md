@@ -1784,11 +1784,14 @@ federation.setFollowersDispatcher(
 
 ### `raw-property-iri-invalid`
 
-Warns when statically known property IRIs passed to `getRawPropertyValues()`
-or `getRawPropertyValue()` are invalid or use a scheme other than
-`http:`/`https:`.  Named imports, aliases, and namespace imports are
-supported; shadowed local bindings are ignored.  See [*Reading unsupported
-properties*](./vocab.md#reading-unsupported-properties) for these functions.
+Warns when statically known property IRIs passed to `getRawPropertyValues()`,
+`getRawPropertyValue()`, `withRawProperty()`, or `withRawProperties()` are
+invalid or use a scheme other than `http:`/`https:`.  Named imports, aliases,
+and namespace imports are supported; shadowed local bindings are ignored.
+See
+[*Reading unsupported properties*](./vocab.md#reading-unsupported-properties)
+and [*Writing raw properties*](./vocab.md#writing-raw-properties) for these
+functions.
 
 Raw-property helpers require full IRIs.  Empty strings, JSON-LD keywords,
 blank node identifiers, bare terms, relative references, and other invalid
@@ -1799,7 +1802,11 @@ expanded.  For well-known prefixes, the report includes the full IRI, which
 ESLint also offers as an editor suggestion.
 
 ~~~~ typescript
-import { getRawPropertyValues } from "@fedify/vocab";
+import {
+  getRawPropertyValues,
+  withRawProperties,
+  withRawProperty,
+} from "@fedify/vocab";
 
 // Reported: a bare term throws TypeError.
 await getRawPropertyValues(note, "content");
@@ -1809,13 +1816,38 @@ await getRawPropertyValues(note, "as:content");
 
 // Use the full property IRI.
 await getRawPropertyValues(note, "https://www.w3.org/ns/activitystreams#content");
+
+// Writer arguments and explicit batch keys are checked too.
+await withRawProperty(note, "as:content", [{ "@value": "Hello" }]);
+await withRawProperties(note, { "as:content": [{ "@value": "Hello" }] });
+await withRawProperties(note, [["content", null]]);
 ~~~~
 
 The rule checks string literals, templates without expressions, `const`
 bindings to those, and global `new URL("…")` calls without a base argument.
 Dynamic values, `new URL(relative, base)`, and `URL` objects bound to
 a variable are ignored, since a `URL` object can be changed after it is
-constructed.  Calls inside TypeScript namespace and enum bodies are ignored,
+constructed.  For `withRawProperties()`, it checks keys in inline object
+literals and the first element of each inline array tuple.  Computed keys can
+use the same static string expressions; own identifier and shorthand entry
+keys are their literal property names.  Primitive literal keys are converted
+to strings as JavaScript does.  TypeScript `as`, `satisfies`, non-null, and
+type assertions are unwrapped around arguments, tuple entries, and key
+expressions.  Methods and accessors with ambiguous identifier keys are
+ignored because the providers cannot consistently distinguish their computed
+forms.  Literal and template keys, and keys in those TypeScript wrappers,
+remain checked.
+
+Records and arrays stored in variables are ignored because their keys or
+entries can change, including values typed with `as const`.  Maps and
+generators are not inspected.  An object literal that visibly supplies the
+global `Symbol.iterator` member is treated as an iterable, so its ordinary
+fields are not checked as record keys.  Spreads and dynamic keys are skipped
+while explicit neighboring keys are still checked.  ESLint suggestions replace
+only literals at the call site; shared constants and identifier keys are
+never rewritten.
+
+Calls inside TypeScript namespace and enum bodies are ignored,
 including calls in nested functions and enum initializers, and identifiers
 declared by namespaces or enums are neither resolved as helpers nor followed
 as constants, since declaration merging can make them refer to other values.

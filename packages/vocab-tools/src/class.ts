@@ -59,12 +59,16 @@ const RAW_PROPERTY_IMPORTS = [
   "encodeNestedVocabularyValue",
   "expandRawPropertyValue",
   "RAW_PROPERTY_PROTOCOL",
+  "RAW_PROPERTY_WRITE_PROTOCOL",
+  "type RawPropertyWriteEntry",
+  "writeRawPropertyValues",
   "type RawPropertyRequest",
   "readRawPropertyValues",
   "retainRawProperties",
   "type RetainedRawProperties",
 ].join(",\n    ");
 const SIGNED_REPRESENTATION_IMPORTS = [
+  "clearRetainedSignedRepresentation",
   "enterSignedValueScope",
   "resolveSignedValues",
   "retainedSignedValueRef",
@@ -233,7 +237,11 @@ async function* generateClass(
   for await (const code of generateDeepCloneDescriptor(typeUri, types)) {
     yield code.replace(/[ \t]+$/gm, "");
   }
-  for await (const code of generateRawPropertyDescriptors(typeUri, types)) {
+  for await (const code of generateRawPropertyDescriptors(
+    typeUri,
+    types,
+    moduleVarNames,
+  )) {
     yield code.replace(/[ \t]+$/gm, "");
   }
   for await (const code of generateProperties(typeUri, types, moduleVarNames)) {

@@ -18,4 +18,8 @@ export const expectedTestNames = [
   "vocab-runtime hashlink on Workers",
   "vocab-runtime gateway candidates on Workers",
   "lookupObject() with FEP-ef61 portable actors",
+  "withRawProperty() publishes an extension in every output format",
+  "withRawProperty() decodes lists and removes inherited collection items",
+  "withRawProperty() resets changed object trust and preserves untouched children",
+  "raw property writes discard signed documents and can be signed again",
 ] as const;

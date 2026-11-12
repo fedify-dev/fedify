@@ -371,6 +371,24 @@ data, so validate them before use.  For properties Fedify does support, the
 functions return the current typed values encoded back, not the received
 document.
 
+To publish an extension, use asynchronous
+`withRawProperty(object, propertyIri, values)` or
+`withRawProperties(object, entries)` from `@fedify/vocab` (Fedify 2.5.0 and
+later).  They return a fresh shallow copy of the same concrete class.  Pass
+arrays of expanded `RawPropertyValue` objects; `[]`, `null`, and an explicitly
+supplied `undefined` remove a property.  Batch entries can be a record or an
+iterable of `[IRI, values]` pairs.  Duplicate destinations, including a typed
+property's canonical IRI and alias, reject the batch.  Known IRIs decode into
+typed fields and reset their trust; unsupported IRIs are retained and published
+only when explicitly written.  Written extensions survive nesting and cloning;
+unrelated received extensions are not newly forwarded.  Raw reads of a typed
+parent property include its children's explicitly written extensions.
+
+Writer copies drop received JSON-LD and retained signed representations.
+Proof values are not automatically removed: clear them with
+`clone({ proofs: [] })` before updating and re-signing an object.  Write raw
+properties before calling `signObject()`.
+
 > [!WARNING]
 > `crossOrigin: "trust"` on vocabulary deserialization trusts embedded
 > objects without re-fetching.  Treat it as you would

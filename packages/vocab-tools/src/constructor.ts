@@ -262,7 +262,8 @@ export async function* generateCloner(
    * for details, including how cached JSON-LD affects serialization.
    *
    * Unknown properties retained when this instance was decoded are shared
-   * with the clone, so \`getRawPropertyValues()\` returns them for the clone
+   * with the clone, together with the set of explicitly published raw
+   * properties, so \`getRawPropertyValues()\` returns them for the clone
    * as well, even if the clone replaces other values.
    *
    * A clone never inherits a signed JSON-LD representation retained by

@@ -1,6 +1,7 @@
+import { generatePropertyDecoder } from "./property-decoder.ts";
 import metadata from "../deno.json" with { type: "json" };
 import { generateField, getFieldName } from "./field.ts";
-import type { PropertyPreprocessorSchema, TypeSchema } from "./schema.ts";
+import type { TypeSchema } from "./schema.ts";
 import { isNonFunctionalProperty } from "./schema.ts";
 import {
   generateExpandedPropertyElement,
@@ -10,66 +11,10 @@ import {
   areAllScalarTypes,
   emitOverride,
   getAllProperties,
-  getDataCheck,
-  getDecoder,
-  getDecoders,
   getEncoders,
   getSubtypes,
-  getTypeNames,
   isCompactableType,
-  skipsUnparsable,
 } from "./type.ts";
-
-function* generatePreprocessorBlock(
-  property: { preprocessors?: PropertyPreprocessorSchema[] },
-  rangeTypeName: string,
-  variable: string,
-  baseUrlExpr: string,
-  moduleVarNames: ReadonlyMap<string, string>,
-): Iterable<string> {
-  if (property.preprocessors == null || property.preprocessors.length === 0) {
-    return;
-  }
-  yield `
-      {
-        let _handled: ${rangeTypeName} | undefined;
-      `;
-  for (const pp of property.preprocessors) {
-    const varName = moduleVarNames.get(pp.module);
-    if (varName == null) {
-      throw new Error(
-        `Preprocessor module "${pp.module}" is not registered ` +
-          `in the generated imports. Ensure all preprocessor ` +
-          `modules used in property schemas are available.`,
-      );
-    }
-    yield `
-        if (_handled === undefined) {
-          const _result = await ${varName}[${JSON.stringify(pp.function)}](v, {
-            documentLoader: options.documentLoader,
-            contextLoader: options.contextLoader,
-            tracerProvider: options.tracerProvider,
-            verifyPortableObject: options.verifyPortableObject,
-            baseUrl: ${baseUrlExpr},
-          });
-          if (_result instanceof Error) throw _result;
-          if (_result !== undefined) {
-            _handled = _result as ${rangeTypeName};
-            retainPreprocessedRawProperties(_handled, v);
-          }
-        }
-      `;
-  }
-  yield `
-        if (_handled !== undefined) {
-          // The document does not describe what a preprocessor made of it:
-          skipReceivedJsonLd(_handled);
-          ${variable}.push(_handled);
-          continue;
-        }
-      }
-      `;
-}
 
 export async function* generateEncoder(
   typeUri: string,
@@ -122,7 +67,8 @@ export async function* generateEncoder(
   `;
   if (isCompactableType(typeUri, types)) {
     yield `
-    if (options.format == null && this.isCompactable()) {
+    if (options.format == null && this.isCompactable() &&
+        (publishedRawProperties.get(this)?.size ?? 0) === 0) {
     `;
     if (type.extends == null) {
       yield "const result: Record<string, unknown> = {};";
@@ -216,7 +162,7 @@ export async function* generateEncoder(
     let array: unknown[];
   `;
   if (type.extends == null) {
-    yield "const values: Record<string, unknown[] | string> = {};";
+    yield "const values: Record<string, unknown[] | string> = publishedRawPropertyValues(this);";
   } else {
     yield `
     const baseValues = await super.toJsonLd({
@@ -303,7 +249,7 @@ export async function* generateEncoder(
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   `;
   if (hasExtraContexts) {
@@ -319,6 +265,7 @@ export async function* generateEncoder(
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -345,9 +292,11 @@ export async function* generateEncoder(
           compacted.${compactName} != null) {
         if (Array.isArray(compacted.${compactName})) {
           for (const element of compacted.${compactName}) {
-            element["@context"] = docContext;
+            if (element != null && typeof element === "object") {
+              element["@context"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.${compactName} === "object") {
          compacted.${compactName}["@context"] = docContext;
         }
       }
@@ -491,6 +440,9 @@ export async function* generateDecoder(
           Array.isArray((json as { "@graph"?: unknown })["@graph"])
         ? (json as { "@graph": unknown[] })["@graph"]
         : undefined;
+      if (isRawPropertyWrite(options) && graph != null) {
+        throw new TypeError("A remaining graph wrapper cannot be represented by the typed decoder.");
+      }
       values =
         // deno-lint-ignore no-explicit-any
         (graph == null ? json : graph[0] ?? {}) as
@@ -523,6 +475,11 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
+    if (isRawPropertyWrite(options) &&
+        ("@graph" in values || "@included" in values || "@reverse" in values ||
+          globalThis.Object.keys(values).some(key => key.startsWith("_:")))) {
+      throw new TypeError("The supplied node contains structural data that the typed decoder cannot represent.");
+    }
     const id = parseJsonLdId(values["@id"], options.baseUrl);
     if (id != null && options.baseUrl == null) {
       options = { ...options, baseUrl: id };
@@ -550,7 +507,7 @@ export async function* generateDecoder(
   }
   `;
   yield `
-    let cacheJsonLd = !("_fromSubclass" in options) || !options._fromSubclass
+    let cacheJsonLd = !isRawPropertyWrite(options) && (!("_fromSubclass" in options) || !options._fromSubclass)
       ? normalizeJsonLdIris(
         expanded,
         PORTABLE_IRI_KEYS,
@@ -595,6 +552,9 @@ export async function* generateDecoder(
     let shouldCacheJsonLd = instance._shouldCacheJsonLd;
   `;
   for (const property of type.properties) {
+    yield `if (!isRawPropertyWrite(options) ||
+      getRawPropertyDescriptor(instance, ${JSON.stringify(property.uri)}) ===
+        rawPropertyDescriptors.get(${type.name}.prototype)?.get(${JSON.stringify(property.uri)})) {`;
     const variable = await getFieldName(property.uri, "");
     yield await generateField(property, types, "const ");
     const arrayVariable = `${variable}__array`;
@@ -603,101 +563,31 @@ export async function* generateDecoder(
         ? "getPortableActorGateways(values) as typeof values[string]"
         : `values[${JSON.stringify(property.uri)}]`;
     yield `
-    let ${arrayVariable} = ${propertyValues};
+    let ${arrayVariable} = isRawPropertyWrite(options)
+      ? rawPropertyInputValues(instance, ${JSON.stringify(property.uri)}, values) as typeof values[string]
+      : ${propertyValues};
     `;
     if (property.redundantProperties != null) {
       for (const prop of property.redundantProperties) {
         yield `
-        if (${arrayVariable} == null || ${arrayVariable}.length < 1) {
+        if (!isRawPropertyWrite(options) &&
+            (${arrayVariable} == null || ${arrayVariable}.length < 1)) {
           ${arrayVariable} = values[${JSON.stringify(prop.uri)}];
         }
         `;
       }
     }
-    let itemsExpression = `${arrayVariable}.length === 1 && "@list" in ${arrayVariable}[0]
-        ? ${arrayVariable}[0]["@list"]
-        : ${arrayVariable}`;
-    if (isNonFunctionalProperty(property) && property.container === "graph") {
-      itemsExpression = `(${itemsExpression}).flatMap((item: unknown) =>
-          item != null && typeof item === "object" && "@graph" in item &&
-            Array.isArray((item as { "@graph": unknown })["@graph"])
-            ? (item as { "@graph": unknown[] })["@graph"]
-            : [item]
-        )`;
-    }
-    yield `
-    for (
-      const v of ${arrayVariable} == null
-        ? []
-        : ${itemsExpression}
-    ) {
-      if (v == null) continue;
-    `;
-    const propertyBaseUrl = "options.baseUrl";
-    yield* generatePreprocessorBlock(
+    yield* generatePropertyDecoder(
       property,
-      getTypeNames(property.range, types),
+      types,
       variable,
-      propertyBaseUrl,
+      arrayVariable,
       moduleVarNames,
+      "this._shouldCacheDecodedJsonLd(decoded)",
     );
-    if (!areAllScalarTypes(property.range, types)) {
-      yield `
-      if (typeof v === "object" && "@id" in v && !("@type" in v)
-          && globalThis.Object.keys(v).length === 1) {
-        if (v["@id"].startsWith("_:")) continue;
-        ${variable}.push(parseIri(v["@id"], ${propertyBaseUrl}));
-        continue;
-      }
-      `;
-    }
     yield `
-      const decoded =
-    `;
-    const lenient =
-      property.range.length == 1 && skipsUnparsable(property.range[0]);
-    if (property.range.length == 1) {
-      if (lenient) {
-        yield getDataCheck(property.range[0], types, "v");
-        yield " ? ";
-      }
-      yield getDecoder(
-        property.range[0],
-        types,
-        "v",
-        "options",
-        propertyBaseUrl,
-      );
-      if (lenient) yield " : undefined";
-    } else {
-      const decoders = getDecoders(
-        property.range,
-        types,
-        "v",
-        "options",
-        propertyBaseUrl,
-      );
-      for (const code of decoders) yield code;
-    }
-    yield `
-      ;
-    `;
-    yield `
-      if (typeof decoded === "undefined") {
-        shouldCacheJsonLd = false;
-        continue;
-      }
-    `;
-    yield `
-      if (!this._shouldCacheDecodedJsonLd(decoded)) {
-        shouldCacheJsonLd = false;
-      }
-      keepReceivedJsonLd(decoded, v, options);
-      ${variable}.push(decoded);
-    `;
-    yield `
-    }
     instance.${await getFieldName(property.uri)} = ${variable};
+    }
     `;
   }
   yield `
@@ -711,9 +601,10 @@ export async function* generateDecoder(
       );
       if (retained != null) retainedRawProperties.set(instance, retained);
     }
+    if (isRawPropertyWrite(options)) publishSuppliedRawProperties(instance, values);
     instance._shouldCacheJsonLd = shouldCacheJsonLd;
     if (
-      shouldCacheJsonLd &&
+      shouldCacheJsonLd && !isRawPropertyWrite(options) &&
       (!("_fromSubclass" in options) || !options._fromSubclass)
     ) {
       try {

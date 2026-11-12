@@ -69,6 +69,15 @@ unsupported properties and are encoded from the typed values instead.  Mention
 this in the changelog entry when applications may already be reading the
 property through that function.
 
+The same transition affects `withRawProperty()` and `withRawProperties()`:
+the IRI and its aliases are decoded into the most-derived typed field, and
+values outside its supported range are rejected.  Keep decoder behavior,
+containers, and aliases consistent with the property's schema.  Raw writes
+clear shadowed fields for the same IRI and reset the changed property's trust;
+they publish only explicitly written unknown properties.  Add coverage for
+read/write round trips and alias replacement or removal when a schema change
+affects these paths.
+
 
 YAML file format
 ----------------

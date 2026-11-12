@@ -147,10 +147,11 @@ gateway-compatible IDs.
     calls `sendActivity` or `forwardActivity` and does not wait for the result
     (ESLint and Oxlint only)
  -  **`raw-property-iri-invalid`**: Warns when a property IRI passed to
-    `getRawPropertyValues()` or `getRawPropertyValue()` is not a full
-    `http:` or `https:` IRI, e.g., a term or a compact IRI like `as:content`;
-    the `modules` option, available in ESLint and Oxlint only, adds other
-    generated vocabulary modules to `@fedify/vocab`
+    `getRawPropertyValues()`, `getRawPropertyValue()`, or `withRawProperty()`,
+    or a static record or tuple key passed to `withRawProperties()`, is not a
+    full `http:` or `https:` IRI, e.g., a term or a compact IRI like
+    `as:content`; the `modules` option, available in ESLint and Oxlint only,
+    adds other generated vocabulary modules to `@fedify/vocab`
 
 ### Deprecation rules
 
