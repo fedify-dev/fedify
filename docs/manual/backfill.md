@@ -190,6 +190,11 @@ Per-object loader and portable-object verifier defaults remain effective
 regardless of strategy order. Discovery does not hydrate the seed or loaded
 ancestor objects.
 
+Ancestor discovery deep-clones the seed and loaded ancestors, including their
+embedded object graphs. Large embedded collections can therefore increase
+memory use and copying time independently of `maxDepth`. Objects yielded by
+`reply-tree` may be copies rather than the caller's original instances.
+
 
 Strategies
 ----------
