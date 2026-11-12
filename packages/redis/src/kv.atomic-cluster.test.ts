@@ -302,13 +302,11 @@ test(
       prefix = "";
     let committed = false;
     let slowClient: Redis | undefined;
-    const slow = `local start = redis.call('TIME')
-local deadline = tonumber(start[1]) * 1000000 + tonumber(start[2]) + 100000
-repeat
-  local now = redis.call('TIME')
-  if tonumber(now[1]) * 1000000 + tonumber(now[2]) >= deadline then break end
-until false
-return 1`;
+    // Redis TIME reads a cached clock inside a script. Use finite work instead;
+    // the expiry assertions below require this delay to outlast the 50 ms TTL.
+    const slow = `local total = 0
+for i = 1, 50000000 do total = total + i end
+return total`;
     try {
       if (!(await supported(nodes[0]))) {
         skipUnsupported(t, "Redis is not an audited batch engine");
