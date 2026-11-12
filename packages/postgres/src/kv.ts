@@ -12,10 +12,6 @@ import { driverSerializesJson } from "./utils.ts";
 
 const logger = getLogger(["fedify", "postgres", "kv"]);
 
-function quoteIdentifier(identifier: string): string {
-  return `"${identifier.replaceAll('"', '""').replaceAll(".", '"."')}"`;
-}
-
 const expiryBatchSize = 1000;
 const expiryInterval = 60_000;
 const expiryCatchUpInterval = 1000;
@@ -355,6 +351,7 @@ export class PostgresKvStore implements AtomicKvStore {
     const payload = JSON.stringify(entries);
     await this.#initializeBatch();
     const sql = this.#sql;
+    const table = sql.unsafe(await this.#resolvedTable(sql));
     const rows = await sql`
       WITH support AS (${this.#support(sql)}), input AS (${this.#input(sql, payload)})
       SELECT support.supported, input.ord, existing.value,
@@ -362,7 +359,7 @@ export class PostgresKvStore implements AtomicKvStore {
           (existing.ttl IS NULL OR existing.created + existing.ttl > statement_timestamp()), false)
           AS present
       FROM support CROSS JOIN input
-      LEFT JOIN ${sql(this.#tableName)} AS existing ON existing.key = input.key
+      LEFT JOIN ${table} AS existing ON existing.key = input.key
       ORDER BY input.ord
     `;
     this.#assertSupport(rows[0]?.supported);
@@ -445,6 +442,7 @@ export class PostgresKvStore implements AtomicKvStore {
     const mismatch = new Error("Atomic comparison mismatch.");
     try {
       await this.#locked(async (sql) => {
+        const table = sql.unsafe(await this.#resolvedTable(sql));
         const [result] = await sql`
           WITH input AS (${this.#input(sql, payload)})
           SELECT bool_and(CASE WHEN (input.item->>'absent')::boolean THEN
@@ -459,7 +457,7 @@ export class PostgresKvStore implements AtomicKvStore {
             to_char(statement_timestamp() AT TIME ZONE 'UTC',
               'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cutoff
           FROM input
-          LEFT JOIN ${sql(this.#tableName)} AS existing ON existing.key = input.key
+          LEFT JOIN ${table} AS existing ON existing.key = input.key
         `;
         if (result.size !== prepared.length)
           throw new TypeError("Nonunique backing keys.");
@@ -489,6 +487,22 @@ export class PostgresKvStore implements AtomicKvStore {
       FROM jsonb_array_elements(${payload}::text::jsonb)
         WITH ORDINALITY AS items(item, ord)
     `;
+  }
+
+  async #resolvedTable(sql: Sql | TransactionSql): Promise<string> {
+    // Qualify the actual relation so internal CTE names cannot shadow it.
+    // PostgreSQL formats both components; do not transform them a second time.
+    const [relation] = await sql`
+      SELECT pg_catalog.format('%I.%I', n.nspname, c.relname) AS name
+      FROM pg_catalog.pg_class AS c
+      JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+      WHERE c.oid = (SELECT typrelid FROM pg_catalog.pg_type
+        WHERE oid = pg_typeof(NULL::${sql(this.#tableName)})::oid)
+    `;
+    if (typeof relation?.name !== "string") {
+      throw new TypeError("The backing table could not be resolved.");
+    }
+    return relation.name;
   }
 
   #support(sql: Sql | TransactionSql) {
@@ -699,8 +713,17 @@ export class PostgresKvStore implements AtomicKvStore {
   async #initializeTable(): Promise<void> {
     // Caller rollback can remove a previously created table. Check each time,
     // but avoid write-class DDL when reads reuse a table in READ ONLY scope.
+    // Scoped clients do not expose options. The driver's identifier helper
+    // contains the exact escaped SQL name, including its column.to transform.
+    const identifier = this.#sql(this.#tableName);
+    if (!("value" in identifier) || typeof identifier.value !== "string") {
+      throw new TypeError(
+        "The PostgreSQL client must expose its escaped identifier.",
+      );
+    }
+    const table = identifier.value;
     const [existing] = await this.#sql`
-      SELECT to_regclass(${quoteIdentifier(this.#tableName)}) IS NOT NULL AS present
+      SELECT to_regclass(${table}) IS NOT NULL AS present
     `;
     if (this.#unlogged) {
       if (!existing.present)
@@ -725,7 +748,7 @@ export class PostgresKvStore implements AtomicKvStore {
       const persistence = await this.#sql`
         SELECT relpersistence
         FROM pg_class
-        WHERE oid = to_regclass(${quoteIdentifier(this.#tableName)});
+        WHERE oid = to_regclass(${table});
       `;
       if (persistence[0]?.relpersistence === "u") {
         await this.#sql`

@@ -1234,3 +1234,103 @@ dbTest(
     }
   },
 );
+
+dbTest(
+  "PostgresKvStore transformed table probes match DDL and read-only reads",
+  async () => {
+    const sql = postgres(dbUrl!, { max: 1, transform: postgres.camel });
+    const admin = postgres(dbUrl!, { max: 1 });
+    const tableName = `atomicValues${crypto.randomUUID().replaceAll("-", "")}`;
+    const actual = tableName.replace("atomicValues", "atomic_values");
+    const store = new PostgresKvStore(sql, { tableName });
+    try {
+      await sql`CREATE UNLOGGED TABLE ${sql(tableName)} (
+      key text[] PRIMARY KEY, value jsonb NOT NULL,
+      created timestamptz DEFAULT CURRENT_TIMESTAMP, ttl interval
+    )`;
+      await store.initialize();
+      const [relation] = await admin`SELECT relpersistence FROM pg_class
+      WHERE oid = to_regclass(${`"${actual}"`})`;
+      assert.equal(relation.relpersistence, "p");
+      await store.setMany([{ key, value: "existing" }]);
+      await sql.begin("read only", async (transaction) => {
+        const reader = new PostgresKvStore(transaction, { tableName });
+        assert.deepEqual(await reader.getMany([key]), ["existing"]);
+      });
+    } finally {
+      await store.drop();
+      await sql.end();
+      await admin.end();
+    }
+  },
+);
+
+dbTest(
+  "PostgresKvStore transformed initialization ignores a raw-name collision",
+  async () => {
+    const admin = postgres(dbUrl!, { max: 1 });
+    const tableName = `atomic_${crypto.randomUUID().replaceAll("-", "")}`;
+    const sql = postgres(dbUrl!, {
+      max: 1,
+      transform: { column: { to: (name) => `x_${name}` } },
+    });
+    const store = new PostgresKvStore(sql, { tableName });
+    try {
+      await admin`CREATE TABLE ${admin(tableName)} (key text[] PRIMARY KEY, value jsonb NOT NULL,
+      created timestamptz DEFAULT CURRENT_TIMESTAMP, ttl interval)`;
+      await store.setMany([{ key, value: "transformed" }]);
+      assert.deepEqual(await store.getMany([key]), ["transformed"]);
+      assert.equal(
+        (await admin`SELECT count(*)::int AS size FROM ${admin(tableName)}`)[0]
+          .size,
+        0,
+      );
+    } finally {
+      await store.drop();
+      await admin`DROP TABLE IF EXISTS ${admin(tableName)}`;
+      await sql.end();
+      await admin.end();
+    }
+  },
+);
+
+dbTest(
+  "PostgresKvStore table names cannot be shadowed by atomic CTEs",
+  async () => {
+    const sql = postgres(dbUrl!, { max: 1 });
+    const schema = `atomic_names_${crypto.randomUUID().replaceAll("-", "")}`;
+    try {
+      await sql`CREATE SCHEMA ${sql(schema)}`;
+      await sql`SET search_path TO ${sql(schema)}`;
+      for (const tableName of ["input", "support", "written", "deleted"]) {
+        const store = new PostgresKvStore(sql, { tableName });
+        try {
+          await store.setMany([
+            { key, value: 1 },
+            { key: ["b"], value: 2 },
+          ]);
+          assert.deepEqual(await store.getMany([key, ["b"]]), [1, 2]);
+          assert.equal(
+            await store.casMany([
+              { key, expectedValue: 1, newValue: undefined },
+              { key: ["b"], expectedValue: 2, newValue: 3 },
+            ]),
+            true,
+          );
+          assert.deepEqual(await store.getMany([key, ["b"]]), [undefined, 3]);
+          await store.deleteMany([key, ["b"]]);
+          assert.deepEqual(await store.getMany([key, ["b"]]), [
+            undefined,
+            undefined,
+          ]);
+        } finally {
+          await store.drop();
+        }
+      }
+    } finally {
+      await sql`RESET search_path`;
+      await sql`DROP SCHEMA IF EXISTS ${sql(schema)} CASCADE`;
+      await sql.end();
+    }
+  },
+);
