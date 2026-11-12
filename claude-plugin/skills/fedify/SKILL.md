@@ -529,12 +529,13 @@ do not isolate concurrent calls on one outer transaction.  Successful caller
 batches are provisional and retain locks until outer commit.  Table-wide write
 locks protect absent keys but serialize writers and can interrupt autovacuum;
 lock errors reject without automatic retry.  After lock-upgrade deadlock,
-roll back the outer transaction before retrying.  Ordinary inheritance and
-irreversible JSON/value transforms are unsupported for batches.  TTLs use
-server time and PostgreSQL calendar intervals at microsecond precision.
-Backend storage constraints may fail an attempted write; a mismatch performs
-no insertion.  Atomicity does not override unlogged/WAL/replica durability.
-Consult the [PostgreSQL atomic scope] before choosing a client or codec.
+roll back the outer transaction before retrying.  Active row-level security,
+ordinary inheritance and irreversible JSON/value transforms are unsupported for
+batches.  TTLs use server time and PostgreSQL calendar intervals at microsecond
+precision. Backend storage constraints may fail an attempted write; a mismatch
+performs no insertion.  Atomicity does not override unlogged/WAL/replica
+durability. Consult the [PostgreSQL atomic scope] before choosing a client or
+codec.
 
 For `PostgresKvStore`, existing populated tables and externally managed DDL
 (`initialized: true`) need the [expiry expression index] to accelerate cleanup.

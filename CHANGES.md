@@ -433,7 +433,9 @@ To be released.
     to `PostgresKvStore` through the `AtomicKvStore` interface.  Conditional
     batches and multi-key deletions require pooled or sequentially used
     READ COMMITTED transaction clients; reserved connections reject these
-    scopes.  [[#1361], [#1364], [#1429]]
+    scopes.  `PostgresKvStore.cas()` now rejects a `ttl` option when deleting
+    (`newValue` is `undefined`), where it previously ignored the TTL.  Omit
+    `ttl` when deleting.  [[#1361], [#1364], [#1429]]
 
 [index migration guide]: https://fedify.dev/manual/kv#postgresql-expiry-index
 [#1309]: https://github.com/fedify-dev/fedify/issues/1309

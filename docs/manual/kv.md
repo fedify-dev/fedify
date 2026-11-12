@@ -325,7 +325,9 @@ const federation = createFederation<void>({
 `PostgresKvStore` implements `AtomicKvStore` within one configured ordinary
 table or declarative partition, using the existing schema and
 PostgreSQL-representable Unicode string keys.  Ordinary inheritance parents and
-children are unsupported for nonempty batches.  `getMany()` returns one
+children are unsupported for nonempty batches.  Tables where row-level security
+is active for the current role are also rejected, because policies can filter
+individual mutations.  `getMany()` returns one
 input-ordered snapshot; `setMany()` writes one batch; `casMany()` compares all
 expectations before applying any changes.  JSON `null` remains distinct from
 missing or expired `undefined`.

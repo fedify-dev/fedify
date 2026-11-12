@@ -100,9 +100,10 @@ export interface PostgresKvStoreOptions {
  * equality. Object member order is ignored; array order is significant.
  * TTLs use server time and PostgreSQL intervals at microsecond precision.
  * Zero durations expire immediately; negative Temporal durations reject.
- * Ordinary inheritance and irreversible value/JSON transforms are unsupported
- * for batches. Batches are never split; backend field, index and memory limits
- * apply, with index-storage failures arising only on attempted writes.
+ * Ordinary inheritance, active row-level security and irreversible value/JSON
+ * transforms are unsupported for batches. Batches are never split; backend
+ * field, index and memory limits apply, with index-storage failures arising
+ * only on attempted writes.
  *
  * Nonempty {@link casMany} and multi-key {@link deleteMany} require a pool or
  * a READ COMMITTED transaction client; reserved clients reject those scopes.
@@ -511,6 +512,7 @@ export class PostgresKvStore implements AtomicKvStore {
     // partition key. Resolve through the driver's identifier transforms once.
     return sql`
       SELECT c.relkind IN ('r', 'p')
+        AND NOT pg_catalog.row_security_active(c.oid)
         AND (c.relispartition OR NOT EXISTS (
           SELECT 1 FROM pg_catalog.pg_inherits WHERE inhrelid = c.oid
         ))
@@ -528,7 +530,7 @@ export class PostgresKvStore implements AtomicKvStore {
   #assertSupport(supported: unknown): void {
     if (supported !== true) {
       throw new TypeError(
-        "Atomic batches require an ordinary table or declarative partition without ordinary inheritance.",
+        "Atomic batches require an ordinary table or declarative partition without ordinary inheritance or active row-level security.",
       );
     }
   }

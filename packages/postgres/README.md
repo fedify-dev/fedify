@@ -68,6 +68,8 @@ Atomic key–value operations
 Since Fedify 2.5.0, `PostgresKvStore` implements `AtomicKvStore`.  Keys in one
 configured ordinary table or declarative partition form its atomic scope.
 Ordinary inheritance parents and children are unsupported for nonempty batches.
+Nonempty batches also reject tables where row-level security is active for the
+current role, since policies can filter individual mutations.
 The table must retain the adapter's `text[]` primary key and compatible schema;
 concurrent incompatible schema changes are outside this scope.
 
