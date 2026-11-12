@@ -317,6 +317,9 @@ return 1`;
       assert.equal(nodes.length, 3, "use a dedicated three-master fixture");
       const slots = await nodes[0].cluster("SLOTS");
       assert(Array.isArray(slots));
+      const nodeIds = await Promise.all(
+        nodes.map(async (node) => String(await node.cluster("MYID"))),
+      );
       for (let attempt = 0; attempt < 100; attempt++) {
         prefix = `{fedify_migration_${crypto.randomUUID()}}::`;
         slot = Number(await nodes[0].cluster("KEYSLOT", `${prefix}a`));
@@ -325,7 +328,9 @@ return 1`;
             Array.isArray(range) && slot >= range[0] && slot <= range[1],
         );
         assert(Array.isArray(range) && Array.isArray(range[2]));
-        source = nodes.find((node) => node.options.port === range[2][1]);
+        source = nodes.find(
+          (_, index) => nodeIds[index] === String(range[2][2]),
+        );
         assert(source);
         if (Number(await source.cluster("COUNTKEYSINSLOT", slot)) === 0) break;
         slot = -1;

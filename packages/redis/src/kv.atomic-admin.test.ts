@@ -205,7 +205,12 @@ test(
           Array.isArray(range) && slot >= range[0] && slot <= range[1],
       );
       assert(Array.isArray(range) && Array.isArray(range[2]));
-      const owner = nodes.find((node) => node.options.port === range[2][1]);
+      const nodeIds = await Promise.all(
+        nodes.map(async (node) => String(await node.cluster("MYID"))),
+      );
+      const owner = nodes.find(
+        (_, index) => nodeIds[index] === String(range[2][2]),
+      );
       assert(owner);
       await failures(owner, prefix);
     } finally {
