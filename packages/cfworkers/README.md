@@ -72,14 +72,16 @@ export default {
 `WorkersD1KvStore` is a key–value store implementation for
 [Cloudflare Workers] that uses [Cloudflare D1].  D1 is strongly consistent,
 which suits Fedify's balanced read and write workload, and
-`WorkersD1KvStore` supports the atomic `cas()` operation.  It is the
+`WorkersD1KvStore` implements `AtomicKvStore`, including atomic snapshots and
+conditional multi-key writes.  It is the
 recommended key–value store for Cloudflare Workers applications.
 
-Without `initialized: true`, each store instance creates its table
-(`fedify_kv` by default, configurable with the `tableName` option) on its
-first use, which costs an extra D1 query per request.  In production, create
-the table with [D1 migrations] and pass `initialized: true`, as in the example
-above:
+Without `initialized: true`, each store instance creates and checks its schema
+on first use.  The entry table is `fedify_kv` by default, configurable with
+`tableName`; `<tableName>_atomic` and `idx_<tableName>_expires` are reserved
+auxiliary names.  Table names ending in `_atomic` are rejected.  In production,
+create both tables and the index with [D1 migrations], then pass
+`initialized: true` to avoid repeating schema queries per request:
 
 ~~~~ sql
 CREATE TABLE IF NOT EXISTS fedify_kv (
@@ -88,10 +90,58 @@ CREATE TABLE IF NOT EXISTS fedify_kv (
   expires INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_fedify_kv_expires ON fedify_kv (expires);
+CREATE TABLE IF NOT EXISTS fedify_kv_atomic (
+  singleton INTEGER PRIMARY KEY,
+  cutoff INTEGER NOT NULL,
+  matched INTEGER NOT NULL
+);
 ~~~~
 
-Pass the `D1Database` binding itself rather than a D1 session: sessions only
-provide sequential consistency and can read stale data from a replica.
+Pass the `D1Database` binding itself for fresh primary reads.  A caller-owned
+D1 session provides sequential consistency, but `get()` and `getMany()` may
+read stale replicas.  `first-primary` affects only the session's first query;
+it does not pin later reads to the primary.  CAS uses a write transaction
+with either input.  The adapter keeps the caller's session and does not call
+`withSession()` on its behalf.
+
+Atomic operations cover all keys in one configured table in one D1 database.
+`getMany()` reads one snapshot and preserves input order, missing values and
+duplicate keys.  `setMany()`, `deleteMany()` and `casMany()` commit each batch
+as a unit; `casMany()` compares every expectation before changing any entry.
+Single-key `set()` and `cas()` use the same guard protocol.  Each nonempty
+set or CAS writes and removes a private guard row, including absence-only
+CAS.  A mismatch leaves all user values and TTLs unchanged.  Backend errors
+reject, and a lost response can leave commit status unknown.  Re-read and
+re-evaluate the application rule after a mismatch; include a non-reused
+version in values if ABA changes must be detected.
+
+Values use `JSON.stringify()`/`JSON.parse()`, including their coercions:
+nonfinite numbers become `null`, and undefined object members are omitted.
+Top-level `undefined` is only an absence/deletion sentinel in CAS; it cannot
+be stored.  Functions, symbols, cycles and `BigInt` values without a JSON
+serialization reject.  CAS compares the persisted JSON structurally, ignoring
+object member order while retaining array order and types.  Values deeper
+than SQLite's 1,000-level JSON limit use exact serialized comparison instead.
+External guard writes, triggers and custom constraints that alter the
+protocol, and raw JSON rows with duplicate object members, are unsupported.
+
+TTLs use one database-clock cutoff per operation and are truncated to integer
+milliseconds.  Nonpositive durations, including positive durations shorter
+than one millisecond after truncation, expire immediately.  Durations whose
+absolute total exceeds `8.64e15` milliseconds, nonfinite totals, and calendar
+durations requiring a reference date reject.  Replacing without a TTL clears
+the previous expiry.  Successful sets and CAS also purge up to 100 entries
+expired at the same cutoff; a mismatch does not run that cleanup.
+
+Snapshots accept up to 256 input keys, counting duplicates, and at most
+8 MiB of encoded keys and values.  For maximum-size values, the byte budget
+usually binds first.  Mutations accept up to 128 entries and 16 MiB of encoded
+keys, expectations and replacements combined.  Each encoded key/value row
+and each bound string is limited to 1,999,000 UTF-8 bytes.  `getMany()` and
+`deleteMany()` keys also have a 1,999,000-byte aggregate encoded-key limit, and
+the final escaped JSON key payload must fit the same limit.  Oversized
+operations reject without splitting; backend or runtime limits can also
+reject smaller calls.
 
 [Cloudflare D1]: https://developers.cloudflare.com/d1/
 [D1 migrations]: https://developers.cloudflare.com/d1/reference/migrations/

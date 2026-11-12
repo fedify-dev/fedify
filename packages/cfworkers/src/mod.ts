@@ -11,6 +11,9 @@
  */
 import type { MessageSendRequest, Queue } from "@cloudflare/workers-types";
 import type {
+  AtomicKvStore,
+  KvStoreCasEntry,
+  KvStoreSetEntry,
   KvKey,
   KvStore,
   KvStoreListEntry,
@@ -285,25 +288,33 @@ export interface WorkersD1KvStoreOptions {
   /**
    * The table name to use for the key–value store.  It must be 1 to 64
    * characters long, consist of ASCII letters, digits, and underscores, and
-   * not start with a digit.  Names starting with `sqlite_` or `_cf_`
+   * not start with a digit or end with `_atomic`.  Names starting with `sqlite_` or `_cf_`
    * (case-insensitively) are reserved by SQLite and D1, so they are rejected
    * too.  The store also creates an index named `idx_<tableName>_expires`,
-   * so no other table or index may have that name.
+   * and an auxiliary table named `<tableName>_atomic`, so no unrelated object
+   * may use either name.
    * `"fedify_kv"` by default.
    * @default `"fedify_kv"`
    */
   readonly tableName?: string;
 
   /**
-   * Whether the table has already been created, for example, by a D1
+   * Whether both tables and the index have already been created, for example, by a D1
    * migration.  If `false`, each store instance creates the table on its
-   * first use, which costs an extra D1 query per instance.  Since a store is
+   * first use, then validates the schema with metadata queries.  Since a store is
    * usually constructed per request on Cloudflare Workers, create the table
    * with a D1 migration and set this to `true` in production.
    * `false` by default.
    * @default `false`
    */
   readonly initialized?: boolean;
+}
+
+interface D1PreparedMutation {
+  readonly key: string;
+  readonly expected: string | undefined;
+  readonly value: string | undefined;
+  readonly ttl: number | null;
 }
 
 /**
@@ -335,22 +346,46 @@ const D1_LIST_PAGE_BYTES = 8 * 1024 * 1024;
 const D1_EXPIRE_BATCH_SIZE = 100;
 
 /**
- * Implementation of the {@link KvStore} interface for Cloudflare D1 binding.
+ * An {@link AtomicKvStore} backed by Cloudflare D1.  All keys in one configured
+ * table share an atomic scope.  Each nonempty set or CAS uses one transactional
+ * batch and a private guard row to freeze its decision and database-clock
+ * expiry cutoff.  This also routes absence-only CAS through a write.
  *
- * Unlike {@link WorkersKvStore}, this store is strongly consistent when given
- * a `D1Database` binding, which suits Fedify's balanced read/write usage of
- * the key–value store.  It also supports the {@link KvStore.cas} operation:
- * since D1 has no interactive transactions, each compare-and-swap is
- * performed by a single conditional SQL statement.
+ * Pass the `D1Database` binding for fresh primary reads.  Caller-owned
+ * `D1DatabaseSession` objects are also accepted: their reads, including the
+ * single-statement snapshot from {@link getMany}, may use stale replicas.
+ * Sessions retain their own bookmark and sequential-consistency behavior;
+ * the adapter never replaces them or calls `withSession()`.
  *
- * A `D1DatabaseSession` is accepted too, but sessions only provide D1's
- * sequential consistency, and reads may be served by a stale replica.
- * Fedify relies on fresh reads for idempotency checks, so pass the
- * `D1Database` binding itself (e.g., `env.DB`) unless you know you can
- * tolerate stale reads.
+ * Values round-trip through `JSON.stringify()` and `JSON.parse()`, including
+ * JSON coercions such as nonfinite numbers becoming `null` and omitted
+ * undefined object members.  Values without a JSON serialization reject.
+ * CAS compares persisted JSON structurally, ignoring object member order but
+ * preserving array order and types.  Beyond SQLite's 1,000-level JSON depth
+ * limit, comparison falls back to exact serialized equality.  Include a
+ * non-reused version in values when ABA changes must be detected.
  *
- * The store uses a table with the following schema, which each instance
- * creates on its first use unless the `initialized` option is set:
+ * TTLs are truncated to integer milliseconds, with an absolute maximum of
+ * 8.64e15 milliseconds.  Calendar durations requiring a reference date reject.
+ * Nonpositive TTLs expire immediately; omitting a TTL clears previous expiry.
+ * Successful sets and CAS purge at most 100 rows expired at the same cutoff.
+ * Mismatch leaves all user rows and their TTLs unchanged.
+ *
+ * Snapshots accept at most 256 input keys, including duplicates, and return at
+ * most 8 MiB of encoded keys and values.  Mutations accept at most 128 entries
+ * and 16 MiB of encoded keys, expectations and replacements combined.  Each
+ * encoded key/value row, bound string, aggregate snapshot/deletion key input,
+ * and final JSON key payload is limited to 1,999,000 UTF-8 bytes.  These are
+ * conservative adapter limits; backend/runtime limits may reject smaller
+ * calls.  Operations are never split.  Errors propagate without write retry;
+ * a lost response may leave commit status unknown.  `false` means only a
+ * proven CAS mismatch, not a backend failure or a durable operation receipt.
+ *
+ * Automatic initialization creates and checks the following schema.  Use a
+ * D1 migration with both tables and the index, and `initialized: true`, to
+ * avoid repeating schema queries in each request.  Derived object names are
+ * reserved; external guard writes, triggers and custom constraints that alter
+ * this protocol are unsupported.  The guard table must normally be empty.
  *
  * ```sql
  * CREATE TABLE IF NOT EXISTS fedify_kv (
@@ -359,6 +394,11 @@ const D1_EXPIRE_BATCH_SIZE = 100;
  *   expires INTEGER
  * );
  * CREATE INDEX IF NOT EXISTS idx_fedify_kv_expires ON fedify_kv (expires);
+ * CREATE TABLE IF NOT EXISTS fedify_kv_atomic (
+ *   singleton INTEGER PRIMARY KEY,
+ *   cutoff INTEGER NOT NULL,
+ *   matched INTEGER NOT NULL
+ * );
  * ```
  *
  * @example
@@ -379,7 +419,7 @@ const D1_EXPIRE_BATCH_SIZE = 100;
  * ```
  * @since 2.5.0
  */
-export class WorkersD1KvStore implements KvStore {
+export class WorkersD1KvStore implements AtomicKvStore {
   static readonly #defaultTableName = "fedify_kv";
   static readonly #tableNameRegex = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
   static readonly #reservedTableNameRegex = /^(sqlite_|_cf_)/i;
@@ -403,7 +443,8 @@ export class WorkersD1KvStore implements KvStore {
     this.#tableName = options.tableName ?? WorkersD1KvStore.#defaultTableName;
     if (
       !WorkersD1KvStore.#tableNameRegex.test(this.#tableName) ||
-      WorkersD1KvStore.#reservedTableNameRegex.test(this.#tableName)
+      WorkersD1KvStore.#reservedTableNameRegex.test(this.#tableName) ||
+      /_atomic$/i.test(this.#tableName)
     ) {
       throw new TypeError(
         `Invalid table name for the key–value store: ${this.#tableName}`,
@@ -413,192 +454,443 @@ export class WorkersD1KvStore implements KvStore {
   }
 
   /**
-   * Creates the table used by the key–value store if it does not already
-   * exist.  Does nothing if the table already exists.  It is called
+   * Creates both tables and the expiry index if absent, and verifies the
+   * auxiliary table and index metadata.  It is called
    * automatically on the first use of the store instance unless
    * the `initialized` option is set.
    */
   initialize(): Promise<void> {
     this.#initialized ??= this.#db
       .batch([
-        this.#db.prepare(`
-        CREATE TABLE IF NOT EXISTS "${this.#tableName}" (
-          key TEXT PRIMARY KEY NOT NULL,
-          value TEXT NOT NULL,
-          expires INTEGER
-        )
-      `),
-        this.#db.prepare(`
-        CREATE INDEX IF NOT EXISTS "idx_${this.#tableName}_expires"
-        ON "${this.#tableName}" (expires)
-      `),
+        this.#db.prepare(`CREATE TABLE IF NOT EXISTS "${this.#tableName}" (
+        key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL, expires INTEGER
+      )`),
+        this.#db
+          .prepare(`CREATE INDEX IF NOT EXISTS "idx_${this.#tableName}_expires"
+        ON "${this.#tableName}" (expires)`),
+        this.#db
+          .prepare(`CREATE TABLE IF NOT EXISTS "${this.#tableName}_atomic" (
+        singleton INTEGER PRIMARY KEY, cutoff INTEGER NOT NULL, matched INTEGER NOT NULL
+      )`),
       ])
-      .then(
-        () => undefined,
-        (error) => {
-          // Let a later call retry the initialization:
-          this.#initialized = null;
-          throw error;
-        },
-      );
+      .then(async () => {
+        const [
+          { results: columns },
+          owner,
+          { results: index },
+          { results: indexes },
+          object,
+        ] = await Promise.all([
+          this.#db
+            .prepare(`PRAGMA table_xinfo("${this.#tableName}_atomic")`)
+            .all<{
+              name: string;
+              type: string;
+              notnull: number;
+              pk: number;
+              hidden: number;
+            }>(),
+          this.#db
+            .prepare(
+              "SELECT tbl_name FROM sqlite_master WHERE type = 'index' AND name = ?1 COLLATE NOCASE",
+            )
+            .bind(`idx_${this.#tableName}_expires`)
+            .first<{ tbl_name: string }>(),
+          this.#db
+            .prepare(`PRAGMA index_info("idx_${this.#tableName}_expires")`)
+            .all<{ name: string | null }>(),
+          this.#db
+            .prepare(`PRAGMA index_list("${this.#tableName}")`)
+            .all<{ name: string; unique: number; partial: number }>(),
+          this.#db
+            .prepare(
+              "SELECT type FROM sqlite_master WHERE name = ?1 COLLATE NOCASE",
+            )
+            .bind(`${this.#tableName}_atomic`)
+            .first<{ type: string }>(),
+        ]);
+        const shape = new Map(
+          columns.map((column) => [column.name.toLowerCase(), column]),
+        );
+        const expiryIndex = indexes.find(
+          (entry) =>
+            entry.name.toLowerCase() ===
+            `idx_${this.#tableName}_expires`.toLowerCase(),
+        );
+        if (
+          object?.type !== "table" ||
+          columns.length !== 3 ||
+          columns.some((column) => column.hidden !== 0) ||
+          shape.get("singleton")?.type.toUpperCase() !== "INTEGER" ||
+          shape.get("singleton")?.pk !== 1 ||
+          shape.get("cutoff")?.type.toUpperCase() !== "INTEGER" ||
+          shape.get("cutoff")?.notnull !== 1 ||
+          shape.get("cutoff")?.pk !== 0 ||
+          shape.get("matched")?.type.toUpperCase() !== "INTEGER" ||
+          shape.get("matched")?.notnull !== 1 ||
+          shape.get("matched")?.pk !== 0 ||
+          owner?.tbl_name.toLowerCase() !== this.#tableName.toLowerCase() ||
+          index.length !== 1 ||
+          index[0].name?.toLowerCase() !== "expires" ||
+          expiryIndex?.unique !== 0 ||
+          expiryIndex?.partial !== 0
+        ) {
+          throw new TypeError(
+            `Incompatible D1 KV schema for "${this.#tableName}" or its atomic table/expiry index.`,
+          );
+        }
+      })
+      .catch((error) => {
+        this.#initialized = null;
+        throw error;
+      });
     return this.#initialized;
   }
 
   /**
-   * Drops the table used by the key–value store.  Does nothing if the table
-   * does not exist.  Mostly useful for tests.
+   * Drops both tables reserved by this store.  Mostly useful for tests.
+   * No unrelated object may use either table name.
    */
   async drop(): Promise<void> {
-    await this.#db.prepare(`DROP TABLE IF EXISTS "${this.#tableName}"`).run();
+    await this.#db.batch([
+      this.#db.prepare(`DROP TABLE IF EXISTS "${this.#tableName}_atomic"`),
+      this.#db.prepare(`DROP TABLE IF EXISTS "${this.#tableName}"`),
+    ]);
     this.#initialized = null;
   }
 
   #encodeKey(key: KvKey): string {
-    return JSON.stringify(key);
+    if (!Array.isArray(key)) {
+      throw new TypeError("A KV key must be a non-empty array of strings.");
+    }
+    const length = key.length;
+    if (!Number.isSafeInteger(length) || length < 1) {
+      throw new TypeError("A KV key must be a non-empty array of strings.");
+    }
+    const parts: string[] = [];
+    for (let index = 0; index < length; index++) {
+      if (!Object.hasOwn(key, index))
+        throw new TypeError("A KV key must not be sparse.");
+      const part = key[index];
+      if (typeof part !== "string")
+        throw new TypeError("A KV key must contain only strings.");
+      parts.push(part);
+    }
+    const encoded = JSON.stringify(parts);
+    this.#checkBytes(encoded);
+    return encoded;
   }
 
-  #getTtl(options?: KvStoreSetOptions): number | null {
-    return options?.ttl == null ? null : options.ttl.total("milliseconds");
+  #checkBytes(value: string): number {
+    const bytes = new TextEncoder().encode(value).byteLength;
+    if (bytes > 1_999_000)
+      throw new RangeError("D1 KV string/row size limit exceeded.");
+    return bytes;
   }
 
-  /**
-   * Deletes a bounded number of expired entries, so that a write never has to
-   * sweep an unbounded backlog of them at once.
-   */
-  #expire(): WorkersD1PreparedStatementLike {
-    return this.#db.prepare(`
-      DELETE FROM "${this.#tableName}"
-      WHERE key IN (
-        SELECT key FROM "${this.#tableName}"
-        WHERE expires <= ${D1_NOW}
-        LIMIT ${D1_EXPIRE_BATCH_SIZE}
-      )
-    `);
+  #array<T>(items: readonly T[], limit: number): T[] {
+    if (!Array.isArray(items))
+      throw new TypeError("A KV batch must be an array.");
+    const length = items.length;
+    if (!Number.isSafeInteger(length) || length < 0)
+      throw new TypeError("Invalid KV batch length.");
+    if (length > limit)
+      throw new RangeError(`D1 KV batch exceeds ${limit} entries.`);
+    const captured: T[] = [];
+    for (let index = 0; index < length; index++) {
+      if (!Object.hasOwn(items, index))
+        throw new TypeError("A KV batch must not be sparse.");
+      captured.push(items[index]);
+    }
+    return captured;
   }
 
-  /**
-   * {@inheritDoc KvStore.get}
-   */
+  #encodeValue(value: unknown): string {
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined)
+      throw new TypeError("Value has no JSON serialization.");
+    this.#checkBytes(encoded);
+    return encoded;
+  }
+
+  #prepare(
+    entries: readonly KvStoreCasEntry[],
+    compare: boolean,
+  ): D1PreparedMutation[] {
+    const captured = this.#array(entries, 128).map((entry) => ({
+      key: entry.key,
+      expected: entry.expectedValue,
+      value: entry.newValue,
+      ttl: entry.options?.ttl,
+    }));
+    if (captured.length > 128)
+      throw new RangeError("D1 KV mutation exceeds 128 entries.");
+    const seen = new Set<string>();
+    let bytes = 0;
+    return captured.map((entry) => {
+      const key = this.#encodeKey(entry.key);
+      if (seen.has(key))
+        throw new TypeError("Duplicate keys in an atomic mutation.");
+      seen.add(key);
+      if (!compare && entry.value === undefined) {
+        throw new TypeError("undefined is not a storable KV value.");
+      }
+      if (entry.value === undefined && entry.ttl != null) {
+        throw new TypeError("A CAS deletion must not specify a TTL.");
+      }
+      const expected =
+        entry.expected === undefined
+          ? undefined
+          : this.#encodeValue(entry.expected);
+      const value =
+        entry.value === undefined ? undefined : this.#encodeValue(entry.value);
+      let ttl: number | null = null;
+      if (entry.ttl != null) {
+        const total = entry.ttl.total("milliseconds");
+        if (!Number.isFinite(total) || Math.abs(total) > 8.64e15) {
+          throw new RangeError(
+            "D1 KV TTL exceeds the supported millisecond range.",
+          );
+        }
+        ttl = Math.trunc(total);
+      }
+      this.#checkBytes(key + (value ?? ""));
+      bytes +=
+        this.#checkBytes(key) +
+        (expected == null ? 0 : this.#checkBytes(expected)) +
+        (value == null ? 0 : this.#checkBytes(value));
+      if (bytes > 16 * 1024 * 1024)
+        throw new RangeError("D1 KV mutation exceeds 16 MiB.");
+      return { key, expected, value, ttl };
+    });
+  }
+
+  #matches(current: string, expected: string): string {
+    return `CASE WHEN json_valid(${current}) AND json_valid(${expected}) THEN
+      NOT EXISTS (
+        SELECT fullkey, type, atom FROM json_tree(${current})
+        EXCEPT SELECT fullkey, type, atom FROM json_tree(${expected})
+      ) AND NOT EXISTS (
+        SELECT fullkey, type, atom FROM json_tree(${expected})
+        EXCEPT SELECT fullkey, type, atom FROM json_tree(${current})
+      ) ELSE ${current} = ${expected} END`;
+  }
+
+  async #mutate(
+    entries: readonly D1PreparedMutation[],
+    compare: boolean,
+  ): Promise<boolean> {
+    if (entries.length === 0) return true;
+    await this.initialize();
+    const guard = `"${this.#tableName}_atomic"`;
+    const cutoff = `(SELECT cutoff FROM ${guard} WHERE singleton = 1)`;
+    const permitted = `(SELECT matched FROM ${guard} WHERE singleton = 1) = 1`;
+    // The first write captures one cutoff and forces a primary transaction.
+    const statements: WorkersD1PreparedStatementLike[] = [
+      this.#db.prepare(`
+      INSERT INTO ${guard} (singleton, cutoff, matched) VALUES (1, ${D1_NOW}, 1)
+    `),
+    ];
+    // Freeze every comparison before changing any user row.
+    if (compare) {
+      for (const entry of entries) {
+        const live = `SELECT 1 FROM "${this.#tableName}" AS current
+          WHERE current.key = ?1 AND (current.expires IS NULL OR current.expires > ${cutoff})`;
+        const predicate =
+          entry.expected === undefined
+            ? `NOT EXISTS (${live})`
+            : `EXISTS (${live} AND ${this.#matches("current.value", "?2")})`;
+        const statement = this.#db.prepare(`UPDATE ${guard} SET matched = 0
+          WHERE singleton = 1 AND matched = 1 AND NOT (${predicate})`);
+        statements.push(
+          entry.expected === undefined
+            ? statement.bind(entry.key)
+            : statement.bind(entry.key, entry.expected),
+        );
+      }
+    }
+    for (const entry of entries) {
+      statements.push(
+        entry.value === undefined
+          ? this.#db
+              .prepare(`
+        DELETE FROM "${this.#tableName}" WHERE key = ?1 AND ${permitted}
+      `)
+              .bind(entry.key)
+          : this.#db
+              .prepare(`
+        INSERT INTO "${this.#tableName}" (key, value, expires)
+        SELECT ?1, ?2, ${cutoff} + ?3 WHERE ${permitted}
+        ON CONFLICT (key) DO UPDATE SET value = excluded.value, expires = excluded.expires
+      `)
+              .bind(entry.key, entry.value, entry.ttl),
+      );
+    }
+    statements.push(
+      this.#db.prepare(`DELETE FROM "${this.#tableName}"
+      WHERE ${permitted} AND key IN (SELECT key FROM "${this.#tableName}"
+        WHERE expires <= ${cutoff} LIMIT ${D1_EXPIRE_BATCH_SIZE})`),
+    );
+    // These two result counts distinguish mismatch from a missing guard.
+    const resultIndex = statements.length;
+    statements.push(
+      this.#db.prepare(
+        `DELETE FROM ${guard} WHERE singleton = 1 AND matched = 1`,
+      ),
+    );
+    statements.push(
+      this.#db.prepare(`DELETE FROM ${guard} WHERE singleton = 1`),
+    );
+    const results = await this.#db.batch(statements);
+    const matched = results[resultIndex].meta.changes;
+    const cleaned = results[resultIndex + 1].meta.changes;
+    if (matched === 1 && cleaned === 0) return true;
+    if (matched === 0 && cleaned === 1) return false;
+    throw new Error(
+      `D1 KV atomic guard integrity failure for "${this.#tableName}_atomic".`,
+    );
+  }
+
+  /** {@inheritDoc KvStore.get} */
   async get<T = unknown>(key: KvKey): Promise<T | undefined> {
+    const encoded = this.#encodeKey(key);
     await this.initialize();
     const row = await this.#db
       .prepare(`
       SELECT value FROM "${this.#tableName}"
-      WHERE key = ? AND (expires IS NULL OR expires > ${D1_NOW})
+      WHERE key = ?1 AND (expires IS NULL OR expires > ${D1_NOW})
     `)
-      .bind(this.#encodeKey(key))
+      .bind(encoded)
       .first<{ value: string }>();
     return row == null ? undefined : (JSON.parse(row.value) as T);
   }
 
-  /**
-   * {@inheritDoc KvStore.set}
-   */
+  /** {@inheritDoc AtomicKvStore.getMany} */
+  async getMany<T = unknown>(
+    keys: readonly KvKey[],
+  ): Promise<(T | undefined)[]> {
+    const captured = this.#array(keys, 256);
+    if (captured.length > 256)
+      throw new RangeError("D1 KV snapshot exceeds 256 input keys.");
+    let keyBytes = 0;
+    const encoded = captured.map((key) => {
+      const value = this.#encodeKey(key);
+      keyBytes += this.#checkBytes(value);
+      if (keyBytes > 1_999_000)
+        throw new RangeError("D1 KV snapshot key size limit exceeded.");
+      return value;
+    });
+    const unique = [...new Set(encoded)];
+    if (unique.length > 256)
+      throw new RangeError("D1 KV snapshot exceeds 256 unique keys.");
+    const payload = JSON.stringify(unique);
+    this.#checkBytes(payload);
+    if (unique.length === 0) return [];
+    await this.initialize();
+    const { results } = await this.#db
+      .prepare(`
+      WITH cutoff(now) AS MATERIALIZED (SELECT ${D1_NOW}),
+      live AS MATERIALIZED (
+        SELECT current.key, octet_length(current.key) + octet_length(current.value) AS size FROM json_each(?1) AS input
+        JOIN "${this.#tableName}" AS current ON current.key = input.value
+        CROSS JOIN cutoff
+        WHERE current.expires IS NULL OR current.expires > cutoff.now
+      ), budget AS (SELECT COALESCE(SUM(size), 0) AS bytes FROM live)
+      SELECT live.key, CASE WHEN bytes <= 8388608 THEN current.value ELSE NULL END AS value, bytes
+      FROM live CROSS JOIN budget JOIN "${this.#tableName}" AS current ON current.key = live.key
+    `)
+      .bind(payload)
+      .all<{ key: string; value: string | null; bytes: number }>();
+    if (results.some((row) => row.bytes > 8 * 1024 * 1024)) {
+      throw new RangeError("D1 KV snapshot exceeds 8 MiB.");
+    }
+    const values = new Map(
+      results.map((row) => [row.key, JSON.parse(row.value!) as T] as const),
+    );
+    return encoded.map((key) => values.get(key));
+  }
+
+  /** {@inheritDoc AtomicKvStore.set} */
   async set(
     key: KvKey,
     value: unknown,
     options?: KvStoreSetOptions,
   ): Promise<void> {
-    await this.initialize();
-    await this.#db.batch([
-      this.#db
-        .prepare(`
-        INSERT INTO "${this.#tableName}" (key, value, expires)
-        VALUES (?1, ?2, ${D1_NOW} + ?3)
-        ON CONFLICT (key) DO UPDATE SET
-          value = excluded.value,
-          expires = excluded.expires
-      `)
-        .bind(
-          this.#encodeKey(key),
-          JSON.stringify(value),
-          this.#getTtl(options),
-        ),
-      this.#expire(),
-    ]);
+    await this.setMany([{ key, value, options }]);
   }
 
-  /**
-   * {@inheritDoc KvStore.delete}
-   */
+  /** {@inheritDoc AtomicKvStore.setMany} */
+  async setMany(entries: readonly KvStoreSetEntry[]): Promise<void> {
+    const captured = this.#array(entries, 128).map((entry) => ({
+      key: entry.key,
+      newValue: entry.value,
+      expectedValue: undefined,
+      options: entry.options,
+    }));
+    if (!(await this.#mutate(this.#prepare(captured, false), false))) {
+      throw new Error("D1 KV mutation lost its atomic guard.");
+    }
+  }
+
+  /** {@inheritDoc KvStore.delete} */
   async delete(key: KvKey): Promise<void> {
+    const encoded = this.#encodeKey(key);
     await this.initialize();
     await this.#db
-      .prepare(`DELETE FROM "${this.#tableName}" WHERE key = ?`)
-      .bind(this.#encodeKey(key))
+      .prepare(`DELETE FROM "${this.#tableName}" WHERE key = ?1`)
+      .bind(encoded)
       .run();
   }
 
-  /**
-   * {@inheritDoc KvStore.cas}
-   */
+  /** {@inheritDoc AtomicKvStore.deleteMany} */
+  async deleteMany(keys: readonly KvKey[]): Promise<void> {
+    if (!Array.isArray(keys))
+      throw new TypeError("A KV batch must be an array.");
+    const length = keys.length;
+    if (!Number.isSafeInteger(length) || length < 0)
+      throw new TypeError("Invalid KV batch length.");
+    if (length > 128)
+      throw new RangeError("D1 KV mutation exceeds 128 entries.");
+    let bytes = 0;
+    const seen = new Set<string>();
+    const encoded: string[] = [];
+    for (let index = 0; index < length; index++) {
+      if (!Object.hasOwn(keys, index))
+        throw new TypeError("A KV batch must not be sparse.");
+      const value = this.#encodeKey(keys[index]);
+      if (seen.has(value))
+        throw new TypeError("Duplicate keys in an atomic mutation.");
+      bytes += this.#checkBytes(value);
+      if (bytes > 1_999_000)
+        throw new RangeError("D1 KV deletion key size limit exceeded.");
+      seen.add(value);
+      encoded.push(value);
+    }
+    const payload = JSON.stringify(encoded);
+    this.#checkBytes(payload);
+    if (encoded.length === 0) return;
+    await this.initialize();
+    await this.#db.batch([
+      this.#db
+        .prepare(`DELETE FROM "${this.#tableName}"
+      WHERE key IN (SELECT value FROM json_each(?1))`)
+        .bind(payload),
+    ]);
+  }
+
+  /** {@inheritDoc AtomicKvStore.cas} */
   async cas(
     key: KvKey,
     expectedValue: unknown,
     newValue: unknown,
     options?: KvStoreSetOptions,
   ): Promise<boolean> {
-    await this.initialize();
-    const encodedKey = this.#encodeKey(key);
-    let statement: WorkersD1PreparedStatementLike;
+    return await this.casMany([{ key, expectedValue, newValue, options }]);
+  }
 
-    if (expectedValue === undefined) {
-      // No mutation is needed; this read is the operation's atomic point:
-      if (newValue === undefined) return (await this.get(key)) === undefined;
-      // Insert the entry unless an unexpired entry already exists:
-      statement = this.#db
-        .prepare(`
-        INSERT INTO "${this.#tableName}" (key, value, expires)
-        VALUES (?1, ?2, ${D1_NOW} + ?3)
-        ON CONFLICT (key) DO UPDATE SET
-          value = excluded.value,
-          expires = excluded.expires
-        WHERE "${this.#tableName}".expires <= ${D1_NOW}
-      `)
-        .bind(encodedKey, JSON.stringify(newValue), this.#getTtl(options));
-    } else {
-      // Compares the JSON trees in both directions so that the order of
-      // object members is ignored, while the order of array elements,
-      // container types, and scalar types matter.  The predicate runs inside
-      // the mutation itself, so neither a read–write race nor an interactive
-      // transaction is involved.  json_tree() rejects JSON nested deeper than
-      // 1,000 levels, so such values are compared by their serialization.
-      // The column must be qualified, since json_tree() has a value column:
-      const current = `"${this.#tableName}".value`;
-      const matches = `
-        key = ?1 AND (expires IS NULL OR expires > ${D1_NOW})
-        AND CASE WHEN json_valid(${current}) AND json_valid(?2) THEN
-          NOT EXISTS (
-            SELECT fullkey, type, atom FROM json_tree(${current})
-            EXCEPT SELECT fullkey, type, atom FROM json_tree(?2)
-          )
-          AND NOT EXISTS (
-            SELECT fullkey, type, atom FROM json_tree(?2)
-            EXCEPT SELECT fullkey, type, atom FROM json_tree(${current})
-          )
-        ELSE ${current} = ?2 END
-      `;
-      const expectedJson = JSON.stringify(expectedValue);
-      statement =
-        newValue === undefined
-          ? this.#db
-              .prepare(`DELETE FROM "${this.#tableName}" WHERE ${matches}`)
-              .bind(encodedKey, expectedJson)
-          : this.#db
-              .prepare(`
-          UPDATE "${this.#tableName}"
-          SET value = ?3, expires = ${D1_NOW} + ?4
-          WHERE ${matches}
-        `)
-              .bind(
-                encodedKey,
-                expectedJson,
-                JSON.stringify(newValue),
-                this.#getTtl(options),
-              );
-    }
-    const [{ meta }] = await this.#db.batch([statement, this.#expire()]);
-    return meta.changes > 0;
+  /** {@inheritDoc AtomicKvStore.casMany} */
+  async casMany(entries: readonly KvStoreCasEntry[]): Promise<boolean> {
+    return await this.#mutate(this.#prepare(entries, true), true);
   }
 
   /**

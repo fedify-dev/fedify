@@ -1185,9 +1185,15 @@ importers:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
         version: 4.20260511.1
+      '@fedify/testing':
+        specifier: workspace:^
+        version: link:../testing
       semver:
         specifier: ^7.7.2
         version: 7.8.0
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
       tsdown:
         specifier: 'catalog:'
         version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))

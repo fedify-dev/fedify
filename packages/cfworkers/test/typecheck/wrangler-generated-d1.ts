@@ -1,4 +1,4 @@
-import type { KvStore } from "@fedify/fedify/federation";
+import type { AtomicKvStore } from "@fedify/fedify/federation";
 import { WorkersD1KvStore } from "../../dist/mod.js";
 
 interface GeneratedD1Meta {
@@ -66,8 +66,8 @@ interface GeneratedD1Database {
 
 declare const generatedD1: GeneratedD1Database;
 
-export const store: KvStore = new WorkersD1KvStore(generatedD1);
-export const sessionStore: KvStore = new WorkersD1KvStore(
+export const store: AtomicKvStore = new WorkersD1KvStore(generatedD1);
+export const sessionStore: AtomicKvStore = new WorkersD1KvStore(
   generatedD1.withSession("first-primary"),
   { initialized: true },
 );

@@ -1,3 +1,4 @@
+import { Temporal } from "temporal-polyfill";
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import {
@@ -7,13 +8,15 @@ import {
 } from "../src/mod.ts";
 
 // Mock Temporal.Duration for testing in Cloudflare Workers environment
-const mockDuration = (seconds: number) => ({
-  total: (unit: string) => {
-    if (unit === "milliseconds" || unit === "millisecond") return seconds * 1000;
-    if (unit === "seconds" || unit === "second") return seconds;
-    return seconds;
-  },
-}) as unknown as Temporal.Duration;
+const mockDuration = (seconds: number) =>
+  ({
+    total: (unit: string) => {
+      if (unit === "milliseconds" || unit === "millisecond")
+        return seconds * 1000;
+      if (unit === "seconds" || unit === "second") return seconds;
+      return seconds;
+    },
+  }) as unknown as Temporal.Duration;
 
 async function insertRaw(
   key: readonly string[],
@@ -24,7 +27,9 @@ async function insertRaw(
   await env.D1.prepare(
     `INSERT OR REPLACE INTO "${tableName}" (key, value, expires)
      VALUES (?, ?, ?)`,
-  ).bind(JSON.stringify(key), JSON.stringify(value), expires).run();
+  )
+    .bind(JSON.stringify(key), JSON.stringify(value), expires)
+    .run();
 }
 
 const delay = (ms: number) =>
@@ -35,6 +40,9 @@ interface D1SpyOptions {
   readonly gate?: (queries: readonly string[]) => Promise<void> | void;
   /** Whether to fail a batch instead of sending it, by its statements. */
   readonly failBatch?: (queries: readonly string[]) => boolean;
+  readonly rewrite?: (query: string) => string;
+  readonly appendFailure?: boolean;
+  readonly guardCounts?: readonly [number, number];
 }
 
 /** A prepared statement that remembers its query and the underlying one. */
@@ -54,9 +62,7 @@ class SpyStatement implements WorkersD1PreparedStatementLike {
     return await this.inner.first<T>();
   }
 
-  async all<T = Record<string, unknown>>(): Promise<
-    { readonly results: T[] }
-  > {
+  async all<T = Record<string, unknown>>(): Promise<{ readonly results: T[] }> {
     await this.spy.send([this.query]);
     return await this.inner.all<T>();
   }
@@ -81,7 +87,8 @@ class D1Spy implements WorkersD1DatabaseLike {
   ) {}
 
   prepare(query: string): SpyStatement {
-    return new SpyStatement(this, query, this.db.prepare(query));
+    const rewritten = this.options.rewrite?.(query) ?? query;
+    return new SpyStatement(this, rewritten, this.db.prepare(rewritten));
   }
 
   async send(queries: string[]): Promise<void> {
@@ -97,7 +104,24 @@ class D1Spy implements WorkersD1DatabaseLike {
     this.batches.push(queries);
     if (this.options.failBatch?.(queries)) throw new Error("Injected failure");
     await this.send(queries);
-    return await this.db.batch(spyStatements.map((s) => s.inner));
+    const inner = spyStatements.map((s) => s.inner);
+    const atomic = queries.some((q) =>
+      /INSERT INTO "fedify_kv_atomic"/.test(q),
+    );
+    if (atomic && this.options.appendFailure) {
+      inner.push(
+        this.db.prepare(
+          "INSERT INTO fedify_kv (key, value) VALUES ('injected', NULL)",
+        ),
+      );
+    }
+    const results = await this.db.batch(inner);
+    if (atomic && this.options.guardCounts != null) {
+      const [matched, cleaned] = this.options.guardCounts;
+      results[results.length - 2].meta.changes = matched;
+      results[results.length - 1].meta.changes = cleaned;
+    }
+    return results;
   }
 
   get ddlBatches(): number {
@@ -117,8 +141,9 @@ async function collect(
 describe("WorkersD1KvStore", () => {
   it("rejects an invalid table name", () => {
     for (const tableName of ["foo; DROP", "sqlite_kv", "SQLITE_kv", "_cf_KV"]) {
-      expect(() => new WorkersD1KvStore(env.D1, { tableName }))
-        .toThrow(TypeError);
+      expect(() => new WorkersD1KvStore(env.D1, { tableName })).toThrow(
+        TypeError,
+      );
     }
   });
 
@@ -128,7 +153,9 @@ describe("WorkersD1KvStore", () => {
     await store.initialize();
     const row = await env.D1.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
-    ).bind("init_test").first<{ name: string }>();
+    )
+      .bind("init_test")
+      .first<{ name: string }>();
     expect(row?.name).toBe("init_test");
   });
 
@@ -155,7 +182,9 @@ describe("WorkersD1KvStore", () => {
     expect(await store.get(["ttl"])).toBe("value");
     const row = await env.D1.prepare(
       "SELECT expires FROM fedify_kv WHERE key = ?",
-    ).bind(JSON.stringify(["ttl"])).first<{ expires: number }>();
+    )
+      .bind(JSON.stringify(["ttl"]))
+      .first<{ expires: number }>();
     expect(row?.expires).toBeGreaterThan(Date.now() + 3_500_000);
   });
 
@@ -175,7 +204,9 @@ describe("WorkersD1KvStore", () => {
     await store.set(["other"], "value");
     const row = await env.D1.prepare(
       "SELECT count(*) AS count FROM fedify_kv WHERE key = ?",
-    ).bind(JSON.stringify(["expired"])).first<{ count: number }>();
+    )
+      .bind(JSON.stringify(["expired"]))
+      .first<{ count: number }>();
     expect(row?.count).toBe(0);
   });
 
@@ -192,7 +223,9 @@ describe("WorkersD1KvStore", () => {
     await store.set(["custom"], "value");
     const row = await env.D1.prepare(
       "SELECT value FROM custom_kv WHERE key = ?",
-    ).bind(JSON.stringify(["custom"])).first<{ value: string }>();
+    )
+      .bind(JSON.stringify(["custom"]))
+      .first<{ value: string }>();
     expect(row?.value).toBe('"value"');
   });
 
@@ -225,8 +258,9 @@ describe("WorkersD1KvStore", () => {
     const store = new WorkersD1KvStore(env.D1);
     await store.set(["obj"], { a: 1, b: [1, 2, { c: null }] });
     // Order of object members does not matter:
-    expect(await store.cas(["obj"], { b: [1, 2, { c: null }], a: 1 }, 1))
-      .toBe(true);
+    expect(await store.cas(["obj"], { b: [1, 2, { c: null }], a: 1 }, 1)).toBe(
+      true,
+    );
     expect(await store.get(["obj"])).toBe(1);
 
     await store.set(["arr"], [1, 2]);
@@ -266,7 +300,9 @@ describe("WorkersD1KvStore", () => {
     expect(await store.cas(["ttl"], "a", "b")).toBe(true);
     const row = await env.D1.prepare(
       "SELECT expires FROM fedify_kv WHERE key = ?",
-    ).bind(JSON.stringify(["ttl"])).first<{ expires: number | null }>();
+    )
+      .bind(JSON.stringify(["ttl"]))
+      .first<{ expires: number | null }>();
     expect(row?.expires).toBeNull();
   });
 
@@ -340,7 +376,9 @@ describe("WorkersD1KvStore", () => {
     expect(spy.ddlBatches).toBe(1);
     const index = await env.D1.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
-    ).bind("idx_fedify_kv_expires").first<{ name: string }>();
+    )
+      .bind("idx_fedify_kv_expires")
+      .first<{ name: string }>();
     expect(index?.name).toBe("idx_fedify_kv_expires");
   });
 
@@ -376,8 +414,15 @@ describe("WorkersD1KvStore", () => {
     await store.drop();
     const row = await env.D1.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
-    ).bind("drop_test").first();
+    )
+      .bind("drop_test")
+      .first();
     expect(row).toBeNull();
+    expect(
+      await env.D1.prepare(
+        "SELECT name FROM sqlite_master WHERE name = 'drop_test_atomic'",
+      ).first(),
+    ).toBeNull();
     // The store re-creates the table on its next use:
     expect(await store.get(["a"])).toBeUndefined();
   });
@@ -397,18 +442,18 @@ describe("WorkersD1KvStore", () => {
     await store.initialize();
     const expired = Date.now() - 1000;
     await env.D1.batch(
-      Array.from(
-        { length: 150 },
-        (_, i) =>
-          env.D1.prepare(
-            "INSERT INTO fedify_kv (key, value, expires) VALUES (?, ?, ?)",
-          ).bind(JSON.stringify(["expired", `${i}`]), "null", expired),
+      Array.from({ length: 150 }, (_, i) =>
+        env.D1.prepare(
+          "INSERT INTO fedify_kv (key, value, expires) VALUES (?, ?, ?)",
+        ).bind(JSON.stringify(["expired", `${i}`]), "null", expired),
       ),
     );
     const countExpired = async () =>
-      (await env.D1.prepare(
-        "SELECT count(*) AS count FROM fedify_kv WHERE expires IS NOT NULL",
-      ).first<{ count: number }>())?.count;
+      (
+        await env.D1.prepare(
+          "SELECT count(*) AS count FROM fedify_kv WHERE expires IS NOT NULL",
+        ).first<{ count: number }>()
+      )?.count;
     await store.set(["a"], 1);
     expect(await countExpired()).toBe(50);
     // cas() purges them as well:
@@ -426,7 +471,8 @@ describe("WorkersD1KvStore", () => {
     const delayed = new WorkersD1KvStore(
       new D1Spy(env.D1, {
         async gate(queries) {
-          if (!queries.some((q) => q.trimStart().startsWith("UPDATE"))) return;
+          if (!queries.some((q) => /INSERT INTO "fedify_kv_atomic"/.test(q)))
+            return;
           // The entry must still be live when the CAS is sent:
           liveAtGate = (await store.get(key)) !== undefined;
           // Hold the CAS until D1's clock passes the expiration, and let
@@ -452,7 +498,9 @@ describe("WorkersD1KvStore", () => {
     ).toBe(true);
     const row = await env.D1.prepare(
       "SELECT expires FROM fedify_kv WHERE key = ?",
-    ).bind(JSON.stringify(["ttl-update"])).first<{ expires: number }>();
+    )
+      .bind(JSON.stringify(["ttl-update"]))
+      .first<{ expires: number }>();
     expect(row?.expires).toBeGreaterThan(Date.now() + 3_500_000);
     expect(row?.expires).toBeLessThanOrEqual(Date.now() + 3_600_000);
   });
@@ -507,11 +555,13 @@ describe("WorkersD1KvStore", () => {
     );
     for (let i = 0; i < keys.length; i += 500) {
       await env.D1.batch(
-        keys.slice(i, i + 500).map((key) =>
-          env.D1.prepare(
-            "INSERT INTO fedify_kv (key, value, expires) VALUES (?, ?, NULL)",
-          ).bind(JSON.stringify(key), JSON.stringify(key[1])),
-        ),
+        keys
+          .slice(i, i + 500)
+          .map((key) =>
+            env.D1.prepare(
+              "INSERT INTO fedify_kv (key, value, expires) VALUES (?, ?, NULL)",
+            ).bind(JSON.stringify(key), JSON.stringify(key[1])),
+          ),
       );
     }
     await store.set(["paged-other"], "other");
@@ -549,7 +599,10 @@ describe("WorkersD1KvStore", () => {
     const store = new WorkersD1KvStore(spy);
     // About 1.9 MB each, so 8 MiB fits five of them per query:
     const value = "x".repeat(1_900_000);
-    const keys = Array.from({ length: 6 }, (_, i) => ["large", `${i}`] as const);
+    const keys = Array.from(
+      { length: 6 },
+      (_, i) => ["large", `${i}`] as const,
+    );
     for (const key of keys) await store.set(key, value);
 
     const before = spy.queries.length;
@@ -587,5 +640,384 @@ describe("WorkersD1KvStore", () => {
     expect(await listKeys(["1"])).toEqual([["1", "0"], ["1"]]);
     expect(await listKeys(["-1"])).toEqual([["-1"]]);
     expect(await listKeys(["1", "0"])).toEqual([["1", "0"]]);
+  });
+});
+
+describe("WorkersD1KvStore atomic operations", () => {
+  it("compares the pre-mutation state and preserves physical rows on mismatch", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    await store.setMany([
+      { key: ["a"], value: 1 },
+      { key: ["b"], value: 2 },
+    ]);
+    expect(
+      await store.casMany([
+        { key: ["a"], expectedValue: 1, newValue: 2 },
+        { key: ["b"], expectedValue: 2, newValue: 1 },
+      ]),
+    ).toBe(true);
+    await insertRaw(["expired"], "stale", 1);
+    const before = await env.D1.prepare(
+      "SELECT * FROM fedify_kv ORDER BY key",
+    ).all();
+    expect(
+      await store.casMany([
+        { key: ["a"], expectedValue: 2, newValue: 3 },
+        { key: ["b"], expectedValue: 999, newValue: undefined },
+      ]),
+    ).toBe(false);
+    expect(
+      (await env.D1.prepare("SELECT * FROM fedify_kv ORDER BY key").all())
+        .results,
+    ).toEqual(before.results);
+    expect(
+      (await env.D1.prepare("SELECT * FROM fedify_kv_atomic").all()).results,
+    ).toEqual([]);
+  });
+
+  it("allows one competing reservation across separate instances", async () => {
+    const stores = Array.from(
+      { length: 10 },
+      () => new WorkersD1KvStore(env.D1),
+    );
+    await stores[0].set(["budget"], 1);
+    const results = await Promise.all(
+      stores.map((store, i) =>
+        store.casMany([
+          {
+            key: ["reservation", `${i}`],
+            expectedValue: undefined,
+            newValue: true,
+          },
+          { key: ["budget"], expectedValue: 1, newValue: 0 },
+        ]),
+      ),
+    );
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(await stores[0].get(["budget"])).toBe(0);
+    expect(await collect(stores[0].list(["reservation"]))).toHaveLength(1);
+  });
+
+  it("rolls back an actual later SQL error, including TTLs and guard cleanup", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    await store.set(["a"], 1, { ttl: Temporal.Duration.from({ hours: 1 }) });
+    const before = await env.D1.prepare("SELECT * FROM fedify_kv").all();
+    const failing = new WorkersD1KvStore(
+      new D1Spy(env.D1, { appendFailure: true }),
+      { initialized: true },
+    );
+    await expect(
+      failing.casMany([
+        { key: ["a"], expectedValue: 1, newValue: 2 },
+        { key: ["new"], expectedValue: undefined, newValue: 3 },
+      ]),
+    ).rejects.toThrow();
+    expect(
+      (await env.D1.prepare("SELECT * FROM fedify_kv").all()).results,
+    ).toEqual(before.results);
+    expect(
+      (await env.D1.prepare("SELECT * FROM fedify_kv_atomic").all()).results,
+    ).toEqual([]);
+    await expect(
+      failing.setMany([
+        { key: ["a"], value: 4 },
+        { key: ["new"], value: 5 },
+      ]),
+    ).rejects.toThrow();
+    expect(
+      (await env.D1.prepare("SELECT * FROM fedify_kv").all()).results,
+    ).toEqual(before.results);
+    expect(await store.cas(["a"], 1, 2)).toBe(true);
+  });
+
+  it("uses one database cutoff for comparison, replacement and cleanup", async () => {
+    const ordinary = new WorkersD1KvStore(env.D1);
+    await ordinary.initialize();
+    const cutoff = Date.now() + 3_600_000;
+    await insertRaw(["expired-at-cutoff"], "old", cutoff - 1);
+    const spy = new D1Spy(env.D1, {
+      rewrite: (query) =>
+        /INSERT INTO "fedify_kv_atomic"/.test(query)
+          ? query.replace(
+              "CAST(unixepoch('subsec') * 1000 AS INTEGER)",
+              `${cutoff}`,
+            )
+          : query,
+    });
+    const store = new WorkersD1KvStore(spy, { initialized: true });
+    expect(
+      await store.casMany([
+        {
+          key: ["expired-at-cutoff"],
+          expectedValue: undefined,
+          newValue: "new",
+          options: { ttl: mockDuration(2) },
+        },
+        {
+          key: ["second"],
+          expectedValue: undefined,
+          newValue: 1,
+          options: { ttl: mockDuration(2) },
+        },
+      ]),
+    ).toBe(true);
+    const { results } = await env.D1.prepare(
+      "SELECT expires FROM fedify_kv ORDER BY key",
+    ).all<{ expires: number }>();
+    expect(results.map((row) => row.expires)).toEqual([
+      cutoff + 2000,
+      cutoff + 2000,
+    ]);
+    await store.set(["immediate"], 1, { ttl: mockDuration(0.0005) });
+    expect(
+      await env.D1.prepare("SELECT key FROM fedify_kv WHERE key = ?")
+        .bind(JSON.stringify(["immediate"]))
+        .first(),
+    ).toBeNull();
+  });
+
+  it("rejects impossible guard result pairs as errors rather than mismatch", async () => {
+    await new WorkersD1KvStore(env.D1).initialize();
+    for (const guardCounts of [
+      [0, 0],
+      [1, 1],
+      [2, 0],
+    ] as const) {
+      const store = new WorkersD1KvStore(new D1Spy(env.D1, { guardCounts }), {
+        initialized: true,
+      });
+      await expect(store.cas(["a"], undefined, undefined)).rejects.toThrow(
+        "integrity",
+      );
+      await expect(store.set(["a"], 1)).rejects.toThrow("integrity");
+    }
+    // Altered response metadata is an error after execution, not a rollback.
+    expect(await new WorkersD1KvStore(env.D1).get(["a"])).toBe(1);
+  });
+
+  it("keeps empty batches free of backend calls", async () => {
+    const spy = new D1Spy(env.D1);
+    const store = new WorkersD1KvStore(spy);
+    expect(await store.getMany([])).toEqual([]);
+    await store.setMany([]);
+    await store.deleteMany([]);
+    expect(await store.casMany([])).toBe(true);
+    expect(spy.queries).toEqual([]);
+  });
+
+  it("rejects invalid batches before initialization or mutation", async () => {
+    const spy = new D1Spy(env.D1);
+    const store = new WorkersD1KvStore(spy);
+    await expect(store.set(["a"], undefined)).rejects.toThrow(TypeError);
+    await expect(store.set(["a"], () => 1)).rejects.toThrow(TypeError);
+    await expect(store.cas(["a"], Symbol(), 1)).rejects.toThrow(TypeError);
+    await expect(
+      store.cas(["a"], 99, undefined, { ttl: mockDuration(1) }),
+    ).rejects.toThrow(TypeError);
+    await expect(
+      store.setMany([
+        { key: ["a"], value: 1 },
+        { key: ["a"], value: 2 },
+      ]),
+    ).rejects.toThrow(TypeError);
+    await expect(store.setMany(new Array(2))).rejects.toThrow(TypeError);
+    await expect(store.getMany(new Array(2))).rejects.toThrow(TypeError);
+    await expect(store.deleteMany(new Array(2))).rejects.toThrow(TypeError);
+    await expect(store.casMany(new Array(2))).rejects.toThrow(TypeError);
+    await expect(
+      store.set(["a"], 1, { ttl: mockDuration(Infinity) }),
+    ).rejects.toThrow(RangeError);
+    await expect(
+      store.set(["a"], 1, { ttl: Temporal.Duration.from({ months: 1 }) }),
+    ).rejects.toThrow(RangeError);
+    const circular: unknown[] = [];
+    circular.push(circular);
+    await expect(
+      store.setMany([
+        { key: ["a"], value: 1 },
+        { key: ["b"], value: circular },
+      ]),
+    ).rejects.toThrow();
+    expect(spy.queries).toEqual([]);
+  });
+
+  it("validates indexed contents even when array iterators disagree", async () => {
+    const spy = new D1Spy(env.D1);
+    const store = new WorkersD1KvStore(spy);
+    const sparse = new Array(1);
+    Object.defineProperty(sparse, Symbol.iterator, { value: function* () {} });
+    await expect(store.getMany(sparse)).rejects.toThrow(TypeError);
+    await expect(store.setMany(sparse)).rejects.toThrow(TypeError);
+    await expect(store.deleteMany(sparse)).rejects.toThrow(TypeError);
+    await expect(store.casMany(sparse)).rejects.toThrow(TypeError);
+    const empty: readonly [string][] = [];
+    Object.defineProperty(empty, Symbol.iterator, {
+      value: function* () {
+        for (let i = 0; i < 129; i++) yield [`${i}`];
+      },
+    });
+    await store.deleteMany(empty);
+    expect(await store.getMany(empty)).toEqual([]);
+    const invalid = [42] as unknown as readonly [string];
+    Object.defineProperty(invalid, Symbol.iterator, {
+      value: function* () {
+        yield "masked";
+      },
+    });
+    await expect(store.set(invalid, 1)).rejects.toThrow(TypeError);
+    expect(spy.queries).toEqual([]);
+  });
+
+  it("bounds deletion work before visiting excessive or later keys", async () => {
+    const spy = new D1Spy(env.D1);
+    const store = new WorkersD1KvStore(spy);
+    const excessive = Array.from({ length: 129 }, () => ["x"] as const);
+    Object.defineProperty(excessive, 0, {
+      get() {
+        throw new Error("visited");
+      },
+    });
+    await expect(store.deleteMany(excessive)).rejects.toThrow(RangeError);
+    const keys = [
+      ["x".repeat(1_000_000)],
+      ["y".repeat(1_000_000)],
+      ["late"],
+    ] as const;
+    Object.defineProperty(keys, 2, {
+      get() {
+        throw new Error("visited later");
+      },
+    });
+    await expect(store.deleteMany(keys)).rejects.toThrow(RangeError);
+    expect(spy.queries).toEqual([]);
+  });
+
+  it("keeps ordinary reads and deletions usable for escaped keys", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    const key = ['"'.repeat(600_000)] as const;
+    await store.set(key, 1);
+    expect(await store.get(key)).toBe(1);
+    await expect(store.getMany([key])).rejects.toThrow(RangeError);
+    await expect(store.deleteMany([key])).rejects.toThrow(RangeError);
+    expect(await store.get(key)).toBe(1);
+    await store.delete(key);
+    expect(await store.get(key)).toBeUndefined();
+  });
+
+  it("rejects encoded row, expected-value and escaped key-payload limits", async () => {
+    const spy = new D1Spy(env.D1);
+    const store = new WorkersD1KvStore(spy);
+    const huge = "한".repeat(700_000);
+    await expect(store.set(["a"], huge)).rejects.toThrow(RangeError);
+    await expect(store.cas(["a"], huge, undefined)).rejects.toThrow(RangeError);
+    await expect(
+      store.set(["x".repeat(1_100_000)], "y".repeat(1_100_000)),
+    ).rejects.toThrow(RangeError);
+    const escaped = ['"'.repeat(600_000)] as const;
+    await expect(store.getMany([escaped])).rejects.toThrow(RangeError);
+    await expect(store.deleteMany([escaped])).rejects.toThrow(RangeError);
+    await expect(
+      store.setMany(
+        Array.from({ length: 10 }, (_, i) => ({
+          key: [`${i}`],
+          value: "x".repeat(1_800_000),
+        })),
+      ),
+    ).rejects.toThrow(RangeError);
+    expect(spy.queries).toEqual([]);
+  });
+
+  it("rejects a snapshot over budget and expands duplicates after one read", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    await store.setMany(
+      Array.from({ length: 5 }, (_, i) => ({
+        key: [`${i}`],
+        value: "x".repeat(1_800_000),
+      })),
+    );
+    await expect(
+      store.getMany(Array.from({ length: 5 }, (_, i) => [`${i}`] as const)),
+    ).rejects.toThrow(RangeError);
+    const spy = new D1Spy(env.D1);
+    const reader = new WorkersD1KvStore(spy, { initialized: true });
+    const repeated = await reader.getMany(
+      Array.from({ length: 20 }, () => ["0"] as const),
+    );
+    expect(repeated).toHaveLength(20);
+    expect(repeated.every((value) => value === repeated[0])).toBe(true);
+    expect(spy.queries).toHaveLength(1);
+  });
+
+  it("compares persisted JSON coercions and unusual member names", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    await store.set(["nan"], NaN);
+    expect(await store.cas(["nan"], null, 1)).toBe(true);
+    await store.set(["omitted"], { a: undefined });
+    expect(
+      await store.casMany([
+        { key: ["omitted"], expectedValue: {}, newValue: null },
+      ]),
+    ).toBe(true);
+    const value = { "a.b": 1, "a[0]": 2, '\"\\\u0000': { "한😀": [1, null] } };
+    await store.set(["object"], value);
+    expect(
+      await store.casMany([
+        { key: ["object"], expectedValue: { ...value, "a.b": 9 }, newValue: 0 },
+      ]),
+    ).toBe(false);
+    expect(
+      await store.cas(
+        ["object"],
+        { '\"\\\u0000': { "한😀": [1, null] }, "a[0]": 2, "a.b": 1 },
+        1,
+      ),
+    ).toBe(true);
+    await store.set(["number"], 1.2345678901234568e29);
+    expect(await store.cas(["number"], 1.234567890123457e29, 0)).toBe(false);
+  });
+
+  it("rejects incompatible auxiliary schemas and retries after repair", async () => {
+    for (const ddl of [
+      "CREATE TABLE bad_atomic (singleton INTEGER PRIMARY KEY, cutoff INTEGER NOT NULL, matched INTEGER NOT NULL, extra INTEGER GENERATED ALWAYS AS (1) VIRTUAL)",
+      "CREATE TABLE bad_atomic (singleton INTEGER PRIMARY KEY, cutoff TEXT NOT NULL, matched INTEGER NOT NULL)",
+    ]) {
+      await env.D1.prepare(ddl).run();
+      const store = new WorkersD1KvStore(env.D1, { tableName: "bad" });
+      await expect(store.initialize()).rejects.toThrow("Incompatible");
+      await env.D1.prepare("DROP TABLE bad_atomic").run();
+      await store.set(["ok"], 1);
+      await store.drop();
+    }
+    expect(
+      () => new WorkersD1KvStore(env.D1, { tableName: "bad_ATOMIC" }),
+    ).toThrow(TypeError);
+  });
+
+  it("rejects colliding expiry indexes", async () => {
+    await env.D1.prepare("CREATE TABLE other (expires INTEGER)").run();
+    await env.D1.prepare(
+      "CREATE INDEX idx_collision_expires ON other (expires)",
+    ).run();
+    await expect(
+      new WorkersD1KvStore(env.D1, { tableName: "collision" }).initialize(),
+    ).rejects.toThrow("Incompatible");
+  });
+
+  it("coexists atomically with direct base-adapter SQL writes", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    await store.setMany([
+      { key: ["a"], value: 0 },
+      { key: ["b"], value: 0 },
+    ]);
+    const [committed] = await Promise.all([
+      store.casMany([
+        { key: ["a"], expectedValue: 0, newValue: 1 },
+        { key: ["b"], expectedValue: 0, newValue: 1 },
+      ]),
+      env.D1.prepare("UPDATE fedify_kv SET value = '2' WHERE key = ?")
+        .bind(JSON.stringify(["a"]))
+        .run(),
+    ]);
+    expect(await store.getMany([["a"], ["b"]])).toEqual([2, committed ? 1 : 0]);
   });
 });
