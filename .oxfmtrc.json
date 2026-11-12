@@ -50,7 +50,6 @@
     "schema/bench/*.json",
     "test/smoke/**/.certs/**",
     "packages/cfworkers/test/**",
-    "examples/sveltekit-sample/.prettierrc",
     "packages/amqp/npm/**",
     "packages/fedify/npm/**",
     "packages/testing/npm/**",
