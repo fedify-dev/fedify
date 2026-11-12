@@ -81,8 +81,8 @@ seed's first `context` ID to dereference to a `Collection`, `OrderedCollection`,
 yielded directly, while supported `Create` activities are unwrapped and their
 objects are yielded.
 
-Without history selection, if the seed has no context, or its context resolves
-to a non-collection, context strategies yield nothing.
+Without history selection or ancestor discovery, if the seed has no context,
+or its context resolves to a non-collection, context strategies yield nothing.
 
 ### Selecting conversation history
 
@@ -126,7 +126,9 @@ fallback.
 An embedded history accepted without dereferencing needs no request;
 referenced items and pages still count. A failed history lookup consumes
 request budget, and context fallback uses the remaining budget and the same
-document cache. If no source can be resolved, context strategies yield nothing.
+document cache. If no source can be resolved on the seed, context strategies
+yield nothing unless
+[ancestor discovery](#discovering-collections-through-ancestors) is enabled.
 
 Referenced history is resolved through the configured `documentLoader`,
 including portable `ap://`, `ap+ef61://`, and FEP-ef61-compatible HTTPS
@@ -135,8 +137,63 @@ objects, as with other objects it returns.
 
 This option chooses the source for the existing context strategies. Later
 explicitly configured strategies, including `"reply-tree"`, can still run.
-It does not discover history on ancestors or replay
-updates and deletions. Omitting the option preserves existing source selection.
+By itself, it does not discover history on ancestors. It does not unwrap `Add`
+activities or replay updates and deletions. Omitting the option preserves
+existing source selection.
+
+### Discovering collections through ancestors
+
+*This option is available since Fedify 2.5.0.*
+
+Set `contextDiscovery: "ancestors"` when starting from a reply whose own
+collection may be absent or unavailable:
+
+~~~~ typescript twoslash
+import { backfill, type BackfillContext } from "@fedify/backfill";
+import { Note } from "@fedify/vocab";
+
+declare const context: BackfillContext;
+declare const reply: Note;
+// ---cut-before---
+for await (const item of backfill(context, reply, {
+  contextDiscovery: "ancestors",
+  maxDepth: 5,
+})) {
+  console.log(item.object);
+}
+~~~~
+
+Context strategies first try the seed, then follow `inReplyTo` ancestors up to
+`maxDepth` (10 by default). The nearest ancestor with a usable collection wins;
+reply-target property order breaks ties at the same depth. The selected
+collection stays fixed across context strategies, even if empty or containing
+no supported items. Ancestor collections are not merged. Failed ancestor
+lookups leave other reply targets available for discovery.
+
+Enabling ancestor discovery can produce vocabulary warnings such as
+`Failed to fetch …` for missing reply targets, already visited references, or
+lookups blocked by the remaining request budget. These warnings can describe
+expected skips during traversal and do not by themselves mean discovery has
+stopped.
+
+Combine this option with `contextSource: "history-first"` to apply history-first
+selection to the seed and each ancestor. Otherwise, discovery uses their first
+`context` IDs. Omitting `contextDiscovery` makes no ancestor requests from
+context strategies.
+
+Collection items have `origin: "collection"` and `depth: 0`. To also yield
+ancestors and crawl `replies`, configure the `"reply-tree"` strategy. Later
+strategies run in their configured order. Discovery shares the traversal
+controls, caching, and ID deduplication described below.
+
+Per-object loader and portable-object verifier defaults remain effective
+regardless of strategy order. Discovery does not hydrate the seed or loaded
+ancestor objects.
+
+Ancestor discovery deep-clones the seed and loaded ancestors, including their
+embedded object graphs. Large embedded collections can therefore increase
+memory use and copying time independently of `maxDepth`. Objects yielded by
+`reply-tree` may be copies rather than the caller's original instances.
 
 
 Strategies
@@ -229,10 +286,10 @@ Traversal controls
     without fetching do not count as requests.
 
 `maxDepth`
-:   Limits reply-tree traversal and defaults to 10.  Immediate parents and
-    direct replies have depth 1; their next-level parents or replies have depth
-    2, and so on.  Context collection items have depth 0 and are not limited by
-    this option.
+:   Limits reply-tree traversal and ancestor collection discovery, and defaults
+    to 10. Immediate parents and direct replies have depth 1; their next-level
+    parents or replies have depth 2, and so on. Context collection items have
+    depth 0 and are not limited by this option.
 
 `interval`
 :   Adds a delay between `documentLoader` requests.  A callback receives the

@@ -8,7 +8,11 @@ import {
   OrderedCollection,
   OrderedCollectionPage,
 } from "@fedify/vocab";
-import { fromCompatibleEf61Id } from "@fedify/vocab-runtime";
+import { fromCompatibleEf61Id, parseIri } from "@fedify/vocab-runtime";
+import {
+  copyPortableProvenance,
+  isUnverifiedPortableClaim,
+} from "@fedify/vocab-runtime/internal/portable-dereference";
 
 import type {
   BackfillContext,
@@ -31,11 +35,27 @@ const DEFAULT_MAX_DEPTH = 10;
  */
 export class MaxRequestsExceeded extends Error {}
 
+class IntervalConfigurationError extends Error {}
+
+/** Errors that must escape unavailable-document handling. */
+function isTraversalError(
+  error: unknown,
+): error is MaxRequestsExceeded | IntervalConfigurationError {
+  return (
+    error instanceof MaxRequestsExceeded ||
+    error instanceof IntervalConfigurationError
+  );
+}
+
 interface RequestBudget {
   readonly signal?: AbortSignal;
   requestCount: number;
   readonly documents: Map<string, Promise<APObject | null>>;
   conversationCollection?: Promise<BackfillCollection | null>;
+  readonly discovery?: {
+    readonly copies: WeakMap<APObject, APObject>;
+    readonly sources: WeakMap<APObject, APObject>;
+  };
 }
 
 type StrategyItem = {
@@ -74,7 +94,14 @@ export async function* backfill<TObject extends APObject = APObject>(
     signal: options.signal,
     requestCount: 0,
     documents: new Map(),
+    discovery:
+      options.contextDiscovery === "ancestors"
+        ? { copies: new WeakMap(), sources: new WeakMap() }
+        : undefined,
   };
+  // Own the traversal graph without dropping its loader or verifier defaults.
+  // Reuse each copy so anonymous embedded cycles keep their object identity.
+  const traversalNote = copyDiscoveryObject(note, budget);
   const seenIds = new Set<string>();
   if (note.id != null) seenIds.add(note.id.href);
 
@@ -95,7 +122,7 @@ export async function* backfill<TObject extends APObject = APObject>(
         }
         items = getContextStrategyItems(
           context,
-          note,
+          traversalNote,
           contextStrategies,
           options,
           budget,
@@ -104,7 +131,7 @@ export async function* backfill<TObject extends APObject = APObject>(
       } else {
         items = getStrategyItems(
           context,
-          note,
+          traversalNote,
           strategy,
           options,
           budget,
@@ -133,6 +160,7 @@ export async function* backfill<TObject extends APObject = APObject>(
       }
     }
   } catch (error) {
+    if (error instanceof IntervalConfigurationError) throw error.cause;
     if (error instanceof MaxRequestsExceeded) return;
     throw error;
   }
@@ -201,8 +229,9 @@ async function* getContextStrategyItems(
   readonly depth: 0;
 }> {
   const collection =
-    options.contextSource === "history-first"
-      ? await (budget.conversationCollection ??= getConversationCollection(
+    options.contextSource === "history-first" ||
+    options.contextDiscovery === "ancestors"
+      ? await (budget.conversationCollection ??= discoverConversationCollection(
           context,
           note,
           options,
@@ -234,6 +263,73 @@ async function* getContextStrategyItems(
       }
     }
   }
+}
+
+async function discoverConversationCollection(
+  context: BackfillContext,
+  note: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): Promise<BackfillCollection | null> {
+  const collection = await getConversationCollection(
+    context,
+    note,
+    options,
+    budget,
+  );
+  if (collection != null || options.contextDiscovery !== "ancestors") {
+    return collection;
+  }
+
+  const visitedObjectIds = new Set<string>();
+  if (note.id != null) visitedObjectIds.add(note.id.href);
+  const visitedObjects = new WeakSet<APObject>([note]);
+  let frontier = [note];
+  // Finish each depth before exploring parents so a farther collection
+  // cannot take precedence over a nearer reply target's collection.
+  try {
+    for (
+      let depth = 1;
+      depth <= (options.maxDepth ?? DEFAULT_MAX_DEPTH);
+      depth++
+    ) {
+      const next: APObject[] = [];
+      for (const object of frontier) {
+        for await (const parsedTarget of getReplyTargets(
+          context,
+          object,
+          options,
+          budget,
+          visitedObjectIds,
+          { continueAfterBudgetExceeded: true },
+        )) {
+          budget.signal?.throwIfAborted();
+          const target = getDiscoveryReplyTarget(parsedTarget, budget);
+          if (!isContextPostObject(target)) continue;
+          if (
+            !visitReplyTreeObject(target, { visitedObjectIds, visitedObjects })
+          ) {
+            continue;
+          }
+          const collection = await getConversationCollection(
+            context,
+            target,
+            options,
+            budget,
+          );
+          if (collection != null) return collection;
+          next.push(target);
+        }
+      }
+      if (next.length === 0) return null;
+      frontier = next;
+    }
+  } catch (error) {
+    budget.signal?.throwIfAborted();
+    if (!(error instanceof MaxRequestsExceeded)) throw error;
+    // Later strategies may still use embedded objects without more requests.
+  }
+  return null;
 }
 
 async function getConversationCollection(
@@ -390,12 +486,13 @@ async function* getReplyAncestors(
   readonly depth: number;
 }> {
   if (traversal.depth > (options.maxDepth ?? DEFAULT_MAX_DEPTH)) return;
-  for await (const target of getReplyTargets(
+  for await (const parsedTarget of getReplyTargets(
     context,
     object,
     options,
     budget,
   )) {
+    const target = getDiscoveryReplyTarget(parsedTarget, budget);
     if (!isContextPostObject(target)) continue;
     if (!visitReplyTreeObject(target, traversal)) continue;
     yield {
@@ -466,18 +563,127 @@ async function* getReplyTargets(
   object: APObject,
   options: BackfillOptions,
   budget: RequestBudget,
+  skipIds?: ReadonlySet<string>,
+  {
+    continueAfterBudgetExceeded = false,
+  }: {
+    continueAfterBudgetExceeded?: boolean;
+  } = {},
 ): AsyncIterable<APObject | Link> {
+  let traversalError:
+    | MaxRequestsExceeded
+    | IntervalConfigurationError
+    | undefined;
+  const loadedObjects = new Map<string, APObject>();
+  const observesGeneratedCache =
+    object.getReplyTargets === APObject.prototype.getReplyTargets;
+  let replyTargetIdsBeforeLoad: readonly URL[] | undefined;
   try {
-    yield* object.getReplyTargets({
+    for await (const target of object.getReplyTargets({
+      // Skip vocabulary-level failures per target rather than closing the
+      // iterator before its remaining reply targets can be explored.
+      suppressError: true,
       documentLoader: async (url) => {
-        return await loadCollectionItemDocument(context, url, options, budget);
+        loadedObjects.clear();
+        replyTargetIdsBeforeLoad =
+          budget.discovery == null || !observesGeneratedCache
+            ? undefined
+            : object.replyTargetIds;
+        if (traversalError != null) throw traversalError;
+        try {
+          return await loadCollectionItemDocument(
+            context,
+            url,
+            options,
+            budget,
+            skipIds,
+            {
+              onLoaded:
+                budget.discovery == null
+                  ? undefined
+                  : (object, document) => {
+                      loadedObjects.set(JSON.stringify(document), object);
+                    },
+              // Let suppressError skip unavailable references without caching
+              // successful placeholders that would prevent later retries.
+              skipUnavailable: budget.discovery == null,
+            },
+          );
+        } catch (error) {
+          if (
+            continueAfterBudgetExceeded &&
+            error instanceof MaxRequestsExceeded
+          ) {
+            // Skip this lookup without preventing embedded or cached targets.
+            throw error;
+          }
+          // Retain traversal errors across vocabulary error suppression so
+          // invalid configuration cannot continue with an embedded sibling.
+          if (isTraversalError(error)) traversalError = error;
+          throw error;
+        }
       },
       crossOrigin: "trust",
-    });
+    })) {
+      budget.signal?.throwIfAborted();
+      if (traversalError != null) throw traversalError;
+      // Record provenance only after the vocabulary accessor accepts a target.
+      // Keep it across strategy passes, including targets cached by reply-tree.
+      // Match documents rather than IDs to support anonymous targets.
+      if (loadedObjects.size > 0 && target instanceof APObject) {
+        // A successful fetch changes cached URL identities, unless the target
+        // is an unverified portable claim. Otherwise, discard the stale source.
+        // Custom accessors keep their existing behavior pending exact association:
+        // https://github.com/fedify-dev/fedify/issues/1423
+        const previousIds = replyTargetIdsBeforeLoad;
+        const currentIds = observesGeneratedCache ? object.replyTargetIds : [];
+        const fetched =
+          !observesGeneratedCache ||
+          isUnverifiedPortableClaim(target) ||
+          (previousIds != null &&
+            (currentIds.length !== previousIds.length ||
+              currentIds.some((id, i) => id !== previousIds[i])));
+        if (fetched) {
+          const source = loadedObjects.get(
+            JSON.stringify(await target.toJsonLd()),
+          );
+          if (source != null) budget.discovery?.sources.set(target, source);
+        }
+      }
+      loadedObjects.clear();
+      yield target;
+    }
+    budget.signal?.throwIfAborted();
+    if (traversalError != null) throw traversalError;
   } catch (error) {
-    if (error instanceof MaxRequestsExceeded) throw error;
+    if (isTraversalError(error)) throw error;
     budget.signal?.throwIfAborted();
   }
+}
+
+function copyDiscoveryObject(
+  object: APObject,
+  budget: RequestBudget,
+): APObject {
+  if (budget.discovery == null) return object;
+  let copy = budget.discovery.copies.get(object);
+  if (copy == null) {
+    copy = object.deepClone();
+    budget.discovery.copies.set(object, copy);
+  }
+  return copy;
+}
+
+function getDiscoveryReplyTarget(
+  target: APObject | Link,
+  budget: RequestBudget,
+): APObject | Link {
+  if (!(target instanceof APObject)) return target;
+  const source = budget.discovery?.sources.get(target);
+  if (source == null) return target;
+  const copy = copyDiscoveryObject(source, budget);
+  copyPortableProvenance(target, copy);
+  return copy;
 }
 
 async function getRepliesCollection(
@@ -494,7 +700,7 @@ async function getRepliesCollection(
       crossOrigin: "trust",
     });
   } catch (error) {
-    if (error instanceof MaxRequestsExceeded) throw error;
+    if (isTraversalError(error)) throw error;
     budget.signal?.throwIfAborted();
     return null;
   }
@@ -502,7 +708,7 @@ async function getRepliesCollection(
 
 function visitReplyTreeObject(
   object: APObject,
-  traversal: ReplyTreeTraversal,
+  traversal: Pick<ReplyTreeTraversal, "visitedObjectIds" | "visitedObjects">,
 ): boolean {
   if (object.id != null) {
     if (traversal.visitedObjectIds.has(object.id.href)) return false;
@@ -635,7 +841,7 @@ async function* getCollectionItems(
           ? await current.getFirst(pageOptions)
           : await page.getNext(pageOptions);
     } catch (error) {
-      if (error instanceof MaxRequestsExceeded) throw error;
+      if (isTraversalError(error)) throw error;
       budget.signal?.throwIfAborted();
       return;
     }
@@ -661,7 +867,7 @@ async function getCreateActivityObject(
       crossOrigin: "trust",
     });
   } catch (error) {
-    if (error instanceof MaxRequestsExceeded) throw error;
+    if (isTraversalError(error)) throw error;
     budget.signal?.throwIfAborted();
     return null;
   }
@@ -673,24 +879,41 @@ async function loadCollectionItemDocument(
   options: BackfillOptions,
   budget: RequestBudget,
   skipIds?: ReadonlySet<string>,
+  {
+    onLoaded,
+    skipUnavailable = true,
+  }: {
+    onLoaded?: (object: APObject, document: unknown) => void;
+    skipUnavailable?: boolean;
+  } = {},
 ) {
   let object: APObject | null;
   try {
-    const iri = new URL(url);
-    if (skipIds?.has(iri.href)) return skippedCollectionItemDocument(url);
+    const iri = parseIri(url);
+    if (skipIds?.has(iri.href)) {
+      if (!skipUnavailable)
+        throw new Error(`Reply target already visited: ${url}`);
+      return skippedCollectionItemDocument(url);
+    }
     object = await loadObject(context, iri, options, budget, {
       throwOnBudgetExceeded: true,
     });
   } catch (error) {
-    if (error instanceof MaxRequestsExceeded) throw error;
+    if (isTraversalError(error)) throw error;
     budget.signal?.throwIfAborted();
+    if (!skipUnavailable) throw error;
     return skippedCollectionItemDocument(url);
   }
-  if (object == null) return skippedCollectionItemDocument(url);
+  if (object == null) {
+    if (!skipUnavailable) throw new Error(`Reply target not found: ${url}`);
+    return skippedCollectionItemDocument(url);
+  }
+  const document = await object.toJsonLd();
+  onLoaded?.(object, document);
   return {
     contextUrl: null,
     documentUrl: url,
-    document: await object.toJsonLd(),
+    document,
   };
 }
 
@@ -731,7 +954,14 @@ async function loadObject(
     return null;
   }
 
-  await waitForInterval(options, budget);
+  try {
+    await waitForInterval(options, budget);
+  } catch (error) {
+    budget.signal?.throwIfAborted();
+    throw new IntervalConfigurationError("Invalid backfill interval", {
+      cause: error,
+    });
+  }
   budget.signal?.throwIfAborted();
 
   budget.requestCount++;

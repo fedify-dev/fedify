@@ -338,11 +338,22 @@ back to the first `context` ID, using the remaining request budget. Once a
 history collection is resolved, it stays selected even if empty or no
 items can be yielded. Later history references are not tried, and sources are
 not merged. Portable history references are passed to the configured backfill
-loader for resolution and verification. Existing strategies control post
-extraction; later explicitly configured strategies can still run. This does not
-discover history on ancestors or replay updates and deletions. Histories
-containing only `Add(Create(...))` activities yield nothing and do not trigger
-`context` fallback.
+loader for resolution and verification.
+Existing strategies control post extraction; later explicitly configured
+strategies can still run. Set `contextDiscovery: "ancestors"` to search
+`inReplyTo` ancestors when the seed has no usable collection, bounded by
+`maxDepth`. The nearest usable collection wins, with reply-target property
+order breaking ties; a valid empty collection stays selected. Source selection
+applies to each ancestor. Discovery shares traversal limits, caching,
+cancellation, and ID deduplication with configured strategies. Per-object
+loader and verifier defaults remain effective across strategy orders, without
+hydrating the seed or loaded ancestors. Collection
+items retain origin `"collection"` and depth 0; ancestors are yielded only
+with `"reply-tree"`. Without this option, context strategies make no ancestor
+requests. These options do not unwrap
+`Add` activities or replay updates and deletions. Histories containing only
+`Add(Create(...))` activities yield nothing and do not trigger `context`
+fallback.
 
 Since Fedify 2.5.0, pass `dereference: false` to vocabulary accessors to read
 embedded or cached objects without fetching references. Singular accessors
