@@ -41,5 +41,9 @@ The private JWKs are deterministic test material and must not be used as real
 credentials.  Regenerate both fixtures from the repository root with:
 
 ~~~~ bash
-mise x -- deno run --allow-write packages/fedify/scripts/generate-map-local-vector.ts
+node --experimental-strip-types packages/fedify/scripts/generate-map-local-vector.ts
+mise run fmt
 ~~~~
+
+The script writes plain `JSON.stringify()` output; `mise run fmt` applies the
+repository's formatting to it.

@@ -22,7 +22,7 @@ async function parseRecipient(
   if (cached) return cached;
 
   const [user, domain] = handle.split("@");
-  const scheme = Deno.env.get("STRICT_MODE") ? "https" : "http";
+  const scheme = process.env.STRICT_MODE ? "https" : "http";
 
   // Try WebFinger resolution first—this discovers the correct actor URI
   // regardless of server software (Mastodon, Sharkey, etc.)

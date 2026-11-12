@@ -1,0 +1,7 @@
+// The interoperability smoke tests: the orchestrator, which runs on the CI
+// host, and the Fedify harness it drives, which runs in a Node.js container
+// with the dependencies declared in harness/package.json.
+{
+  "extends": "../../tsconfig.node.json",
+  "include": ["*.ts", "harness/*.ts"]
+}

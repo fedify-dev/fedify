@@ -53,6 +53,7 @@ packages:
   - examples/solidstart
   - examples/sveltekit-sample
   - examples/test-examples
+  - test/smoke/harness
 
 allowBuilds:
   '@netlify/content-engine': true

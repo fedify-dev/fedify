@@ -49,9 +49,6 @@ jobs:
         run: |
           docker pull registry.activitypub.software/transfem-org/sharkey:2025.4.6
 
-      - name: Pre-cache harness dependencies
-        run: deno cache test/smoke/harness/main.ts
-
       - name: Start database and redis
         run: |
           $COMPOSE up -d db redis
@@ -77,8 +74,7 @@ jobs:
       - name: Run smoke tests
         run: |
           set -a && source test/smoke/.env.test && set +a
-          deno run --allow-net --allow-env --unstable-temporal \
-            test/smoke/orchestrator.ts
+          node --experimental-strip-types test/smoke/orchestrator.ts
 
       - name: Collect logs on failure
         if: failure()

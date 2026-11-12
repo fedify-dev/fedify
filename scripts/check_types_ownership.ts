@@ -34,7 +34,6 @@ export const DENO_CHECK = "check:types:deno";
 export const DENO_EXTRA_ENTRY_POINTS: readonly string[] = [
   "scripts/check_types_deno.ts",
   "scripts/install.ts",
-  "test/smoke/orchestrator.ts",
 ];
 
 export const OWNERSHIP: readonly Ownership[] = [
@@ -62,11 +61,6 @@ export const OWNERSHIP: readonly Ownership[] = [
     path: "packages/cli/scripts/pack.ts",
     owner: DENO_CHECK,
     reason: "Runs on Deno to compile the standalone CLI executables.",
-  },
-  {
-    path: "packages/fedify/scripts/generate-map-local-vector.ts",
-    owner: DENO_CHECK,
-    reason: "Runs on Deno and uses Deno's file system APIs.",
   },
   {
     path: "packages/uri-template/old/**",

@@ -43,6 +43,7 @@ sources = [
   "docs/package.json",
   "examples/*/package.json",
   "examples/*/*/package.json",
+  "test/smoke/harness/package.json",
 ]
 outputs = ["node_modules/.modules.yaml"]
 run = "pnpm install"
@@ -129,13 +130,11 @@ sources = [
   "packages/*/deno.json",
   "examples/*/deno.json",
   "examples/*/*/deno.json",
-  "test/smoke/harness/deno.json",
   # Deno also resolves dependencies declared in workspace npm manifests.
   "package.json",
   "packages/*/package.json",
   "examples/*/package.json",
   "examples/*/*/package.json",
-  "test/smoke/harness/package.json",
   "scripts/install.ts",
   "packages/vocab/src/vocab.ts",
 ]
@@ -547,6 +546,10 @@ run = "node --disable-warning=ExperimentalWarning packages/cli/dist/mod.js tunne
 [tasks.update-init-deps]
 description = "Update third-party dependency versions in fedify init templates"
 run = "node --experimental-strip-types packages/init/scripts/update_init_deps.ts"
+
+[tasks."generate:bench-schema"]
+description = "Regenerate the published benchmark JSON Schemas in schema/bench/"
+run = "node --experimental-strip-types packages/cli/scripts/generate-bench-schema.ts"
 
 [tasks."hooks:install"]
 description = "Install Git hooks for pre-commit checks"

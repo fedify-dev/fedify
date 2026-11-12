@@ -11,7 +11,7 @@
  */
 
 function requireEnv(name: string): string {
-  const value = Deno.env.get(name);
+  const value = process.env[name];
   if (!value) throw new Error(`Missing required env var: ${name}`);
   return value;
 }
@@ -445,8 +445,8 @@ try {
     }
   }
 
-  Deno.exit(failed ? 1 : 0);
+  process.exit(failed ? 1 : 0);
 } catch (err) {
   console.error("\n✗ Unexpected error:", err);
-  Deno.exit(1);
+  process.exit(1);
 }
