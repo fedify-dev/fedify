@@ -2,8 +2,10 @@ Linting
 =======
 
 Fedify lints its TypeScript and JavaScript sources with [Oxlint].  The default
-lint task no longer invokes `deno lint`; Deno remains supported for formatting,
-type checking, JSR publishing, and the published `@fedify/lint` plugin.
+lint task no longer invokes `deno lint`.  Deno is still used for the Deno type
+check (`mise run check:types:deno`) and JSR publishing, and the published
+`@fedify/lint` plugin still supports Deno Lint.  Formatting is covered in
+[*FORMATTING.md*].
 
 Run the repository lint task with:
 
@@ -26,6 +28,7 @@ finds the root config too, but repository tasks always pass it explicitly.
 the gate; `mise run lint` shows them.
 
 [Oxlint]: https://oxc.rs/docs/guide/usage/linter/
+[*FORMATTING.md*]: FORMATTING.md
 
 
 Rule mapping
