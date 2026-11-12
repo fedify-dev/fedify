@@ -291,6 +291,31 @@ describe("ancestor collection discovery", () => {
     deepStrictEqual(context.requests, []);
   });
 
+  test("ancestor discovery consumes a one-shot reply accessor only once", async () => {
+    let reads = 0;
+    const targets = (async function* () {
+      yield new Note({ contexts: [contextId] });
+    })();
+    class OneShotReply extends Note {
+      override getReplyTargets() {
+        reads++;
+        return targets;
+      }
+    }
+    const context = loader([
+      [contextId.href, new Collection({ items: [sibling] })],
+    ]);
+    const results = await collect(context, new OneShotReply({}), {
+      contextDiscovery: "ancestors",
+    });
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    strictEqual(reads, 1);
+    deepStrictEqual(context.requests, [contextId.href]);
+  });
+
   test("anonymous loaded ancestor cycles reuse the same traversal copy", async () => {
     let serializations = 0;
     class Parent extends Note {
@@ -570,6 +595,7 @@ describe("ancestor collection discovery", () => {
 
   test("HTTPS ancestors retain portable ancestry during discovery", async () => {
     const historyId = parseIri("ap+ef61://did:key:z6Mkabc/history");
+    const embeddedId = new URL("https://example.com/embedded");
     const parent = await Note.fromJsonLd({
       "@context": [
         "https://www.w3.org/ns/activitystreams",
@@ -580,7 +606,7 @@ describe("ancestor collection discovery", () => {
       contextHistory: {
         type: "OrderedCollection",
         id: "ap+ef61://did:key:z6Mkabc/history",
-        orderedItems: [{ type: "Note", id: sibling.id!.href }],
+        orderedItems: [{ type: "Note", id: embeddedId.href }],
       },
     });
     const context = loader([
@@ -598,11 +624,15 @@ describe("ancestor collection discovery", () => {
       }),
       { contextDiscovery: "ancestors", contextSource: "history-first" },
     );
-    deepStrictEqual(results, []);
-    deepStrictEqual(context.requests, [parentId.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    deepStrictEqual(context.requests, [parentId.href, historyId.href]);
   });
 
   test("failed parses preserve an identical embedded target's verifier", async () => {
+    const historyId = parseIri("ap+ef61://did:key:z6Mkabc/history");
     const document = {
       "@context": [
         "https://www.w3.org/ns/activitystreams",
@@ -612,7 +642,7 @@ describe("ancestor collection discovery", () => {
       id: parentId.href,
       contextHistory: {
         type: "OrderedCollection",
-        id: "ap+ef61://did:key:z6Mkabc/history",
+        id: historyId.href,
         orderedItems: [{ type: "Note", id: sibling.id!.href }],
       },
     };
@@ -621,10 +651,13 @@ describe("ancestor collection discovery", () => {
     });
     const source = (await Note.fromJsonLd(document)).deepClone();
     let contextLoads = 0;
+    const requests: string[] = [];
     const results = await collect(
       {
-        documentLoader: (iri) =>
-          Promise.resolve(iri.href === parentId.href ? source : null),
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(iri.href === parentId.href ? source : null);
+        },
       },
       new Note(
         { replyTargets: [parentId, embedded] },
@@ -640,6 +673,7 @@ describe("ancestor collection discovery", () => {
       { contextDiscovery: "ancestors", contextSource: "history-first" },
     );
     ok(contextLoads > 0);
+    deepStrictEqual(requests, [parentId.href, historyId.href]);
     deepStrictEqual(results, []);
   });
 
