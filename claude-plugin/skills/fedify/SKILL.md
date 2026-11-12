@@ -506,8 +506,8 @@ worker-proxy support.  Read the PGlite package README's synchronization policy.
 
 The PostgreSQL, Redis, and MySQL atomic extensions are tracked separately in
 issues #1364, #1365, and #1368; Deno KV and Netlify Blobs have no atomic adapter
-child issue.  `WorkersKvStore` lacks CAS.  `WorkersD1KvStore` supports single-key
-CAS; its atomic extension is tracked in #1379.  Check the
+child issue.  `WorkersKvStore` lacks CAS.  `WorkersD1KvStore` supports
+single-key CAS; its atomic extension is tracked in #1379.  Check the
 [atomic support matrix] and installed declarations before selecting a
 production adapter.
 

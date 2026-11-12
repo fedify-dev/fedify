@@ -496,8 +496,10 @@ zone.  There is no fixed batch-entry cap.  Engine key insertion limits depend
 on compression; a mismatch does not prove that unattempted writes would fit.
 Statement failures roll back the batch; commit or post-commit synchronization
 failures can reject after changes have committed.  Long batches occupy the
-shared instance.  Mutations await the owner's `syncToFs()` after commit; atomic
-execution does not establish crash durability.  See the
+shared instance.  Nonempty mutation calls await the owner's `syncToFs()` after
+transaction completion, including read-only CAS mismatches.  Backend failures
+reject instead of returning `false`; any committed mutations remain applied.
+Atomic execution does not establish crash durability.  See the
 [package's atomic-operation guidance] for codecs, legacy-row recovery, and the
 owner's synchronization policy.
 
@@ -1016,7 +1018,7 @@ The linked issues track separate adapter implementations:
 | `MemoryKvStore`       | Yes             | Development and testing only; one instance.                                                       |
 | `PostgresKvStore`     | No              | Planned in [#1364].                                                                               |
 | `RedisKvStore`        | No              | Planned in [#1365].                                                                               |
-| `PgliteKvStore`       | Yes             | Since 2.5.0; one normal PGlite owner and table, JSONB comparison.             |
+| `PgliteKvStore`       | Yes             | Since 2.5.0; one normal PGlite owner and table, JSONB comparison.                                 |
 | `SqliteKvStore`       | Yes             | One configured table/database; writable handles, JSON values; see [SQLite scope](#sqlitekvstore). |
 | `MysqlKvStore`        | No              | Planned in [#1368].                                                                               |
 | `DenoKvStore`         | No              | No atomic adapter child issue; deprecated since 2.5.0.                                            |

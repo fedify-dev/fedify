@@ -16,5 +16,6 @@ links:
 
     Existing single-key mutations and the new batch mutations await the
     PGlite owner's filesystem synchronization policy after a successful
-    transaction.  If synchronization fails, the operation rejects after its
-    changes have committed; retrying blindly can repeat the change.
+    transaction, including read-only CAS mismatches.  If synchronization fails,
+    the operation rejects instead of returning `false`; any committed mutations
+    remain applied, so retrying blindly can repeat a change.

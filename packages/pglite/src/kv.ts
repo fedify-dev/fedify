@@ -130,7 +130,9 @@ export interface PgliteKvStoreOptions {
  * prove hypothetical insertability. Statement failures reject and roll back;
  * commit or post-commit synchronization failures may leave committed changes
  * despite rejection and must not trigger replay. Successful mutation
- * transactions await the owner's syncToFs() policy outside the transaction.
+ * transactions await the owner's syncToFs() policy outside the transaction,
+ * including read-only CAS mismatches. Backend synchronization failures reject
+ * rather than returning false.
  * Atomicity does not promise crash durability; see the package README for
  * supported storage and the owner's durability policy.
  *

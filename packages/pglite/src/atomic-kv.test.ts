@@ -543,7 +543,8 @@ test("PgliteKvStore awaits post-commit filesystem sync and does not replay failu
   }
   const fs = new ObservedMemoryFS();
   const pg = new PGlite({ fs, relaxedDurability: false });
-  const store = new PgliteKvStore(pg, { tableName: randomName() });
+  const tableName = randomName();
+  const store = new PgliteKvStore(pg, { tableName });
   const events: string[] = [];
   const transaction = pg.transaction.bind(pg);
   pg.transaction = async <T>(
@@ -597,12 +598,42 @@ test("PgliteKvStore awaits post-commit filesystem sync and does not replay failu
       assert.strictEqual(settled, true);
     }
 
-    events.length = 0;
     const failure = new Error("filesystem synchronization failed");
-    fs.onSync = () =>
+    const failAfterCommit = () =>
       events.includes("committed")
         ? Promise.reject(failure)
         : Promise.resolve();
+    await store.set(
+      ["retained"],
+      { version: 1 },
+      {
+        ttl: Temporal.Duration.from({ hours: 1 }),
+      },
+    );
+    const beforeMismatch = await physical(pg, '"' + tableName + '"');
+    const mismatches = [
+      () => store.cas(["retained"], { version: 0 }, { version: 2 }),
+      () =>
+        store.casMany([
+          { key: ["retained"], expectedValue: { version: 0 }, newValue: 2 },
+          { key: ["untouched"], expectedValue: undefined, newValue: 3 },
+        ]),
+    ];
+    for (const operation of mismatches) {
+      events.length = 0;
+      fs.onSync = failAfterCommit;
+      await assert.rejects(operation(), (error) => error === failure);
+      fs.onSync = async () => {};
+      assert.deepStrictEqual(events, ["committed"]);
+      assert.deepStrictEqual(
+        await physical(pg, '"' + tableName + '"'),
+        beforeMismatch,
+      );
+      assert.strictEqual(await operation(), false);
+    }
+
+    events.length = 0;
+    fs.onSync = failAfterCommit;
     await assert.rejects(
       store.set(["committed-despite-rejection"], 42),
       (error) => error === failure,

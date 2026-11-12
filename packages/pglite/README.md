@@ -114,13 +114,16 @@ are outside this scope.  Host-filesystem storage supports clean close/reopen;
 memory-only instances remain ephemeral.  After a mutation transaction completes,
 the adapter awaits the owner's `syncToFs()` outside the transaction, preserving
 the synchronization policy previously used by `set()`, `delete()`, and `cas()`.
+This includes a nonempty CAS call whose comparisons mismatch: its read-only
+transaction still completes, and a backend synchronization failure rejects
+instead of returning `false`.
 PGlite 0.5.8 does not perform that post-commit synchronization itself.
 The owner's filesystem and `relaxedDurability` setting determine what this
-call guarantees.  A synchronization failure rejects after the changes have
-committed; it cannot roll them back.  A lost response or commit failure can
-also leave commit status unknown.  Do not
-automatically replay an uncertain change; use a non-reused version or an
-operation receipt when the application needs it.
+call guarantees.  A synchronization failure rejects after transaction
+completion; any committed mutations remain applied.  A lost response or commit
+failure can also leave commit status unknown.  Do not automatically replay an
+uncertain change; use a non-reused version or an operation receipt when the
+application needs it.
 
 Mutation housekeeping is part of the same transaction.  A legacy row with an
 overflowing TTL can make expiry cleanup fail; other mutations then roll back
