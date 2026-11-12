@@ -289,7 +289,7 @@ test(
         { key: key("a"), expectedValue: undefined, newValue: undefined },
         { key: key("b"), expectedValue: 1, newValue: 2 },
       ]);
-      await locked.promise;
+      await Promise.race([locked.promise, operation]);
       let settled = false;
       writer = p.second.set(key("a"), "writer").finally(() => {
         settled = true;
@@ -1093,7 +1093,7 @@ test(
         { key: key("a"), value: 1 },
         { key: key("b"), value: 1 },
       ]);
-      await changed.promise;
+      await Promise.race([changed.promise, writer]);
       assert.deepEqual(await reader.getMany([key("a"), key("b")]), [0, 0]);
       const listed = async (prefix?: KvKey) => {
         const entries = [];
