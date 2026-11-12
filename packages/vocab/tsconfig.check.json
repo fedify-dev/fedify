@@ -5,9 +5,6 @@
     "dist",
     "dist-tests",
     "node_modules",
-    // Uses Deno's @std/testing snapshots; owned by check:types:deno until
-    // #1288.
-    "src/vocab.test.ts",
     // Deno benchmarks (Deno.bench); owned by check:types:deno.
     "src/vocab.bench.ts"
   ]

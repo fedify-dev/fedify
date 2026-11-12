@@ -14,7 +14,12 @@
     "@cfworker/json-schema": "npm:@cfworker/json-schema@^4.1.1",
     "yaml": "npm:yaml@^2.9.0"
   },
-  "exclude": ["dist", "node_modules", "src/schema.yaml"],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "src/schema.yaml",
+    "src/runtime-test-modules.node.d.ts"
+  ],
   "publish": {
     "exclude": [
       "**/*.test.ts",

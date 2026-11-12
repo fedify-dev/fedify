@@ -79,20 +79,6 @@ export const OWNERSHIP: readonly Ownership[] = [
     reason: "Benchmarks registered with Deno.bench() for `deno bench`.",
   },
   {
-    path: "packages/vocab/src/vocab.test.ts",
-    owner: DENO_CHECK,
-    reason:
-      "Its Deno branch uses @std/testing snapshots; porting them to " +
-      "Node.js belongs to #1288.",
-  },
-  {
-    path: "packages/vocab-tools/src/class.test.ts",
-    owner: DENO_CHECK,
-    reason:
-      "Its runtime branches use @std/testing and bun:test snapshots; " +
-      "porting them belongs to #1288.",
-  },
-  {
     path: "packages/astro/compat/src/**",
     owner: "test:astro-compat",
     reason:
