@@ -239,9 +239,10 @@ test(
       )} VALUES (ARRAY['null-created'], '1', NULL, INTERVAL '1 day')`;
       assert.equal(await store.get(["null-created"]), undefined);
       assert.equal(
-        await store.cas(["null-created"], undefined, "wrong"),
-        false,
+        await store.cas(["null-created"], undefined, "recovered"),
+        true,
       );
+      assert.equal(await store.get(["null-created"]), "recovered");
     } finally {
       await store.drop();
       await sql.end();

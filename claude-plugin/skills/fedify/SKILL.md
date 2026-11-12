@@ -482,8 +482,8 @@ for a shared backend.  Separate calls do not form a transaction; uncertain
 commit results need receipts or version checks, and ABA detection needs a
 non-reused version.
 
-`MemoryKvStore`, `SqliteKvStore`, and `PgliteKvStore` implement the full atomic
-interface.
+`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, and `PgliteKvStore`
+implement the atomic interface in their documented scopes.
 SQLite covers one configured table/database on a writable, normally locking
 connection.  Nonempty batches and ordinary mutations reject caller-owned
 transactions and use one transaction; snapshots and mismatching CAS can reject
@@ -504,8 +504,8 @@ engine insertion failures roll back, while mismatch does not prove proposed
 writes would fit.  Do not infer crash durability, browser persistence, or
 worker-proxy support.  Read the PGlite package README's synchronization policy.
 
-The PostgreSQL, Redis, and MySQL atomic extensions are tracked separately in
-issues #1364, #1365, and #1368; Deno KV and Netlify Blobs have no atomic adapter
+The Redis and MySQL atomic extensions are tracked separately in
+issues #1365 and #1368; Deno KV and Netlify Blobs have no atomic adapter
 child issue.  `WorkersKvStore` lacks CAS.  `WorkersD1KvStore` supports
 single-key CAS; its atomic extension is tracked in #1379.  Check the
 [atomic support matrix] and installed declarations before selecting a
@@ -518,6 +518,23 @@ must be passive data, without getters, proxies, or other behavior that reenters
 the store.  Production codecs can support different values and comparison
 rules. Cache cleanup examples apply only to cache prefixes; authoritative state
 such as budgets and replay cutoffs needs its own retention policy.
+
+For PostgreSQL atomic operations, use one ordinary table or declarative
+partition and the default JSON codec (`jsonb` equality ignores object member
+order).  Nonempty `casMany()` and multi-key `deleteMany()` require a pool or
+READ COMMITTED transaction-scoped Postgres.js client; reserved clients reject
+those scopes.  Caller transactions require exclusive sequential use during
+each atomic call, across other wrappers and raw SQL too.  Nested savepoints
+do not isolate concurrent calls on one outer transaction.  Successful caller
+batches are provisional and retain locks until outer commit.  Table-wide write
+locks protect absent keys but serialize writers and can interrupt autovacuum;
+lock errors reject without automatic retry.  After lock-upgrade deadlock,
+roll back the outer transaction before retrying.  Ordinary inheritance and
+irreversible JSON/value transforms are unsupported for batches.  TTLs use
+server time and PostgreSQL calendar intervals at microsecond precision.
+Backend storage constraints may fail an attempted write; a mismatch performs
+no insertion.  Atomicity does not override unlogged/WAL/replica durability.
+Consult the [PostgreSQL atomic scope] before choosing a client or codec.
 
 For `PostgresKvStore`, existing populated tables and externally managed DDL
 (`initialized: true`) need the [expiry expression index] to accelerate cleanup.
@@ -539,6 +556,7 @@ index too.  Keep the original TTL columns and calendar semantics.
 See <https://fedify.dev/manual/kv.md> and <https://fedify.dev/manual/mq.md>.
 
 [atomic support matrix]: https://fedify.dev/manual/kv.md#current-support
+[PostgreSQL atomic scope]: https://fedify.dev/manual/kv#postgresql-atomic-operations
 [expiry expression index]: https://fedify.dev/manual/kv.md#postgresql-expiry-index
 
 
