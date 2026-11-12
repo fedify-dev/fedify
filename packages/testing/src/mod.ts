@@ -41,3 +41,10 @@ export {
   type TestMessageQueueOptions,
   waitFor,
 } from "./mq-tester.ts";
+
+export {
+  type AtomicKvStoreTestPair,
+  default as testAtomicKvStore,
+  type TestAtomicKvStoreOptions,
+  type TestAtomicKvStoreRejections,
+} from "./atomic-kv-tester.ts";

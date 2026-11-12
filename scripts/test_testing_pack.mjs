@@ -144,17 +144,23 @@ assert.equal(wrapped[0].cryptographicKey.id.href, keyId.href);
 assert.equal(wrapped[0].cryptographicKey.ownerId.href, context.getActorUri("alice").href);
 assert.equal(wrapped[0].multikey.id.href, keyId.href);
 assert.equal(wrapped[0].multikey.controllerId.href, context.getActorUri("alice").href);
+await testAtomicKvStore(() => {
+  const store = new MemoryKvStore();
+  return { first: store, second: store, dispose() {} };
+}, { objectKeyOrder: "ignored" });
 `;
   writeFileSync(
     join(consumer, "smoke.mjs"),
     'import assert from "node:assert/strict";\n' +
-      'import { createFederation } from "@fedify/testing";\n' +
+      'import { MemoryKvStore } from "@fedify/fedify";\n' +
+      'import { createFederation, testAtomicKvStore } from "@fedify/testing";\n' +
       smoke,
   );
   writeFileSync(
     join(consumer, "smoke.cjs"),
     'const assert = require("node:assert/strict");\n' +
-      'const { createFederation } = require("@fedify/testing");\n' +
+      'const { MemoryKvStore } = require("@fedify/fedify");\n' +
+      'const { createFederation, testAtomicKvStore } = require("@fedify/testing");\n' +
       `(async () => {${smoke}})().catch(error => { console.error(error); process.exitCode = 1; });\n`,
   );
   for (const runtime of ["node", "bun"]) {
