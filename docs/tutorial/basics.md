@@ -1407,11 +1407,10 @@ Exercises
     (in case of Node.js), `Bun.serve()` (in case of Bun), and `Deno.serve()`
     (in case of Deno).  This is not enough for a real-world application as you
     would need to render HTML templates, handling media files, and so on.
-    Instead, you can use a web framework like [Hono] or [Fresh] to utilize the
+    Instead, you can use a web framework like [Hono] to utilize the
     proper routing system and [JSX] templates to produce HTML.
 
     See also the [*Integration* section](../manual/integration.md) in
     the manual for more details.
 
-[Fresh]: https://fresh.deno.dev/
 [JSX]: https://facebook.github.io/jsx/

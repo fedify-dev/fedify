@@ -197,6 +197,11 @@ content negotiation, signature verification, and response streaming.
 | SolidStart         | *@fedify/solidstart* |
 | SvelteKit          | *@fedify/sveltekit*  |
 
+Do not choose *@fedify/fresh* for new projects: Fresh is not recommended for
+new projects, and the integration is tentatively planned for removal in
+Fedify 3.0.0.  It remains supported for existing Fresh applications throughout
+the 2.x series.
+
 Two more packages are frequently useful: *@fedify/debugger* for a local
 ActivityPub dashboard, and *@fedify/relay* for relay implementations.
 
