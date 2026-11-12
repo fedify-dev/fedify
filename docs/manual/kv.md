@@ -92,6 +92,41 @@ the backend storage. It provides persistent storage with minimal configuration.
 It's suitable for development and testing. It uses native sqlite modules,
 [`node:sqlite`] for Node.js and Deno, [`bun:sqlite`] for Bun.
 
+Since Fedify 2.5.0, `SqliteKvStore` implements
+[`AtomicKvStore`](#atomic-operations-across-keys) across all keys in its
+configured table in one SQLite database.  `getMany()` returns an input-ordered
+snapshot; writes, deletions and conditional batches commit together.  Empty
+batches bypass the database.  Mutation keys must be distinct, batches must be
+dense, and `set(key, undefined)` and TTLs on CAS deletion reject.
+
+Nonempty batch operations and ordinary mutations require a writable connection
+outside caller-owned transactions.  They reserve SQLite's writer slot even for
+snapshots and CAS mismatches.  Busy errors can reject these calls, including
+when rollback-journal readers prevent completion; `false` means only a
+successfully completed comparison mismatch.  Configure a caller-owned
+[busy timeout] if needed; the KV
+store does not retry or change connection settings.  Ordinary `get()` and
+`list()` retain their single-statement behavior.  Initialize outside caller
+transactions before using those ordinary reads there.
+
+Values use JSON serialization and structural comparison of decoded stored
+values against raw expectations, ignoring object member order.  Use decoded
+JSON shapes as expectations: a date becomes a string, and undefined object
+members disappear.  TTLs share one millisecond-resolution cutoff and preserve
+representable fractional milliseconds.  Nonpositive TTLs expire immediately;
+omitting a replacement TTL clears it.  Calendar-dependent, nonfinite and
+out-of-range durations reject.  There is no fixed batch-count limit, but memory,
+disk and SQLite limits still apply; an operation is never split into commits.
+
+Use normal SQLite locking and journaling.  Atomicity alone does not establish
+crash durability, which depends on connection settings and the filesystem.
+Concurrent WAL writes/checkpoints require the [SQLite WAL-reset fix]
+(3.51.3 or the 3.50.7/3.44.6 backports, or a verified equivalent fix).
+Bun 1.2.22's SQLite 3.50.4 is affected.  `SqliteMessageQueue` enables WAL by
+default on shared database files, so the prerequisite also applies to combined
+KV and queue deployments.  See the [package README] for the complete value,
+expiry, connection and durability restrictions.
+
 Best for
 :   Development and testing.
 
@@ -162,6 +197,9 @@ const federation = createFederation<void>({
 [`SqliteKvStore`]: https://jsr.io/@fedify/sqlite/doc/kv/~/SqliteKvStore
 [`node:sqlite`]: https://nodejs.org/api/sqlite.html
 [`bun:sqlite`]: https://bun.com/docs/api/sqlite
+[busy timeout]: https://sqlite.org/c3ref/busy_timeout.html
+[SQLite WAL-reset fix]: https://sqlite.org/wal.html#walresetbug
+[package README]: https://github.com/fedify-dev/fedify/tree/main/packages/sqlite#atomic-operations
 [conditional exports]: https://nodejs.org/api/packages.html#conditional-exports
 
 ### [`RedisKvStore`]
@@ -885,7 +923,7 @@ In conditional operations, `expectedValue: undefined` means the key must be
 absent, and `newValue: undefined` means deletion.  Deletion removes the entry
 from `list()` too.  `set()` and `setMany()` reject `undefined` on an
 `AtomicKvStore`; use deletion methods instead.  These stronger rules do not
-change legacy ordinary stores: for example, SQLite and MySQL currently treat
+change legacy ordinary stores: for example, MySQL currently treats
 `set(key, undefined)` as a no-op.
 
 Each set or conditional entry can supply its own `options.ttl`:
@@ -943,28 +981,27 @@ check or an operation receipt before repeating effects.
 
 ### Current support
 
-Only `MemoryKvStore` currently implements the full `AtomicKvStore` contract.
+`MemoryKvStore` and `SqliteKvStore` implement the full `AtomicKvStore` contract.
 Existing single-key CAS support does not imply atomic multi-key support.
 The linked issues track separate adapter implementations:
 
-| Implementation        | `AtomicKvStore` | Status                                                                        |
-| --------------------- | --------------- | ----------------------------------------------------------------------------- |
-| `MemoryKvStore`       | Yes             | Development and testing only; one instance.                                   |
-| `PostgresKvStore`     | No              | Planned in [#1364].                                                           |
-| `RedisKvStore`        | No              | Planned in [#1365].                                                           |
-| `PgliteKvStore`       | No              | Planned in [#1366].                                                           |
-| `SqliteKvStore`       | No              | Planned in [#1367].                                                           |
-| `MysqlKvStore`        | No              | Planned in [#1368].                                                           |
-| `DenoKvStore`         | No              | No atomic adapter child issue; deprecated since 2.5.0.                        |
-| `NetlifyBlobsKvStore` | No              | Single-key CAS only; no atomic adapter child issue.                           |
-| `WorkersKvStore`      | No              | No CAS; cannot implement this contract with Workers KV.                       |
-| `WorkersD1KvStore`    | No              | Base adapter [PR #1360] supports single-key CAS; atomic follow-up is [#1379]. |
+| Implementation        | `AtomicKvStore` | Status                                                                                            |
+| --------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
+| `MemoryKvStore`       | Yes             | Development and testing only; one instance.                                                       |
+| `PostgresKvStore`     | No              | Planned in [#1364].                                                                               |
+| `RedisKvStore`        | No              | Planned in [#1365].                                                                               |
+| `PgliteKvStore`       | No              | Planned in [#1366].                                                                               |
+| `SqliteKvStore`       | Yes             | One configured table/database; writable handles, JSON values; see [SQLite scope](#sqlitekvstore). |
+| `MysqlKvStore`        | No              | Planned in [#1368].                                                                               |
+| `DenoKvStore`         | No              | No atomic adapter child issue; deprecated since 2.5.0.                                            |
+| `NetlifyBlobsKvStore` | No              | Single-key CAS only; no atomic adapter child issue.                                               |
+| `WorkersKvStore`      | No              | No CAS; cannot implement this contract with Workers KV.                                           |
+| `WorkersD1KvStore`    | No              | Base adapter [PR #1360] supports single-key CAS; atomic follow-up is [#1379].                     |
 
 [PR #1360]: https://github.com/fedify-dev/fedify/pull/1360
 [#1364]: https://github.com/fedify-dev/fedify/issues/1364
 [#1365]: https://github.com/fedify-dev/fedify/issues/1365
 [#1366]: https://github.com/fedify-dev/fedify/issues/1366
-[#1367]: https://github.com/fedify-dev/fedify/issues/1367
 [#1368]: https://github.com/fedify-dev/fedify/issues/1368
 [#1379]: https://github.com/fedify-dev/fedify/issues/1379
 
@@ -1456,6 +1493,11 @@ scope, batch limits, and durability for your adapter.  Apply the stronger
 `set(key, undefined)` rejection rule to single-key `set()` too.  Legacy optional
 CAS implementations can differ in deletion or TTL validation; audit them
 before claiming the full contract.
+
+`SqliteKvStore` reserves the database's writer transaction before capturing its
+expiry cutoff and rejects read-only handles.  Its per-key statements share one
+transaction, so an error rolls back the complete call, including initialization
+and expiry cleanup.
 
 Validate and encode the complete input before the first mutation.  Check
 structural duplicate keys and invalid deletion TTLs even if a conditional
