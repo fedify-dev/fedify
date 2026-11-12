@@ -170,6 +170,12 @@ collection stays fixed across context strategies, even if empty or containing
 no supported items. Ancestor collections are not merged. Failed ancestor
 lookups leave other reply targets available for discovery.
 
+Enabling ancestor discovery can produce vocabulary warnings such as
+`Failed to fetch …` for missing reply targets, already visited references, or
+lookups blocked by the remaining request budget. These warnings can describe
+expected skips during traversal and do not by themselves mean discovery has
+stopped.
+
 Combine this option with `contextSource: "history-first"` to apply history-first
 selection to the seed and each ancestor. Otherwise, discovery uses their first
 `context` IDs. Omitting `contextDiscovery` makes no ancestor requests from
