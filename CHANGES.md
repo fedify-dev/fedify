@@ -135,7 +135,7 @@ To be released.
     selection remains the default. Referenced histories use the configured
     loader, including portable `ap://`, `ap+ef61://`, and FEP-ef61-compatible
     HTTPS identifiers. Errors cloning embedded history propagate instead of
-    triggering fallback. [[#1250], [#1396], [#1416] by Jiwon Kwon\]
+    triggering fallback. [[#1250], [#1396] by Jiwon Kwon\]
 
 [#1252]: https://github.com/fedify-dev/fedify/issues/1252
 [#1416]: https://github.com/fedify-dev/fedify/pull/1416
