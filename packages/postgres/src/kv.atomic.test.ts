@@ -711,7 +711,7 @@ for (const identity of [false, true]) {
               expectedValue: null,
               newValue: { a: 1 },
               options: {
-                ttl: Temporal.Duration.from({ microseconds: 100_001 }),
+                ttl: Temporal.Duration.from({ seconds: 60, microseconds: 1 }),
               },
             },
             {
@@ -724,7 +724,7 @@ for (const identity of [false, true]) {
         );
         assert.deepEqual(await store.getMany([key, ["b"]]), [{ a: 1 }, null]);
         const [row] = await sql`SELECT count(DISTINCT created)::int AS origins,
-        bool_and(ttl IS NULL OR ttl = interval '0.100001 seconds') AS precision FROM ${sql(f.tableName)}`;
+        bool_and(ttl IS NULL OR ttl = interval '60.000001 seconds') AS precision FROM ${sql(f.tableName)}`;
         assert.equal(row.origins, 1);
         assert.equal(row.precision, true);
         assert.equal(await store.cas(key, { a: 1 }, null), true);
