@@ -545,6 +545,152 @@ test("delivery suspension metadata preserves absent single invalid and multiple 
   );
   strictEqual(result.inbox.values[1].rawPath, "/inbox/1");
   strictEqual(result.inbox.values[1].raw, null);
+  const propertyPointer = (name: string) =>
+    name.replace(/~/g, "~0").replace(/\//g, "~1");
+  const evidenceAt = (evidence: unknown, path: string): unknown => {
+    let value = evidence;
+    for (const token of path.split("/").slice(1)) {
+      const key = token.replace(/~1/g, "/").replace(/~0/g, "~");
+      ok(
+        value !== null &&
+          typeof value === "object" &&
+          Object.hasOwn(value, key),
+        path,
+      );
+      value = (value as Record<string, unknown>)[key];
+    }
+    return value;
+  };
+  for (const inbox of [
+    [null, "http://social.example/inbox"],
+    [[], null, "https://social.example/a", null, "http://social.example/b"],
+    [{ "@value": null }, "http://social.example/inbox"],
+    [
+      [null, "http://social.example/a"],
+      [[], "https://social.example/b"],
+    ],
+    ["http://social.example/a", null, "http://social.example/a"],
+    [{ "@value": null, "@type": "@json" }, "http://social.example/a"],
+    [{ "@value": { nested: [] }, "@type": "@json" }, "http://social.example/a"],
+  ]) {
+    const result = await parseActorControlMetadata(actor({ inbox }));
+    const value = success(result);
+    for (const member of value.inbox.values) {
+      const evidence = evidenceAt(value.expanded, member.path);
+      if (member.rawPath === undefined) deepStrictEqual(evidence, member.raw);
+      else evidenceAt(value.raw, member.rawPath);
+      for (const issue of member.issues) {
+        strictEqual(issue.path, member.path);
+        evidenceAt(value.expanded, issue.path);
+      }
+    }
+    const http = value.inbox.values.filter(
+      (v) =>
+        v.raw !== null &&
+        typeof v.raw === "object" &&
+        !Array.isArray(v.raw) &&
+        "@id" in v.raw &&
+        typeof v.raw["@id"] === "string" &&
+        v.raw["@id"].startsWith("http:"),
+    );
+    for (const member of http)
+      strictEqual(member.issues[0].code, "invalid-https-uri");
+  }
+  const shifted = success(
+    await parseActorControlMetadata(
+      actor({
+        inbox: [null, "http://social.example/inbox"],
+      }),
+    ),
+  );
+  strictEqual(
+    shifted.inbox.values[1].path,
+    `/0/${propertyPointer("http://www.w3.org/ns/ldp#inbox")}/0`,
+  );
+  strictEqual(shifted.inbox.values[0].rawPath, "/inbox/0");
+  const opaque = success(
+    await parseActorControlMetadata(
+      actor({
+        inbox: { "@value": { nested: [] }, "@type": "@json" },
+      }),
+    ),
+  );
+  deepStrictEqual(opaque.inbox.values[0].raw, {
+    "@value": { nested: [] },
+    "@type": "@json",
+  });
+  const nested = success(
+    await parseActorControlMetadata(
+      actor({
+        endpoints: [
+          null,
+          { sharedInbox: [null, "http://social.example/shared"] },
+          { sharedInbox: [] },
+          "http://social.example/endpoints",
+        ],
+      }),
+    ),
+  );
+  for (const parent of nested.endpoints) {
+    evidenceAt(nested.expanded, parent.path);
+    for (const member of parent.sharedInbox.values) {
+      evidenceAt(nested.expanded, member.path);
+      if (member.rawPath === undefined)
+        deepStrictEqual(evidenceAt(nested.expanded, member.path), member.raw);
+    }
+  }
+  strictEqual(
+    nested.sharedInbox.values[1].path,
+    `/0/${propertyPointer(AS + "endpoints")}/0/${propertyPointer(AS + "sharedInbox")}/0`,
+  );
+  const aliases = success(
+    await parseActorControlMetadata(
+      actor({
+        "@context": [
+          ...contexts,
+          {
+            zInbox: { "@id": "http://www.w3.org/ns/ldp#inbox", "@type": "@id" },
+            aInbox: { "@id": "http://www.w3.org/ns/ldp#inbox", "@type": "@id" },
+          },
+        ],
+        zInbox: [null, "http://social.example/z"],
+        aInbox: [null, "http://social.example/a"],
+      }),
+    ),
+  );
+  for (const member of aliases.inbox.values)
+    if (member.rawPath === undefined)
+      deepStrictEqual(evidenceAt(aliases.expanded, member.path), member.raw);
+  const originResult = await parseActorControlMetadata(
+    actor({
+      controlledOrigin: [
+        null,
+        "https://social.example/path",
+        { "@value": null, "@type": XSD + "string" },
+        "https://social.example/",
+      ],
+    }),
+  );
+  const originValues = success(originResult);
+  for (const member of originValues.controlledOrigins)
+    evidenceAt(originValues.expanded, member.path);
+  if (originResult.ok)
+    for (const warning of originResult.warnings)
+      evidenceAt(originValues.expanded, warning.path);
+  const reverse = success(
+    await parseInboxControlMetadata({
+      "@context": [...contexts, "https://w3id.org/fep/5711"],
+      id: "https://social.example/inbox",
+      deliveryController: [null, "http://social.example/actor"],
+      inboxOf: [null, "http://social.example/owner"],
+    }),
+  );
+  for (const state of [reverse.deliveryController, reverse.inboxOf])
+    for (const member of state.values) {
+      evidenceAt(reverse.expanded, member.path);
+      if (member.rawPath === undefined)
+        deepStrictEqual(evidenceAt(reverse.expanded, member.path), member.raw);
+    }
   const inbox = {
     "@context": [...contexts, "https://w3id.org/fep/5711"],
     id: "https://social.example/inbox",

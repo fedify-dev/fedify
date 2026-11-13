@@ -52,12 +52,21 @@ interface Occurrence {
   readonly path: string;
   readonly rawPath?: string;
 }
+interface EvidenceLocation {
+  readonly path: string;
+  readonly rawPath?: string;
+}
+type EvidenceLocations = WeakMap<
+  Node,
+  ReadonlyMap<string, readonly EvidenceLocation[]>
+>;
 interface Prepared {
   readonly raw: Json;
   readonly expanded: Json;
   readonly node: Node;
   readonly markers: ReadonlyMap<string, Marker>;
   readonly warnings: ShapeIssue[];
+  readonly locations: EvidenceLocations;
 }
 class ShapeFailure extends Error {
   readonly issue: ShapeIssue;
@@ -423,8 +432,138 @@ async function prepare(
       "",
       "Exactly one expanded top-level node is required.",
     );
-  return { raw, expanded, node: diagnostic[0], markers, warnings };
+  return {
+    raw,
+    expanded,
+    node: diagnostic[0],
+    markers,
+    warnings,
+    locations: evidenceLocations(diagnostic, expanded, markers),
+  };
 }
+/** Build locations against ORIGINAL expanded evidence. Throws on unexplained drift.
+ * `diagnostic` and `expanded` are complete expanded arrays, not their first nodes.
+ */
+function evidenceLocations(
+  diagnostic: Json,
+  expanded: Json,
+  markers: ReadonlyMap<string, Marker>,
+): EvidenceLocations {
+  const locations: EvidenceLocations = new WeakMap();
+  const isNode = (value: Json | undefined): value is Node =>
+    value !== undefined && object(value);
+  const entry = (v: Json): Marker | undefined =>
+    typeof v === "string"
+      ? markers.get(v)
+      : isNode(v) && typeof v["@value"] === "string"
+        ? markers.get(v["@value"])
+        : undefined;
+  const restore = (v: Json): Json => {
+    const m = entry(v);
+    if (m && (!m.payload || typeof v === "string")) return m.raw;
+    if (Array.isArray(v)) {
+      if (v.length === 1) {
+        const wrapped = entry(v[0]);
+        if (
+          wrapped &&
+          !wrapped.payload &&
+          Array.isArray(wrapped.raw) &&
+          wrapped.raw.length === 0
+        )
+          return [];
+      }
+      return v.map(restore);
+    }
+    if (isNode(v))
+      return Object.fromEntries(
+        Object.entries(v).map(([k, x]) => [k, restore(x)]),
+      );
+    return v;
+  };
+  // An @json literal preserves null/[] payloads in original expansion. Other
+  // null @value literals disappear. Registered whole-occurrence markers disappear.
+  const dropped = (v: Json): boolean => {
+    const m = entry(v);
+    return (
+      m !== undefined && !(isNode(v) && m.payload && v["@type"] === "@json")
+    );
+  };
+  const mismatch = (): never =>
+    fail(
+      "unsupported-lossy-shape",
+      "",
+      "Diagnostic occurrences cannot be matched to original expanded evidence.",
+    );
+  const walk = (d: Json, e: Json | undefined, path: string): void => {
+    if (Array.isArray(d)) {
+      if (e !== undefined && !Array.isArray(e)) mismatch();
+      const originals = e === undefined ? [] : (e as Json[]);
+      let index = 0;
+      for (const child of d) {
+        if (dropped(child)) continue;
+        if (index >= originals.length) mismatch();
+        walk(child, originals[index], `${path}/${index++}`);
+      }
+      if (index !== originals.length) mismatch();
+      return;
+    }
+    if (isNode(d)) {
+      if (!isNode(e)) mismatch();
+      const originalNode = e as Node;
+      if (d["@type"] === "@json") {
+        if (JSON.stringify(restore(d)) !== JSON.stringify(e)) mismatch();
+        return;
+      }
+      const props = new Map<string, readonly EvidenceLocation[]>();
+      locations.set(d, props);
+      for (const key of Object.keys(originalNode))
+        if (!Object.hasOwn(d, key)) mismatch();
+      for (const [key, value] of Object.entries(d)) {
+        const childPath = `${path}/${pointer(key)}`;
+        const originalValue = originalNode[key];
+        if (Array.isArray(value)) {
+          if (originalValue !== undefined && !Array.isArray(originalValue))
+            mismatch();
+          const originals =
+            originalValue === undefined ? [] : (originalValue as Json[]);
+          const fallback = originalValue === undefined ? path : childPath;
+          const memberLocations: EvidenceLocation[] = [];
+          let index = 0;
+          for (const child of value) {
+            if (dropped(child)) {
+              const m = entry(child)!;
+              memberLocations.push({ path: fallback, rawPath: m.rawPath });
+            } else {
+              if (index >= originals.length) mismatch();
+              const memberPath = `${childPath}/${index}`;
+              // A retained @json payload marker still carries provenance.
+              const m = entry(child);
+              memberLocations.push({
+                path: memberPath,
+                ...(m ? { rawPath: m.rawPath } : {}),
+              });
+              walk(child, originals[index++], memberPath);
+            }
+          }
+          if (index !== originals.length) mismatch();
+          props.set(key, memberLocations);
+        } else {
+          if (originalValue === undefined) mismatch();
+          walk(value, originalValue, childPath);
+        }
+      }
+      return;
+    }
+    const restored = restore(d);
+    if (Array.isArray(restored) || isNode(restored)) {
+      // JSON literal marker payload [] is atomic at this point.
+      if (JSON.stringify(restored) !== JSON.stringify(e)) mismatch();
+    } else if (restored !== e) mismatch();
+  };
+  walk(diagnostic, expanded, "");
+  return locations;
+}
+
 function marker(value: Json, prepared: Prepared): Marker | undefined {
   if (typeof value === "string") return prepared.markers.get(value);
   if (object(value) && typeof value["@value"] === "string")
@@ -435,8 +574,17 @@ function original(value: Json, prepared: Prepared): Json {
   const entry = marker(value, prepared);
   if (entry !== undefined && (!entry.payload || typeof value === "string"))
     return entry.raw;
-  if (Array.isArray(value))
+  if (Array.isArray(value)) {
+    const only = value.length === 1 ? marker(value[0], prepared) : undefined;
+    if (
+      only !== undefined &&
+      !only.payload &&
+      Array.isArray(only.raw) &&
+      only.raw.length === 0
+    )
+      return [];
     return value.map((child) => original(child, prepared));
+  }
   if (!object(value)) return value;
   const result: Node = {};
   for (const [key, child] of Object.entries(value))
@@ -454,12 +602,14 @@ function occurrences(
     ? (node[property] as Json[])
     : [node[property]];
   return values.map((value, index) => {
-    const entry = marker(value, prepared);
-    return {
-      value,
-      path: `${path}/${pointer(property)}/${index}`,
-      ...(entry === undefined ? {} : { rawPath: entry.rawPath }),
-    };
+    const location = prepared.locations.get(node)?.get(property)?.[index];
+    if (location === undefined)
+      fail(
+        "unsupported-lossy-shape",
+        path,
+        "An occurrence has no original evidence location.",
+      );
+    return { value, ...location };
   });
 }
 function single(

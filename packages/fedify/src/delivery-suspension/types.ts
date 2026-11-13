@@ -4,11 +4,16 @@ import type { DocumentLoader } from "@fedify/vocab-runtime";
 export interface ShapeIssue {
   /** Stable machine-readable diagnostic code. */
   readonly code: string;
-  /** JSON pointer into expanded evidence, unless expansion itself failed. */
+  /**
+   * JSON pointer identifying a field in the original expansion. Required fields
+   * may be absent.
+   * Dropped occurrences identify a surviving container and include `rawPath`.
+   * Before expansion succeeds, pointers may identify input or context data.
+   */
   readonly path: string;
   /** Human-readable explanation. */
   readonly message: string;
-  /** Original JSON pointer when a null or empty occurrence was preserved. */
+  /** Original input pointer supplied by a diagnostic null or empty marker. */
   readonly rawPath?: string;
 }
 
