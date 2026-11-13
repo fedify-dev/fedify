@@ -572,7 +572,11 @@ export class PostgresKvStore implements AtomicKvStore {
           created = EXCLUDED.created, ttl = EXCLUDED.ttl
         RETURNING 1
       )
-      SELECT supported, (SELECT count(*) FROM written) AS size FROM support
+      -- Fail inside the statement so pooled/reserved clients roll back every
+      -- write and trigger side effect when a BEFORE trigger skips a row.
+      SELECT supported, 1 / CASE WHEN NOT supported OR
+        (SELECT count(*) FROM written) = (SELECT count(*) FROM input)
+        THEN 1 ELSE 0 END AS complete FROM support
     `;
     this.#assertSupport(result?.supported);
   }
@@ -581,15 +585,25 @@ export class PostgresKvStore implements AtomicKvStore {
     sql: Sql | TransactionSql,
     payload: string,
   ): Promise<void> {
+    const table = sql.unsafe(await this.#resolvedTable(sql));
     const [result] = await sql`
       WITH support AS (${this.#support(sql)}), input AS (${this.#input(sql, payload)}),
-      deleted AS (
-        DELETE FROM ${sql(this.#tableName)} AS existing
+      targets AS MATERIALIZED (
+        SELECT existing.key FROM ${table} AS existing
         WHERE (SELECT supported FROM support)
           AND existing.key IN (SELECT key FROM input)
+        ORDER BY existing.key FOR UPDATE OF existing
+      ), deleted AS (
+        DELETE FROM ${sql(this.#tableName)} AS existing
+        WHERE (SELECT supported FROM support)
+          AND existing.key IN (SELECT key FROM targets)
         RETURNING 1
       )
-      SELECT supported, (SELECT count(*) FROM deleted) AS size FROM support
+      -- Count locked targets, not requested keys: absent/deleted keys are
+      -- no-ops. A skipped target must abort this entire statement.
+      SELECT supported, 1 / CASE WHEN NOT supported OR
+        (SELECT count(*) FROM deleted) = (SELECT count(*) FROM targets)
+        THEN 1 ELSE 0 END AS complete FROM support
     `;
     this.#assertSupport(result?.supported);
   }

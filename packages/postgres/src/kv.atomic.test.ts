@@ -1302,7 +1302,13 @@ dbTest(
     try {
       await sql`CREATE SCHEMA ${sql(schema)}`;
       await sql`SET search_path TO ${sql(schema)}`;
-      for (const tableName of ["input", "support", "written", "deleted"]) {
+      for (const tableName of [
+        "input",
+        "support",
+        "written",
+        "deleted",
+        "targets",
+      ]) {
         const store = new PostgresKvStore(sql, { tableName });
         try {
           await store.setMany([
@@ -1331,6 +1337,145 @@ dbTest(
       await sql`RESET search_path`;
       await sql`DROP SCHEMA IF EXISTS ${sql(schema)} CASCADE`;
       await sql.end();
+    }
+  },
+);
+
+for (const [operation, client] of [
+  ["insert", "pool"],
+  ["update", "pool"],
+  ["delete", "pool"],
+  ["cas-delete", "pool"],
+  ["cas-update", "pool"],
+  ["insert", "reserved"],
+  ["cas-update", "transaction"],
+] as const) {
+  dbTest(
+    `PostgresKvStore rolls back skipped ${operation} rows on a ${client} client`,
+    async () => {
+      const f = fixture();
+      const audit = `${f.tableName}_audit`;
+      const fn = `${f.tableName}_filter`;
+      let reserved: postgres.ReservedSql | undefined;
+      try {
+        await f.store.initialize();
+        if (operation !== "insert") {
+          await f.store.setMany([
+            { key, value: 1 },
+            { key: ["b"], value: 2 },
+          ]);
+        }
+        const before = await state(f.sql, f.tableName);
+        await f.sql`CREATE TABLE ${f.sql(audit)} (event text)`;
+        await f.sql`CREATE FUNCTION ${f.sql(fn)}() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          INSERT INTO ${f.sql(audit)} VALUES (TG_OP);
+          IF TG_OP = 'DELETE' THEN
+            IF OLD.key = ARRAY['a'] THEN RETURN NULL; END IF;
+            RETURN OLD;
+          END IF;
+          IF NEW.key = ARRAY['a'] THEN RETURN NULL; END IF;
+          RETURN NEW;
+        END
+      $$`;
+        const event =
+          operation === "insert"
+            ? f.sql`INSERT`
+            : operation === "delete" || operation === "cas-delete"
+              ? f.sql`DELETE`
+              : f.sql`UPDATE`;
+        await f.sql`CREATE TRIGGER filter_rows BEFORE ${event} ON ${f.sql(f.tableName)}
+        FOR EACH ROW EXECUTE FUNCTION ${f.sql(fn)}()`;
+        const invoke = (store: PostgresKvStore) => {
+          if (operation === "insert" || operation === "update") {
+            return store.setMany([
+              { key, value: 11 },
+              { key: ["b"], value: 22 },
+            ]);
+          }
+          if (operation === "delete")
+            return store.deleteMany([key, ["b"], ["missing"]]);
+          if (operation === "cas-delete")
+            return store.casMany([
+              { key, expectedValue: 1, newValue: undefined },
+              { key: ["b"], expectedValue: 2, newValue: 22 },
+            ]);
+          return store.casMany([
+            { key: ["b"], expectedValue: 2, newValue: undefined },
+            { key, expectedValue: 1, newValue: 11 },
+          ]);
+        };
+        if (client === "transaction") {
+          await f.sql.begin(async (sql) => {
+            const store = new PostgresKvStore(sql, {
+              tableName: f.tableName,
+              initialized: true,
+            });
+            await assert.rejects(invoke(store));
+            assert.equal((await sql`SELECT 1 AS healthy`)[0].healthy, 1);
+          });
+        } else {
+          if (client === "reserved") reserved = await f.sql.reserve();
+          const store =
+            reserved == null
+              ? f.store
+              : new PostgresKvStore(reserved, {
+                  tableName: f.tableName,
+                  initialized: true,
+                });
+          await assert.rejects(invoke(store));
+          reserved?.release();
+          reserved = undefined;
+        }
+        assert.deepEqual(await state(f.sql, f.tableName), before);
+        assert.equal(
+          (await f.sql`SELECT count(*)::int AS size FROM ${f.sql(audit)}`)[0]
+            .size,
+          0,
+        );
+      } finally {
+        reserved?.release();
+        await f.sql`DROP TRIGGER IF EXISTS filter_rows ON ${f.sql(f.tableName)}`;
+        await f.sql`DROP FUNCTION IF EXISTS ${f.sql(fn)}()`;
+        await f.sql`DROP TABLE IF EXISTS ${f.sql(audit)}`;
+        await f.dispose();
+      }
+    },
+  );
+}
+
+dbTest(
+  "PostgresKvStore deletion counts preserve missing-key and concurrent-delete no-ops",
+  async () => {
+    const f = fixture();
+    const other = postgres(dbUrl!, { max: 1 });
+    const blocker = await other.reserve();
+    let pending: Promise<void> | undefined;
+    try {
+      await f.store.setMany([{ key, value: 1 }]);
+      await f.store.deleteMany([["missing-a"], ["missing-b"]]);
+      assert.equal(
+        await f.store.casMany([
+          { key: ["missing"], expectedValue: undefined, newValue: undefined },
+          { key, expectedValue: 1, newValue: 2 },
+        ]),
+        true,
+      );
+      const [{ pid }] = await f.sql`SELECT pg_backend_pid() AS pid`;
+      await blocker`BEGIN`;
+      await blocker`DELETE FROM ${blocker(f.tableName)} WHERE key = ARRAY['a']`;
+      pending = f.store.deleteMany([key]);
+      await waiting(blocker, pid);
+      await blocker`COMMIT`;
+      await promptly(pending);
+      pending = undefined;
+      assert.deepEqual(await f.store.getMany([key]), [undefined]);
+    } finally {
+      await blocker`ROLLBACK`;
+      await pending?.catch(() => {});
+      blocker.release();
+      await other.end();
+      await f.dispose();
     }
   },
 );
