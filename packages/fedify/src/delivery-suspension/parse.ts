@@ -5,6 +5,10 @@ import {
 } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import {
+  ContextProfileError,
+  prepareExpansionBudget,
+} from "./expansion-budget.ts";
+import {
   getDeliverySuspensionUrlOrigin,
   parseDeliverySuspensionOrigin,
   validateHttpsUri,
@@ -38,6 +42,7 @@ const MAX_DEPTH = 64;
 const MAX_NODES = 10_000;
 const MAX_STRINGS = 1024 * 1024;
 const MAX_CONTEXTS = 32;
+const MAX_MARKER_ATTEMPTS = 8;
 interface Budget {
   nodes: number;
   strings: number;
@@ -102,6 +107,11 @@ function freeze<T>(value: T): T {
   return value;
 }
 function failure<T>(error: unknown): ParseResult<T> {
+  if (error instanceof ContextProfileError)
+    return freeze({
+      ok: false,
+      issues: [{ code: error.code, path: "", message: error.message }],
+    });
   return freeze({
     ok: false,
     issues: [
@@ -331,6 +341,7 @@ async function prepare(
     }
   };
   const warnings: ShapeIssue[] = [];
+  let expansionLoader: DocumentLoader = loader;
   // jsonld() is the library's API-instance factory. A private instance prevents
   // ambient static-tagged context caches from bypassing this call's loader.
   const processor = (jsonld as typeof jsonld & (() => typeof jsonld))();
@@ -341,7 +352,7 @@ async function prepare(
         value as Parameters<typeof jsonld.expand>[0],
         {
           base: null,
-          documentLoader: loader,
+          documentLoader: expansionLoader,
           eventHandler: ({
             event,
           }: {
@@ -370,9 +381,23 @@ async function prepare(
     }
     return copyJson(result);
   };
-  const expanded = await expand(raw, false);
+  const expansionBudget = await prepareExpansionBudget(raw, loader);
+  expansionLoader = async (url) => {
+    try {
+      return await expansionBudget.loader(url);
+    } catch (error) {
+      loaderFailure = error;
+      throw error;
+    }
+  };
   let attempt = 0;
   do {
+    if (attempt >= MAX_MARKER_ATTEMPTS)
+      fail(
+        "resource-limit",
+        "",
+        "Diagnostic marker selection exceeded eight collision attempts.",
+      );
     markerPrefix = `\u0000fedify-f799-occurrence-${attempt++}:`;
   } while (
     containsString(raw, markerPrefix) ||
@@ -402,7 +427,12 @@ async function prepare(
           : diagnosticClone(child, `${path}/${pointer(key)}`, key === "@value");
     return result;
   };
-  const diagnostic = await expand(diagnosticClone(raw), true);
+  const diagnosticInput = diagnosticClone(raw);
+  // Reserve both passes before either one can materialize expanded IRIs.
+  expansionBudget.estimate(raw);
+  expansionBudget.estimate(diagnosticInput);
+  const expanded = await expand(raw, false);
+  const diagnostic = await expand(diagnosticInput, true);
   const counts = new Map<string, number>();
   const count = (value: Json): void => {
     if (typeof value === "string" && markers.has(value))
@@ -903,8 +933,19 @@ function notice(
  * This conservative profile rejects non-null @base, lossy expansion events and
  * null/empty occurrences that cannot survive diagnostic expansion exactly once,
  * even on unrelated properties. Such failures precede metadata diagnostics.
- * JSON input is bounded to depth 64, 10000 value nodes, and 1 MiB of aggregate
- * string code units; contexts share those bounds and at most 32 distinct URLs.
+ * JSON input is bounded to depth 64, 10000 value nodes, and 1048576 aggregate
+ * string code units. Contexts have a separate shared budget with the same
+ * bounds, and at most 32 distinct context URLs are allowed.
+ * Before either expansion, the complete context closure is checked and both
+ * passes reserve a shared conservative work budget. Context strings and term
+ * names are at most 2048 code units. Prefix and `@vocab` anchors must be fixed
+ * hierarchical absolute IRIs or `_:`; context URLs must be absolute and
+ * hierarchical.
+ * Chained prefixes, IRI-shaped context term names, nested context wrappers,
+ * relative context URLs, and objects containing `@context` in positions that
+ * may hold opaque JSON payloads are outside this profile. Each context graph is limited to depth 64 and 4096 unfolded
+ * objects or definitions. Marker selection allows at most eight collision attempts.
+ * The work budget is an admission estimate, not an exact heap or time limit.
  * Timestamp lexemes are bounded to 4096 code units, with arbitrary fractional
  * precision within that bound. Only plain JSON data properties are accepted;
  * own __proto__ keys, accessors, cycles, sparse arrays and nonfinite numbers fail.

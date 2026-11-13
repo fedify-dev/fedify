@@ -68,6 +68,8 @@ For raw FEP-f799 documents, use the tools in
 These asynchronous parsers retain multiplicity and return detached raw and
 expanded evidence.  Their default context loader resolves only preloaded
 contexts; an explicit `contextLoader` must bound its own I/O.
+Before expansion, context preflight applies a conservative work budget and
+may reject valid JSON-LD outside the supported profile.
 Use `parseDeliverySuspensionOrigin()` for root-origin identifiers and
 `getDeliverySuspensionUrlOrigin()` for endpoint origins.  The origin helpers
 apply IDNA2008 with a pinned Unicode 12.0 repertoire.

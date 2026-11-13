@@ -84,4 +84,5 @@ export const expectedTestNames = [
   "withRawProperty() decodes lists and removes inherited collection items",
   "withRawProperty() resets changed object trust and preserves untouched children",
   "raw property writes discard signed documents and can be signed again",
+  "delivery suspension bounds context expansion before materializing IRIs",
 ] as const;

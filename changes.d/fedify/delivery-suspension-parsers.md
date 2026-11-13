@@ -11,7 +11,9 @@ links:
     dropped occurrences retain their original JSON pointer in `rawPath`.
     Unrelated embedded objects are classified before requiring control-activity
     fields.  The default loader resolves preloaded contexts locally;
-    applications can explicitly supply a context loader. Strict HTTPS origin
+    applications can explicitly supply a context loader. A conservative context
+    preflight reserves work for both expansions before processing, and marker
+    selection has a fixed collision limit. Strict HTTPS origin
     helpers validate origin spelling before URL normalization, including
     IDNA2008 validation against a pinned Unicode 12.0 repertoire. These tools
     expose unverified claims; they do not authenticate notices, establish

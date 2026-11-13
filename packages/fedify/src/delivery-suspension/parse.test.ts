@@ -1,6 +1,14 @@
 // oxlint-disable no-await-in-loop -- Keep malformed-input cases sequential so context-cache and loader state cannot interfere across cases.
 import { deepStrictEqual, ok, strictEqual, throws } from "node:assert/strict";
 import { test } from "@fedify/fixture";
+import {
+  Create,
+  Emoji,
+  Image,
+  Note,
+  OrderedCollection,
+  Person,
+} from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import {
@@ -1205,4 +1213,324 @@ test("delivery suspension context URL limit retains resource diagnostics", async
     if (count === 30) success(result);
     else unsuccessful(result, "resource-limit");
   }
+});
+
+test("delivery suspension bounds context expansion before materializing IRIs", async () => {
+  const ordinaryActor = await new Person({
+    id: new URL("https://social.example/actor"),
+    inbox: new URL("https://social.example/inbox"),
+    tags: Array.from(
+      { length: 100 },
+      (_, i) =>
+        new Emoji({
+          id: new URL(`https://social.example/emojis/${i}`),
+          name: `:emoji${i}:`,
+          icon: new Image({
+            url: new URL(`https://social.example/emojis/${i}.png`),
+          }),
+        }),
+    ),
+  }).toJsonLd();
+  const ordinaryActorResult = success(
+    await parseActorControlMetadata(ordinaryActor),
+  );
+  strictEqual(ordinaryActorResult.inbox.state, "single");
+  const ordinaryInbox = await new OrderedCollection({
+    id: new URL("https://social.example/inbox"),
+    items: Array.from(
+      { length: 100 },
+      (_, i) =>
+        new Create({
+          id: new URL(`https://social.example/activities/${i}`),
+          object: new Note({
+            id: new URL(`https://social.example/notes/${i}`),
+            content: "Hello",
+          }),
+        }),
+    ),
+  }).toJsonLd();
+  success(await parseInboxControlMetadata(ordinaryInbox));
+
+  const oversized = "https://example.net/" + "a".repeat(2049);
+  const term = { p: { "@id": oversized, "@prefix": true } };
+  const remote = "https://contexts.example/oversized";
+  const header = "https://contexts.example/header";
+  const offline = getDeliverySuspensionContextLoader();
+  const loaded = new Map<string, number>();
+  const loader: DocumentLoader = (url) => {
+    loaded.set(url, (loaded.get(url) ?? 0) + 1);
+    if (url === remote || url === header)
+      return Promise.resolve({
+        documentUrl: url,
+        contextUrl: url === header ? remote : null,
+        document: { "@context": url === header ? {} : term },
+      });
+    return offline(url);
+  };
+  for (const local of [
+    term,
+    { scoped: { "@id": "https://example.net/scoped", "@context": term } },
+    { Scoped: { "@id": "https://example.net/Scoped", "@context": term } },
+    remote,
+    { "@import": remote },
+    header,
+  ]) {
+    loaded.clear();
+    unsuccessful(
+      await parseActorControlMetadata(
+        actor({
+          "@context": [...contexts, local],
+          "p:key": "value",
+        }),
+        { contextLoader: loader },
+      ),
+      "resource-limit",
+    );
+    ok([...loaded.values()].every((count) => count === 1));
+  }
+  for (const local of [
+    { p: "https://example.net/", q: "p:more/" },
+    { p: "https://example.net/", q: { "@id": "p:more/", "@prefix": true } },
+    { p: "https://example.net/", "@vocab": "p:more" },
+    { "https://example.net/term": "https://example.net/mapped" },
+    { "@context": { p: "https://example.net/", q: "p:more/" } },
+    { "@context": null },
+  ])
+    unsuccessful(
+      await parseActorControlMetadata(
+        actor({
+          "@context": [...contexts, local],
+        }),
+      ),
+      "unsupported-lossy-shape",
+    );
+  const urls = Array.from(
+    { length: 8 },
+    (_, i) => `https://contexts.example/repeat/${i}`,
+  );
+  loaded.clear();
+  unsuccessful(
+    await parseActorControlMetadata(
+      actor({
+        "@context": [...contexts, urls[7]],
+      }),
+      {
+        contextLoader: (url) => {
+          loaded.set(url, (loaded.get(url) ?? 0) + 1);
+          const index = urls.indexOf(url);
+          return index < 0
+            ? offline(url)
+            : Promise.resolve({
+                documentUrl: url,
+                contextUrl: null,
+                document: {
+                  "@context":
+                    index === 0
+                      ? {}
+                      : Array.from({ length: 4 }, () => urls[index - 1]),
+                },
+              });
+        },
+      },
+    ),
+    "resource-limit",
+  );
+  ok([...loaded.values()].every((count) => count === 1));
+  for (const payload of [
+    { "@context": "https://payload.example/never-fetch" },
+    { child: [{ "@context": "https://payload.example/never-fetch" }] },
+  ]) {
+    let payloadCalls = 0;
+    unsuccessful(
+      await parseActorControlMetadata(
+        actor({
+          "https://example.net/payload": {
+            "@value": payload,
+            "@type": "@json",
+          },
+        }),
+        {
+          contextLoader: (url) => {
+            if (url.startsWith("https://payload.example/")) payloadCalls++;
+            return offline(url);
+          },
+        },
+      ),
+      "unsupported-lossy-shape",
+    );
+    strictEqual(payloadCalls, 0);
+  }
+  unsuccessful(
+    await parseActorControlMetadata(
+      actor({
+        "@context": [
+          ...contexts,
+          {
+            unused: {
+              "@id": "https://example.net/unused",
+              "@context": {
+                payload: {
+                  "@id": "https://example.net/payload",
+                  "@type": "@json",
+                },
+              },
+            },
+            payload: "https://example.net/payload",
+          },
+        ],
+        payload: {
+          "@context": { p: "https://example.net/", q: "p:more/" },
+          "q:key": "value",
+        },
+      }),
+    ),
+    "unsupported-lossy-shape",
+  );
+  const definitions = Object.fromEntries(
+    Array.from({ length: 100 }, (_, i) => [
+      `term${i}`,
+      `https://example.net/term${i}`,
+    ]),
+  );
+  const children = Array.from({ length: 500 }, (_, i) => ({
+    id: `https://social.example/n/${i}`,
+  }));
+  for (const extra of [
+    {
+      "@context": [
+        ...contexts,
+        definitions,
+        {
+          Scoped: {
+            "@id": "https://example.net/Scoped",
+            "@context": { extra: "https://example.net/extra" },
+          },
+        },
+      ],
+      type: "Scoped",
+      "https://example.net/children": children,
+    },
+    {
+      "@context": [...contexts, definitions],
+      "https://example.net/parent": {
+        "@context": { "@propagate": false, extra: "https://example.net/extra" },
+        "https://example.net/children": children,
+      },
+    },
+  ])
+    unsuccessful(
+      await parseActorControlMetadata(actor({ ...extra, id: 7 })),
+      "resource-limit",
+    );
+  const cachedUrl = "https://unpreloaded.example/resource-preflight-cache";
+  const cachedRaw = actor({
+    "@context": cachedUrl,
+    claimedInbox: "https://social.example/inbox",
+  });
+  await jsonld.expand(cachedRaw as Parameters<typeof jsonld.expand>[0], {
+    documentLoader: async (requested: string) =>
+      requested === cachedUrl
+        ? {
+            document: {
+              "@context": [
+                ...contexts,
+                {
+                  p: oversized,
+                  claimedInbox: { "@id": "p:inbox", "@type": "@id" },
+                },
+              ],
+            },
+            contextUrl: null,
+            documentUrl: cachedUrl,
+            tag: "static",
+          }
+        : await offline(requested),
+  });
+  let ambientCalled = false;
+  await jsonld.expand(cachedRaw as Parameters<typeof jsonld.expand>[0], {
+    documentLoader: () => {
+      ambientCalled = true;
+      return Promise.reject(
+        new Error("Cached context should bypass this loader."),
+      );
+    },
+  });
+  strictEqual(ambientCalled, false);
+  let freshCalls = 0;
+  const fresh = success(
+    await parseActorControlMetadata(cachedRaw, {
+      contextLoader: (requested) => {
+        if (requested !== cachedUrl) return offline(requested);
+        freshCalls++;
+        return Promise.resolve({
+          document: {
+            "@context": [
+              ...contexts,
+              {
+                claimedInbox: {
+                  "@id": "http://www.w3.org/ns/ldp#inbox",
+                  "@type": "@id",
+                },
+              },
+            ],
+          },
+          contextUrl: null,
+          documentUrl: cachedUrl,
+        });
+      },
+    }),
+  );
+  strictEqual(freshCalls, 1);
+  strictEqual(fresh.inbox.state, "single");
+  strictEqual(fresh.inbox.values[0].value, "https://social.example/inbox");
+  // Each pass fits separately; the joint reserve fails before an invalid @id
+  // could produce a JSON-LD error in the first expansion.
+  const bothPasses = actor({
+    "@context": [...contexts, { "@propagate": false }],
+    id: 7,
+    "https://example.net/nodes": Array.from({ length: 200 }, (_, i) => ({
+      id: `https://social.example/n/${i}`,
+    })),
+  });
+  for (const parser of [
+    parseDeliverySuspensionDocument,
+    parseDeliverySuspensionActivityDocument,
+    parseActorControlMetadata,
+    parseInboxControlMetadata,
+  ])
+    unsuccessful<unknown>(await parser(bothPasses), "resource-limit");
+  const largeKey = "k".repeat(16000);
+  unsuccessful(
+    await parseActorControlMetadata(
+      actor({
+        id: 7,
+        "@context": [
+          ...contexts,
+          { map: { "@id": "https://example.net/map", "@container": "@index" } },
+        ],
+        map: {
+          [largeKey]: Array.from({ length: 100 }, (_, i) => ({
+            id: `https://social.example/n/${i}`,
+          })),
+        },
+      }),
+    ),
+    "resource-limit",
+  );
+  const collisions = Array.from(
+    { length: 8 },
+    (_, i) => `\u0000fedify-f799-occurrence-${i}:`,
+  ).join("");
+  for (const parser of [
+    parseDeliverySuspensionDocument,
+    parseDeliverySuspensionActivityDocument,
+    parseActorControlMetadata,
+    parseInboxControlMetadata,
+  ])
+    unsuccessful<unknown>(
+      await parser(
+        actor({ "https://example.net/collisions": collisions, inbox: null }),
+      ),
+      "resource-limit",
+    );
 });

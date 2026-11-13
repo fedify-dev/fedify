@@ -53,6 +53,8 @@ export interface ParseOptions {
    * Explicit opt-in to caller-owned context loading. Only contexts are loaded;
    * the caller must bound its I/O. The default resolves preloaded contexts only.
    * Loaded responses are snapshotted and memoized within each parse call.
+   * Context preflight uses a conservative profile and may reject valid JSON-LD
+   * outside that profile before expansion. See the parser documentation.
    */
   readonly contextLoader?: DocumentLoader;
 }
