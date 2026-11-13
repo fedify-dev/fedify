@@ -1333,8 +1333,9 @@ function metadataId(prepared: Prepared, options: ControlParseOptions): string {
  * Inspect actor inbox, endpoints/sharedInbox and controlled-origin claims without
  * fetching linked representations or inferring control from actor type. Every
  * link occurrence remains visible: multiplicity takes precedence over invalid
- * members. Referenced endpoints remain unresolved; multiple embedded parents
- * retain parent ambiguity and all sharedInbox occurrences. controlledOrigins
+ * members. Referenced `endpoints` values, including those with an `@index`
+ * annotation, remain unresolved; multiple embedded parents retain parent
+ * ambiguity and all `sharedInbox` occurrences. controlledOrigins
  * preserves each literal and its independent strict normalization result.
  * Malformed extension claims are diagnostic facts; malformed document IDs,
  * expectedId mismatch and conservative-profile failures return ok:false.
@@ -1385,8 +1386,18 @@ export async function parseActorControlMetadata(
         marker(occurrence.value, prepared) === undefined
       ) {
         const endpoint = occurrence.value;
-        if (Object.keys(endpoint).length === 1 && "@id" in endpoint) {
-          const state = controlLinks([occurrence], prepared);
+        if (
+          Object.hasOwn(endpoint, "@id") &&
+          Object.keys(endpoint).every(
+            (key) => key === "@id" || key === "@index",
+          )
+        ) {
+          // Index annotations do not describe an embedded node. Validate only
+          // the reference; evidence above retains its original index and path.
+          const state = controlLinks(
+            [{ ...occurrence, value: { "@id": endpoint["@id"] } }],
+            prepared,
+          );
           endpoints.push({
             ...evidence,
             kind: state.values[0].valid ? "unresolved" : "invalid",

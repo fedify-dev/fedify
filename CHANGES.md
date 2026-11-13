@@ -78,8 +78,10 @@ To be released.
     after expansion succeeds; earlier failures may use input or context
     pointers. Dropped occurrences retain their original JSON pointer in
     `rawPath`. Unrelated embedded objects are classified before requiring
-    control-activity fields.  The default loader resolves preloaded contexts
-    locally; applications can explicitly supply a context loader. A
+    control-activity fields. Reference-only actor `endpoints` values stay
+    unresolved even with an `@index` annotation, which is retained in the
+    evidence. The default loader resolves preloaded
+    contexts locally; applications can explicitly supply a context loader. A
     conservative context preflight reserves work for both expansions before
     processing, and marker selection has a fixed collision limit. The parsers
     reject expanded `@included` outside `@value` literals, and repeated

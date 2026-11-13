@@ -76,7 +76,9 @@ asserted through `@reverse` for inspected IDs are rejected too. The duplicate
 check covers the root node and, depending on the parser, the nodes directly
 under an activity's `object` or an actor's `endpoints`. Descriptions of other
 IDs, and references with only `@id` and an optional `@index`, may repeat. This
-check treats `@value` payloads as opaque; other profile limits still apply. Use
+check treats `@value` payloads as opaque; other profile limits still apply.
+Reference-only actor `endpoints` values stay unresolved even with an `@index`
+annotation, which is retained in the evidence. Use
 `parseDeliverySuspensionOrigin()` for root-origin identifiers and
 `getDeliverySuspensionUrlOrigin()` for endpoint origins.  The origin helpers
 apply IDNA2008 with a pinned Unicode 12.0 repertoire. Successful parsing

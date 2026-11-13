@@ -20,6 +20,7 @@ export const expectedTestNames = [
   "delivery suspension Create Update and unverified Undo activity claims",
   "delivery suspension metadata preserves absent single invalid and multiple links",
   "delivery suspension actor metadata retains unresolved endpoints and parent ambiguity",
+  "delivery suspension actor metadata retains indexed endpoint references",
   "delivery suspension rejects unsafe JSON without invoking accessors",
   "delivery suspension default loader is offline cloned and unknown contexts never fetch",
   "delivery suspension custom contexts are memoized validated and detached before awaits",

@@ -736,6 +736,108 @@ test("delivery suspension metadata preserves absent single invalid and multiple 
   );
 });
 
+test("delivery suspension actor metadata retains indexed endpoint references", async () => {
+  const endpoint = "https://social.example/endpoints";
+  const reference = { "@id": endpoint, "@index": "primary" };
+  const loaded: string[] = [];
+  const loader = getDeliverySuspensionContextLoader();
+  const contextLoader: DocumentLoader = (url) => {
+    loaded.push(url);
+    return loader(url);
+  };
+  for (const raw of [
+    actor({ endpoints: reference }),
+    actor({
+      "@context": [
+        ...contexts,
+        {
+          indexedEndpoints: {
+            "@id": AS + "endpoints",
+            "@type": "@id",
+            "@container": "@index",
+          },
+        },
+      ],
+      indexedEndpoints: { primary: endpoint },
+    }),
+  ]) {
+    const value = success(
+      await parseActorControlMetadata(raw, { contextLoader }),
+    );
+    strictEqual(value.endpoints.length, 1);
+    const parent = value.endpoints[0];
+    strictEqual(parent.kind, "unresolved");
+    strictEqual(parent.reference, endpoint);
+    deepStrictEqual(parent.raw, reference);
+    strictEqual(
+      parent.path,
+      "/0/https:~1~1www.w3.org~1ns~1activitystreams#endpoints/0",
+    );
+    strictEqual(parent.sharedInbox.state, "absent");
+    strictEqual(value.sharedInbox.state, "absent");
+    deepStrictEqual(parent.issues, []);
+    ok(Object.isFrozen(parent.raw));
+  }
+  ok(loaded.every((url) => contexts.includes(url)));
+  const invalid = success(
+    await parseActorControlMetadata(
+      actor({
+        endpoints: {
+          "@id": "http://social.example/endpoints",
+          "@index": "primary",
+        },
+      }),
+    ),
+  ).endpoints[0];
+  strictEqual(invalid.kind, "invalid");
+  strictEqual(invalid.reference, undefined);
+  strictEqual(invalid.issues[0].code, "invalid-https-uri");
+  strictEqual(invalid.issues[0].path, invalid.path);
+  deepStrictEqual(invalid.raw, {
+    "@id": "http://social.example/endpoints",
+    "@index": "primary",
+  });
+  const multiple = success(
+    await parseActorControlMetadata(
+      actor({
+        endpoints: [
+          reference,
+          {
+            "@id": "https://social.example/embedded",
+            "@index": "secondary",
+            sharedInbox: "https://social.example/shared",
+          },
+        ],
+      }),
+    ),
+  );
+  strictEqual(multiple.endpointsAmbiguous, true);
+  deepStrictEqual(
+    multiple.endpoints.map((parent) => parent.kind),
+    ["unresolved", "embedded"],
+  );
+  strictEqual(multiple.endpoints[1].sharedInbox.state, "single");
+  strictEqual(multiple.endpoints[1].reference, undefined);
+  strictEqual(multiple.sharedInbox.state, "single");
+  const shifted = success(
+    await parseActorControlMetadata(actor({ endpoints: [null, reference] })),
+  );
+  strictEqual(shifted.endpoints[0].kind, "invalid");
+  strictEqual(shifted.endpoints[0].rawPath, "/endpoints/0");
+  strictEqual(shifted.endpoints[1].kind, "unresolved");
+  strictEqual(shifted.endpoints[1].reference, endpoint);
+  strictEqual(
+    shifted.endpoints[1].path,
+    "/0/https:~1~1www.w3.org~1ns~1activitystreams#endpoints/0",
+  );
+  deepStrictEqual(shifted.endpoints[1].raw, reference);
+  const indexedInbox = success(
+    await parseActorControlMetadata(actor({ inbox: reference })),
+  );
+  strictEqual(indexedInbox.inbox.state, "invalid");
+  strictEqual(indexedInbox.inbox.values[0].issues[0].code, "invalid-link");
+});
+
 test("delivery suspension actor metadata retains unresolved endpoints and parent ambiguity", async () => {
   const unresolved = success(
     await parseActorControlMetadata(

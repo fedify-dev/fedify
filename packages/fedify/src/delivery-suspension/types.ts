@@ -151,7 +151,11 @@ export interface ControlLinkState {
   readonly values: readonly ControlLinkValue[];
 }
 
-/** One endpoints occurrence; reference-only endpoints remain unresolved. @since 2.5.0 */
+/**
+ * One `endpoints` occurrence; reference-only nodes remain unresolved, including
+ * those with an `@index` annotation.
+ * @since 2.5.0
+ */
 export interface ActorEndpointsMetadata {
   readonly raw: ShapeJson;
   readonly path: string;
