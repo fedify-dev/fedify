@@ -302,6 +302,7 @@ for (const operation of ["deleteMany", "casMany"] as const) {
           ready.resolve();
           await release.promise;
         });
+        void holder.catch(ready.reject);
         await ready.promise;
         pending =
           operation === "deleteMany"
@@ -355,6 +356,7 @@ dbTest(
         ready.resolve();
         await release.promise;
       });
+      void holder.catch(ready.reject);
       await ready.promise;
       pending = second.casMany([
         {
@@ -808,6 +810,7 @@ dbTest(
         ready.resolve();
         await release.promise;
       });
+      void holder.catch(ready.reject);
       await ready.promise;
       pending = parent.casMany([
         { key, expectedValue: 1, newValue: 2 },
@@ -862,6 +865,7 @@ dbTest(
         ready.resolve();
         await release.promise;
       });
+      void holder.catch(ready.reject);
       await ready.promise;
       await assert.rejects(
         second.casMany([{ key, expectedValue: 1, newValue: 2 }]),
