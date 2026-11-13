@@ -1494,6 +1494,8 @@ Fedify selects the first RSA-PKCS#1-v1.5 key pair among them.
 > an RSA-PKCS#1-v1.5 key pair: if the recipient server rejects HTTP Message
 > Signatures, Fedify retries with the draft cavage version (see
 > [*Double-knocking HTTP Signatures*](#double-knocking-http-signatures)).
+> A request signed with an Ed25519 key is not retried with the draft cavage
+> version; the recipient server's response is returned as is.
 
 [RFC 9421]: https://www.rfc-editor.org/rfc/rfc9421
 

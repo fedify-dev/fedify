@@ -10,4 +10,5 @@ links:
     Previously, Fedify could verify Ed25519 signatures but could produce only
     `rsa-v1_5-sha256` ones.  Outgoing activities are still signed with an
     RSA-PKCS#1-v1.5 key pair, because the draft cavage HTTP Signatures that
-    Fedify falls back to support only that key type.  [[#906] by Jae-Hyuk-Jang]
+    Fedify falls back to support only that key type, and a request signed with
+    an Ed25519 key is not retried with them.  [[#906] by Jae-Hyuk-Jang]

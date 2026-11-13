@@ -2548,7 +2548,11 @@ async function doubleKnockCore(
           // Otherwise use the legacy fallback, or follow the redirect below.
         }
 
-        if (!isRedirectResponse(response)) {
+        // The draft-cavage fallback can sign only with RSASSA-PKCS1-v1_5 keys:
+        if (
+          !isRedirectResponse(response) &&
+          identity.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5"
+        ) {
           observation?.response(response, "intermediate");
           // verification failed; retry with the other spec of HTTP Signatures
           // (double-knocking; see https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions)

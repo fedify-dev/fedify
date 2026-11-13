@@ -92,6 +92,15 @@ To be released.
  -  Added sender payload projection support for the published FEP-171b context,
     preserving blind-recipient redaction.
     [[#1250], [#1396] by Jiwon Kwon\]
+ -  Added support for Ed25519 keys when signing requests with HTTP Message
+    Signatures (RFC 9421).  `signRequest()` now accepts an Ed25519 private
+    key with `spec: "rfc9421"` and marks the signature with the `ed25519`
+    algorithm, and an `Accept-Signature` challenge that asks for `ed25519` can
+    now be fulfilled when the request is signed with an Ed25519 key.
+    Previously, Fedify could verify Ed25519 signatures but could produce only
+    `rsa-v1_5-sha256` ones.  Outgoing activities are still signed with an
+    RSA-PKCS\#1-v1.5 key pair, because the draft cavage HTTP Signatures that
+    Fedify falls back to support only that key type.  [[#906] by Jae-Hyuk-Jang\]
  -  Added the `activity-origin-mismatch` reason to rejected
     `InboxAuthentication` decisions in `onRequestFinished` reports.  Inbox
     deliveries rejected because the activity's ID does not have the same origin
@@ -128,6 +137,7 @@ To be released.
 [FEP-7aa9]: https://w3id.org/fep/7aa9
 [FEP-f799]: https://w3id.org/fep/f799
 [GHSA-4qhx-hhwf-8685]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-4qhx-hhwf-8685
+[#906]: https://github.com/fedify-dev/fedify/issues/906
 [#1030]: https://github.com/fedify-dev/fedify/issues/1030
 [#1177]: https://github.com/fedify-dev/fedify/issues/1177
 [#1205]: https://github.com/fedify-dev/fedify/pull/1205

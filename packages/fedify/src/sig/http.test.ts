@@ -4491,6 +4491,68 @@ test("doubleKnock(): Accept-Signature challenge for ed25519 is fulfilled with an
   fetchMock.hardReset();
 });
 
+test("doubleKnock(): an Ed25519 key returns an error response without draft-cavage fallback", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
+
+  fetchMock.post("https://example.com/inbox-ed25519-not-found", () => {
+    requestCount++;
+    return new Response("Not Found", { status: 404 });
+  });
+
+  const request = new Request("https://example.com/inbox-ed25519-not-found", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
+
+  const response = await doubleKnock(request, {
+    keyId: ed25519PublicKey.id!,
+    privateKey: ed25519PrivateKey,
+  });
+
+  assertEquals(response.status, 404);
+  assertEquals(requestCount, 1);
+
+  fetchMock.hardReset();
+});
+
+test("doubleKnock(): an Ed25519 key returns a 401 left after the challenge retry", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
+
+  fetchMock.post("https://example.com/inbox-ed25519-still-unauthorized", () => {
+    requestCount++;
+    return new Response("Not Authorized", {
+      status: 401,
+      headers: {
+        "Accept-Signature":
+          'sig1=("@method" "@target-uri" "@authority" "content-digest")' +
+          ';alg="ed25519";created',
+      },
+    });
+  });
+
+  const request = new Request(
+    "https://example.com/inbox-ed25519-still-unauthorized",
+    {
+      method: "POST",
+      body: "Test message",
+      headers: { "Content-Type": "text/plain" },
+    },
+  );
+
+  const response = await doubleKnock(request, {
+    keyId: ed25519PublicKey.id!,
+    privateKey: ed25519PrivateKey,
+  });
+
+  assertEquals(response.status, 401);
+  assertEquals(requestCount, 2);
+
+  fetchMock.hardReset();
+});
+
 test("doubleKnock(): validates redirects after Accept-Signature challenge retry", async () => {
   fetchMock.spyGlobal();
   let requestCount = 0;
