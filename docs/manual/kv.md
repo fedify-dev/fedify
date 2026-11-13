@@ -1108,10 +1108,10 @@ check or an operation receipt before repeating effects.
 
 ### Current support
 
-`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`, and `MysqlKvStore`
-implement `AtomicKvStore` in their documented scopes.  Existing single-key CAS
-support does not imply atomic multi-key support.  The linked issues track
-separate adapter implementations:
+`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`, and
+`MysqlKvStore` implement `AtomicKvStore` in their documented scopes.  Existing
+single-key CAS support does not imply atomic multi-key support.  The linked
+issues track separate adapter implementations:
 
 | Implementation        | `AtomicKvStore` | Status                                                                                            |
 | --------------------- | --------------- | ------------------------------------------------------------------------------------------------- |

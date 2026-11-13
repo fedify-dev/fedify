@@ -495,17 +495,17 @@ for a shared backend.  Separate calls do not form a transaction; uncertain
 commit results need receipts or version checks, and ABA detection needs a
 non-reused version.
 
-`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`, and `MysqlKvStore`
-implement the atomic interface in their documented scopes.
+`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`, and
+`MysqlKvStore` implement the atomic interface in their documented scopes.
 SQLite covers one configured table/database on a writable, normally locking
 connection.  Nonempty batches and ordinary mutations reject caller-owned
 transactions and use one transaction; snapshots and mismatching CAS can reject
 busy, including under rollback-journal reader contention.  Configure busy
-timeout on the connection; the KV store has no retry policy.  Use decoded
-JSON expectations, structural comparison, and the documented millisecond TTL
+timeout on the connection; the KV store has no retry policy.  Use decoded JSON
+expectations, structural comparison, and the documented millisecond TTL
 precision and resource limits.  `SqliteMessageQueue` defaults to WAL on shared
-files; concurrent WAL use needs a patched SQLite engine (Bun 1.2.22
-SQLite 3.50.4 is affected by the WAL-reset bug).  See the adapter documentation.
+files; concurrent WAL use needs a patched SQLite engine (Bun 1.2.22 SQLite
+3.50.4 is affected by the WAL-reset bug).  See the adapter documentation.
 
 For PGlite, share one normal owner and table across wrappers, require standard
 JSONB/text-array codecs, and keep raw/manual transaction control and
@@ -517,11 +517,11 @@ engine insertion failures roll back, while mismatch does not prove proposed
 writes would fit.  Do not infer crash durability, browser persistence, or
 worker-proxy support.  Read the PGlite package README's synchronization policy.
 
-The Redis atomic extension is tracked separately in issue #1365; Deno KV and Netlify Blobs have no atomic adapter
-child issue.  `WorkersKvStore` lacks CAS.  `WorkersD1KvStore` supports
-single-key CAS; its atomic extension is tracked in #1379.  Check the
-[atomic support matrix] and installed declarations before selecting a
-production adapter.
+The Redis atomic extension is tracked separately in issue #1365; Deno KV and
+Netlify Blobs have no atomic adapter child issue.  `WorkersKvStore` lacks CAS.
+`WorkersD1KvStore` supports single-key CAS; its atomic extension is tracked in
+#1379.  Check the [atomic support matrix] and installed declarations before
+selecting a production adapter.
 
 `MemoryKvStore` is development-only and retains references, including
 references to the same object stored under several keys.  Keep stored and
