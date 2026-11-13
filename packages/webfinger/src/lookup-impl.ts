@@ -82,7 +82,9 @@ export async function lookupWebFingerInternal(
   }
   const timeout = setTimeout(() => {
     timedOut = true;
-    controller.abort(new Error("WebFinger lookup timed out"));
+    controller.abort(
+      new DOMException("WebFinger lookup timed out", "TimeoutError"),
+    );
   }, timeoutMs);
   const abortFromCaller = () => controller.abort(options.signal?.reason);
   if (options.signal?.aborted) abortFromCaller();
@@ -108,7 +110,7 @@ export async function lookupWebFingerInternal(
     const result = await Promise.race([work, aborted]);
     if (signal.aborted) {
       if (timedOut) {
-        logger.debug(
+        logger.warn(
           "WebFinger lookup timed out for {url} after {timeoutMs} ms.",
           {
             url: url.href,

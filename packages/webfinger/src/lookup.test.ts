@@ -898,6 +898,60 @@ test("lookupWebFinger() deadline covers session opening", async () => {
   deepStrictEqual(await settleWithin(result, 1000), null);
 });
 
+test("lookupWebFinger() shares one deadline across redirects", async () => {
+  const descriptor: ResourceDescriptor = {
+    subject: "acct:alice@example.com",
+    links: [],
+  };
+  const pending: Promise<Response>[] = [];
+  const result = lookupWebFingerInternal("acct:alice@example.com", {}, {
+    timeoutMs: 100,
+    openHop: (url) =>
+      Promise.resolve({
+        url: new URL(url),
+        fetch: () => {
+          const response = new Promise<Response>((resolve) => {
+            setTimeout(() => {
+              resolve(
+                url.includes("/final")
+                  ? new Response(JSON.stringify(descriptor))
+                  : new Response(null, {
+                    status: 302,
+                    headers: { Location: "/final" },
+                  }),
+              );
+            }, 60);
+          });
+          pending.push(response);
+          return response;
+        },
+        close: () => Promise.resolve(),
+      }),
+  });
+  deepStrictEqual(await settleWithin(result, 1000), null);
+  await Promise.all(pending);
+});
+
+test("lookupWebFinger() caller signal cannot extend its deadline", async () => {
+  const signal = AbortSignal.timeout(5000);
+  let reason: unknown;
+  const result = lookupWebFingerInternal("acct:alice@example.com", {
+    signal,
+  }, {
+    timeoutMs: 50,
+    openHop: (_url, effectiveSignal) => {
+      effectiveSignal?.addEventListener("abort", () => {
+        reason = effectiveSignal.reason;
+      }, { once: true });
+      return new Promise(() => {});
+    },
+  });
+  deepStrictEqual(await settleWithin(result, 1000), null);
+  ok(!signal.aborted);
+  ok(reason instanceof DOMException);
+  deepStrictEqual(reason.name, "TimeoutError");
+});
+
 test("lookupWebFinger() deadline covers response headers", async () => {
   let closed = false;
   const result = lookupWebFingerInternal("acct:alice@example.com", {}, {
