@@ -796,6 +796,10 @@ you can change with the `tableName` option.  Without `initialized: true`,
 each store instance creates and checks its schema on first use.  The names
 `<tableName>_atomic` and `idx_<tableName>_expires` are reserved for the guard
 table and expiry index; table names ending in `_atomic` are rejected.
+The entry table must have a single-column `key` primary index using `BINARY`
+collation, so differently cased keys remain distinct.  Automatic initialization
+rejects incompatible primary indexes.
+
 Create both tables and the index with a [D1 migration][D1 migrations] in
 production, then pass `initialized: true` to avoid repeated schema queries:
 

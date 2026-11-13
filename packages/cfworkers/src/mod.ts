@@ -455,7 +455,8 @@ export class WorkersD1KvStore implements AtomicKvStore {
 
   /**
    * Creates both tables and the expiry index if absent, and verifies the
-   * auxiliary table and index metadata.  It is called
+   * binary key primary index, auxiliary table, and expiry index metadata.
+   * It is called
    * automatically on the first use of the store instance unless
    * the `initialized` option is set.
    */
@@ -499,9 +500,12 @@ export class WorkersD1KvStore implements AtomicKvStore {
           this.#db
             .prepare(`PRAGMA index_info("idx_${this.#tableName}_expires")`)
             .all<{ name: string | null }>(),
-          this.#db
-            .prepare(`PRAGMA index_list("${this.#tableName}")`)
-            .all<{ name: string; unique: number; partial: number }>(),
+          this.#db.prepare(`PRAGMA index_list("${this.#tableName}")`).all<{
+            name: string;
+            unique: number;
+            partial: number;
+            origin: string;
+          }>(),
           this.#db
             .prepare(
               "SELECT type FROM sqlite_master WHERE name = ?1 COLLATE NOCASE",
@@ -509,6 +513,18 @@ export class WorkersD1KvStore implements AtomicKvStore {
             .bind(`${this.#tableName}_atomic`)
             .first<{ type: string }>(),
         ]);
+        const primaryIndex = indexes.find((entry) => entry.origin === "pk");
+        const primaryColumns =
+          primaryIndex == null
+            ? []
+            : (
+                await this.#db
+                  .prepare(
+                    `PRAGMA index_xinfo("${primaryIndex.name.replaceAll('"', '""')}")`,
+                  )
+                  .all<{ name: string | null; coll: string; key: number }>()
+              ).results;
+        const keyColumns = primaryColumns.filter((column) => column.key === 1);
         const shape = new Map(
           columns.map((column) => [column.name.toLowerCase(), column]),
         );
@@ -518,6 +534,11 @@ export class WorkersD1KvStore implements AtomicKvStore {
             `idx_${this.#tableName}_expires`.toLowerCase(),
         );
         if (
+          primaryIndex?.unique !== 1 ||
+          primaryIndex?.partial !== 0 ||
+          keyColumns.length !== 1 ||
+          keyColumns[0].name?.toLowerCase() !== "key" ||
+          keyColumns[0].coll.toUpperCase() !== "BINARY" ||
           object?.type !== "table" ||
           columns.length !== 3 ||
           columns.some((column) => column.hidden !== 0) ||

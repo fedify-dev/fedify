@@ -993,6 +993,36 @@ describe("WorkersD1KvStore atomic operations", () => {
     ).toThrow(TypeError);
   });
 
+  it("rejects nonbinary key primary indexes before batch writes", async () => {
+    for (const collation of ["NOCASE", "RTRIM"]) {
+      await env.D1.prepare(`CREATE TABLE key_collation (
+        key TEXT PRIMARY KEY COLLATE ${collation} NOT NULL,
+        value TEXT NOT NULL, expires INTEGER
+      )`).run();
+      const store = new WorkersD1KvStore(env.D1, {
+        tableName: "key_collation",
+      });
+      await expect(
+        store.setMany([
+          { key: ["A"], value: "upper" },
+          { key: ["a"], value: "lower" },
+        ]),
+      ).rejects.toThrow("Incompatible");
+      const row = await env.D1.prepare(
+        "SELECT COUNT(*) AS count FROM key_collation",
+      ).first<{ count: number }>();
+      expect(row?.count).toBe(0);
+      await env.D1.prepare("DROP TABLE key_collation").run();
+      // Failed validation must not cache initialization success.
+      await store.setMany([
+        { key: ["A"], value: "upper" },
+        { key: ["a"], value: "lower" },
+      ]);
+      expect(await store.getMany([["A"], ["a"]])).toEqual(["upper", "lower"]);
+      await store.drop();
+    }
+  });
+
   it("rejects colliding expiry indexes", async () => {
     await env.D1.prepare("CREATE TABLE other (expires INTEGER)").run();
     await env.D1.prepare(

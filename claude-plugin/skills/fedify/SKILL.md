@@ -463,10 +463,12 @@ for fresh primary reads; caller-owned sessions can serve stale `getMany()`
 snapshots even after their first `first-primary` query.  CAS always uses a
 write transaction with a guard row, including absence-only CAS.  Create both
 the entry table and `<tableName>_atomic` guard table plus the expiry index
-with a D1 migration before using `initialized: true`.  Follow the complete
-schema and codec/TTL/batch limits in the [KV manual][atomic support matrix];
-a table name ending in `_atomic` is reserved.  Single and multi-key writes
-share the same protocol; oversized calls reject instead of splitting.
+with a D1 migration before using `initialized: true`.  The entry table needs
+a single-column `key` primary index with `BINARY` collation.  Follow the
+complete schema and codec/TTL/batch limits in the
+[KV manual][atomic support matrix]; a table name ending in `_atomic` is
+reserved.  Single and multi-key writes share the same protocol; oversized calls
+reject instead of splitting.
 
 For application transitions across several keys, require `AtomicKvStore`
 from `@fedify/fedify` and narrow an existing `KvStore` with
