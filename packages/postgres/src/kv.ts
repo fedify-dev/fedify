@@ -800,7 +800,9 @@ export class PostgresKvStore implements AtomicKvStore {
                 AND NOT i.indisunique AND i.indnatts = 1
                 AND a.amname = 'btree' AND i.indkey[0] = 0
                 AND o.opcdefault AND o.opcintype = 'timestamptz'::regtype
-                AND pg_get_indexdef(i.indexrelid, 1, false) IN (
+                -- Index-column DDL adds version-dependent outer parentheses
+                -- for AT TIME ZONE. Compare the catalog expression itself.
+                AND pg_get_expr(i.indexprs, i.indrelid, false) IN (
                   ${"timezone('UTC'::text, (timezone('UTC'::text, created) + ttl))"},
                   ${"(((created AT TIME ZONE 'UTC'::text) + ttl) AT TIME ZONE 'UTC'::text)"}
                 )
