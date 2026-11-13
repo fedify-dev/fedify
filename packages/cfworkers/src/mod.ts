@@ -813,12 +813,12 @@ export class WorkersD1KvStore implements AtomicKvStore {
       WITH cutoff(now) AS MATERIALIZED (SELECT ${D1_NOW}),
       live AS MATERIALIZED (
         SELECT current.key, octet_length(current.key) + octet_length(current.value) AS size FROM json_each(?1) AS input
-        JOIN "${this.#tableName}" AS current ON current.key = input.value
+        JOIN main."${this.#tableName}" AS current ON current.key = input.value
         CROSS JOIN cutoff
         WHERE current.expires IS NULL OR current.expires > cutoff.now
       ), budget AS (SELECT COALESCE(SUM(size), 0) AS bytes FROM live)
       SELECT live.key, CASE WHEN bytes <= 8388608 THEN current.value ELSE NULL END AS value, bytes
-      FROM live CROSS JOIN budget JOIN "${this.#tableName}" AS current ON current.key = live.key
+      FROM live CROSS JOIN budget JOIN main."${this.#tableName}" AS current ON current.key = live.key
     `)
       .bind(payload)
       .all<{ key: string; value: string | null; bytes: number }>();

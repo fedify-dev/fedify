@@ -993,6 +993,23 @@ describe("WorkersD1KvStore atomic operations", () => {
     ).toThrow(TypeError);
   });
 
+  it("supports backing table names that match snapshot CTEs", async () => {
+    for (const tableName of ["live", "cutoff", "budget"]) {
+      const store = new WorkersD1KvStore(env.D1, { tableName });
+      await store.setMany([
+        { key: ["a"], value: "first" },
+        { key: ["b"], value: "second" },
+      ]);
+      expect(await store.getMany([["b"], ["missing"], ["a"], ["b"]])).toEqual([
+        "second",
+        undefined,
+        "first",
+        "second",
+      ]);
+      await store.drop();
+    }
+  });
+
   it("rejects nonbinary key primary indexes before batch writes", async () => {
     for (const collation of ["NOCASE", "RTRIM"]) {
       await env.D1.prepare(`CREATE TABLE key_collation (
