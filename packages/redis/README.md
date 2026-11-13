@@ -184,3 +184,12 @@ Run *src/kv.atomic-admin.test.ts* and the migration case in
 server or Cluster: they change ACLs, memory settings, or slot ownership, and
 restore their state in cleanup. These tests do not establish replica-lag or
 failover durability.
+
+The `test-redis-atomic` CI matrix pins Redis 7.2.17, 7.4.12, and 8.10.3 and
+uses dedicated standalone, administrative, and three-primary Cluster fixtures.
+Each job runs Deno, Node.js, and Bun in sequence. It sets
+`FEDIFY_REDIS_REQUIRE_ATOMIC_TESTS=true` so missing fixtures and unsupported
+Redis versions fail instead of skipping the conformance tests. The isolated
+configuration probes clear this flag while checking absent and blank fixture
+settings. Under Node.js, the package's test files run sequentially so the
+administrative and migration tests cannot interfere with each other.

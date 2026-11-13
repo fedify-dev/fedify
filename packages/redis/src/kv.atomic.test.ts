@@ -23,9 +23,28 @@ const versions = new Set<string>(atomicRedisVersions);
 
 function skipUnsupported(t: TestContext, reason: string): void {
   // Bun lacks dynamic skip; Deno may report a dynamic skip as a pass.
+  assert.notEqual(
+    process.env.FEDIFY_REDIS_REQUIRE_ATOMIC_TESTS,
+    "true",
+    `Atomic CI requires an audited Redis engine: ${reason}`,
+  );
   console.warn(`Skipping Redis atomic test: ${reason}`);
   if (process.versions.bun == null) t.skip(reason);
 }
+if (process.env.FEDIFY_REDIS_REQUIRE_ATOMIC_TESTS === "true") {
+  test("Redis atomic CI requires every service fixture", () => {
+    for (const name of [
+      "REDIS_URL",
+      "REDIS_CLUSTER_NODES",
+      "REDIS_ATOMIC_ADMIN_URL",
+      "REDIS_ATOMIC_CLUSTER_ADMIN_NODES",
+      "REDIS_ATOMIC_MIGRATION_NODES",
+    ]) {
+      assert(process.env[name]?.trim(), `Atomic CI requires ${name}`);
+    }
+  });
+}
+
 const modes = ["standalone", "cluster"] as const;
 
 function client(mode: (typeof modes)[number]): Redis | Cluster {

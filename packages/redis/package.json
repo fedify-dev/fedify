@@ -108,7 +108,7 @@
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
-    "test": "node --experimental-transform-types --test",
+    "test": "node --experimental-transform-types --test --test-concurrency=1",
     "pretest:bun": "pnpm build",
     "test:bun": "bun test --timeout=60000"
   }

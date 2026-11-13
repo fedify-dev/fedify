@@ -35,6 +35,9 @@ import { createRequire } from "node:module";
 import net from "node:net";
 import process from "node:process";
 import { test } from "node:test";
+// These probes intentionally test missing fixtures, not CI conformance.
+delete process.env.FEDIFY_REDIS_REQUIRE_ATOMIC_TESTS;
+assert.equal(process.env.FEDIFY_REDIS_REQUIRE_ATOMIC_TESTS, undefined);
 const rawProfile = process.env.FEDIFY_REDIS_FIXTURE_PROFILE;
 assert.notEqual(rawProfile, undefined, "fixture profile must reach the child");
 const profile = JSON.parse(rawProfile);

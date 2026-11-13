@@ -15,6 +15,11 @@ const versions = new Set<string>(atomicRedisVersions);
 
 function skipUnsupported(t: TestContext, reason: string): void {
   // Bun lacks dynamic skip; Deno may report a dynamic skip as a pass.
+  assert.notEqual(
+    process.env.FEDIFY_REDIS_REQUIRE_ATOMIC_TESTS,
+    "true",
+    `Atomic CI requires an audited Redis engine: ${reason}`,
+  );
   console.warn(`Skipping Redis atomic test: ${reason}`);
   if (process.versions.bun == null) t.skip(reason);
 }

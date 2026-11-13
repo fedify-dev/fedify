@@ -80,7 +80,7 @@ jobs:
         ports:
         - 5432:5432
       redis:
-        image: redis
+        image: redis:7.2.17
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -171,7 +171,7 @@ jobs:
         ports:
         - 5432:5432
       redis:
-        image: redis
+        image: redis:7.2.17
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -235,7 +235,7 @@ jobs:
         ports:
         - 5432:5432
       redis:
-        image: redis
+        image: redis:7.2.17
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -308,6 +308,73 @@ jobs:
     - name: Test MariaDB KV on Deno
       if: matrix.runtime == 'deno'
       run: mise run --skip-deps test:deno packages/mysql/src/kv.test.ts packages/mysql/src/atomic-kv.test.ts
+
+  test-redis-atomic:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        redis: ["7.2.17", "7.4.12", "8.10.3"]
+    services:
+      redis:
+        image: redis:${{ matrix.redis }}
+        ports:
+        - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis-admin:
+        image: redis:${{ matrix.redis }}
+        ports:
+        - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      FEDIFY_REDIS_REQUIRE_ATOMIC_TESTS: "true"
+      REDIS_URL: redis://127.0.0.1:6379
+      REDIS_ATOMIC_ADMIN_URL: redis://127.0.0.1:6380
+      REDIS_CLUSTER_NODES: 127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002
+      REDIS_ATOMIC_CLUSTER_ADMIN_NODES: 127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002
+      REDIS_ATOMIC_MIGRATION_NODES: 127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002
+    steps:
+    - uses: actions/checkout@v6
+    - uses: ./.github/actions/setup-mise
+    - name: Start a dedicated three-primary Redis Cluster
+      env:
+        REDIS_IMAGE: redis:${{ matrix.redis }}
+      run: |
+        for port in 7000 7001 7002; do
+          docker run --detach --name "redis-cluster-$port" --network host \
+            "$REDIS_IMAGE" redis-server --bind 127.0.0.1 --port "$port" \
+            --cluster-enabled yes --cluster-config-file /data/nodes.conf \
+            --cluster-announce-ip 127.0.0.1 --save "" --appendonly no
+          for _ in $(seq 1 30); do
+            if docker exec "redis-cluster-$port" redis-cli -p "$port" ping | grep -q PONG; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec "redis-cluster-$port" redis-cli -p "$port" ping | grep -q PONG
+        done
+        docker exec redis-cluster-7000 redis-cli --cluster create \
+          127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 \
+          --cluster-replicas 0 --cluster-yes
+        for port in 7000 7001 7002; do
+          for _ in $(seq 1 30); do
+            if docker exec "redis-cluster-$port" redis-cli -p "$port" cluster info | grep -q 'cluster_state:ok'; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec "redis-cluster-$port" redis-cli -p "$port" cluster info | grep -q 'cluster_state:ok'
+        done
+    # The task runs Deno, Node.js and Bun sequentially on exclusive fixtures.
+    - run: mise run test-each redis
 
   test-cfworkers:
     runs-on: ubuntu-latest
