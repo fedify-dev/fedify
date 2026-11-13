@@ -841,6 +841,18 @@ export async function parseDeliverySuspensionActivityDocument(
         "/0/@type",
         "Exactly one recognized control-activity type is required.",
       );
+    const value = single(node, AS + "object", path, prepared)!;
+    if (
+      controlTypes[0] !== "Undo" &&
+      object(value.value) &&
+      marker(value.value, prepared) === undefined &&
+      !types(value.value, value.path).includes(F799 + "DeliverySuspension")
+    )
+      fail(
+        "not-applicable",
+        `${value.path}/@type`,
+        "This node is not a DeliverySuspension.",
+      );
     const identifier = id(node, path, prepared, true);
     const actor = link(
       single(node, AS + "actor", path, prepared)!,
@@ -853,7 +865,6 @@ export async function parseDeliverySuspensionActivityDocument(
       prepared,
     ) as string;
     sameOrigin(identifier, actor, "/0/@id");
-    const value = single(node, AS + "object", path, prepared)!;
     const common = {
       id: identifier,
       actor,

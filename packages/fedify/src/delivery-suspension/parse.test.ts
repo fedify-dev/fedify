@@ -436,6 +436,22 @@ test("delivery suspension Create Update and unverified Undo activity claims", as
     ),
     "not-applicable",
   );
+  for (const type of ["Create", "Update"]) {
+    for (const omitted of [["published"], ["id", "actor", "published"]]) {
+      const unrelated = activity(type, { type: "Note", content: "unrelated" });
+      for (const key of omitted) delete unrelated[key];
+      unsuccessful(
+        await parseDeliverySuspensionActivityDocument(unrelated),
+        "not-applicable",
+      );
+    }
+    const applicable = activity(type, createObject);
+    delete applicable.published;
+    unsuccessful(
+      await parseDeliverySuspensionActivityDocument(applicable),
+      "invalid-cardinality",
+    );
+  }
   const undo = success(
     await parseDeliverySuspensionActivityDocument(
       activity("Undo", "https://social.example/original-create"),
