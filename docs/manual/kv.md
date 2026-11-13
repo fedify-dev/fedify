@@ -124,8 +124,8 @@ Concurrent WAL writes/checkpoints require the [SQLite WAL-reset fix]
 (3.51.3 or the 3.50.7/3.44.6 backports, or a verified equivalent fix).
 Bun 1.2.22's SQLite 3.50.4 is affected.  `SqliteMessageQueue` enables WAL by
 default on shared database files, so the prerequisite also applies to combined
-KV and queue deployments.  See the [package README] for the complete value,
-expiry, connection and durability restrictions.
+KV and queue deployments.  See the [SQLite package README] for the complete
+value, expiry, connection and durability restrictions.
 
 Best for
 :   Development and testing.
@@ -199,7 +199,7 @@ const federation = createFederation<void>({
 [`bun:sqlite`]: https://bun.com/docs/api/sqlite
 [busy timeout]: https://sqlite.org/c3ref/busy_timeout.html
 [SQLite WAL-reset fix]: https://sqlite.org/wal.html#walresetbug
-[package README]: https://github.com/fedify-dev/fedify/tree/main/packages/sqlite#atomic-operations
+[SQLite package README]: https://github.com/fedify-dev/fedify/tree/main/packages/sqlite#atomic-operations
 [conditional exports]: https://nodejs.org/api/packages.html#conditional-exports
 
 ### [`RedisKvStore`]
@@ -662,10 +662,11 @@ Deadlocks and MariaDB snapshot conflicts retry with fresh comparisons, up to
 five total attempts.  Other backend failures reject, and a lost commit
 response can leave the outcome unknown.  Cleanup runs after commit; its
 failures are logged, while logical expiry always applies.  See the
-[package README]
+[MySQL package README]
 for schema, codec, clock, cleanup and resource restrictions.
 
 [`MysqlKvStore`]: https://jsr.io/@fedify/mysql/doc/kv/~/MysqlKvStore
+[MySQL package README]: https://github.com/fedify-dev/fedify/blob/main/packages/mysql/README.md#atomic-key-value-operations
 
 ### `DenoKvStore` (Deno only)
 
