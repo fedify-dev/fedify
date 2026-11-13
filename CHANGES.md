@@ -487,7 +487,7 @@ To be released.
     through `RedisKvStore.getMany()`, `setMany()`, `deleteMany()`, and
     `casMany()`.  Batches support standalone Redis and one Redis Cluster hash
     slot on official Redis 7.2.17, 7.4.12, and 8.10.3; other releases reject
-    nonempty batches until audited and added in a Fedify update.  Existing
+    nonempty batches until audited and added in a Fedify update.
     These restrictions preserve the audited atomicity guarantees; select a
     supported Redis release for nonempty batches.  Existing keys are not
     relocated.  [[#1361], [#1365], [#1434]]
