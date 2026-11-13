@@ -135,9 +135,10 @@ With `initialized: false`, caller-owned batches repeat idempotent table setup
 and driver probing because an outer rollback can undo earlier DDL.  Setup runs
 before the batch savepoint, so a setup error can abort the caller transaction.
 With `initialized: true`, providing the schema remains the caller's
-responsibility. Pooled batch mutations start best-effort expiry cleanup after
-commit; caller-owned batches and `cas()` do not sweep expired rows.  Logical
-expiry is independent of cleanup.
+responsibility. Pooled batch mutations and mutating forms of `cas()` on pooled
+clients start best-effort expiry cleanup after commit.  Caller-owned batches
+and caller-owned `cas()` calls do not sweep expired rows.  Logical expiry is
+independent of cleanup.
 
 [table write lock]: https://www.postgresql.org/docs/18/sql-lock.html
 [ordinary autovacuum]: https://www.postgresql.org/docs/18/routine-vacuuming.html#AUTOVACUUM
