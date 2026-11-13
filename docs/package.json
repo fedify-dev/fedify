@@ -79,7 +79,7 @@
     "stringify-entities": "^4.0.4",
     "temporal-polyfill": "catalog:",
     "typescript": "catalog:",
-    "vitepress": "^2.0.0-alpha.18",
+    "vitepress": "^2.0.0-alpha.21",
     "vitepress-plugin-group-icons": "^1.7.5",
     "vitepress-plugin-llms": "^1.13.1",
     "vitepress-plugin-mermaid": "^2.0.17",
