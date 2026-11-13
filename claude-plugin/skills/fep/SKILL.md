@@ -70,11 +70,18 @@ expanded evidence.  Their default context loader resolves only preloaded
 contexts; an explicit `contextLoader` must bound its own I/O.
 Before expansion, context preflight applies a conservative work budget and
 may reject valid JSON-LD outside the supported profile.
-Use `parseDeliverySuspensionOrigin()` for root-origin identifiers and
+The parsers reject expanded `@included` outside `@value` literals and repeated
+descriptions of inspected IDs, including across named graphs. Properties
+asserted through `@reverse` for inspected IDs are rejected too. The duplicate
+check covers the root node and, depending on the parser, the nodes directly
+under an activity's `object` or an actor's `endpoints`. Descriptions of other
+IDs, and references with only `@id` and an optional `@index`, may repeat. This
+check treats `@value` payloads as opaque; other profile limits still apply. Use
+`parseDeliverySuspensionOrigin()` for root-origin identifiers and
 `getDeliverySuspensionUrlOrigin()` for endpoint origins.  The origin helpers
-apply IDNA2008 with a pinned Unicode 12.0 repertoire.
-Successful parsing establishes shape consistency only.  Authentication,
-controller authority, replay checks, and signed-state equality still require
-separate validation.  An `Undo` result contains an unverified activity claim.
+apply IDNA2008 with a pinned Unicode 12.0 repertoire. Successful parsing
+establishes shape consistency only.  Authentication, controller authority,
+replay checks, and signed-state equality still require separate validation.  An
+`Undo` result contains an unverified activity claim.
 
 [FEP-f799]: https://w3id.org/fep/f799

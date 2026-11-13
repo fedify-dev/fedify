@@ -223,6 +223,82 @@ function containsString(value: Json, needle: string): boolean {
     ([key, child]) => key.includes(needle) || containsString(child, needle),
   );
 }
+function checkGraphFragments(
+  expanded: Json,
+  factProperties: readonly string[],
+): void {
+  const inspected = new Set<string>();
+  const inspect = (value: Json): void => {
+    if (Array.isArray(value)) {
+      for (const child of value) inspect(child);
+    } else if (
+      object(value) &&
+      !("@value" in value) &&
+      typeof value["@id"] === "string"
+    ) {
+      inspected.add(value["@id"]);
+    }
+  };
+  for (const root of Array.isArray(expanded) ? expanded : [expanded]) {
+    inspect(root);
+    if (object(root) && !("@value" in root))
+      for (const property of factProperties)
+        if (property in root) inspect(root[property]);
+  }
+  const descriptions = new Set<string>();
+  const visit = (value: Json, path: string): void => {
+    if (Array.isArray(value)) {
+      for (const [index, child] of value.entries())
+        visit(child, `${path}/${index}`);
+      return;
+    }
+    // Literal payloads, including @json, assert no graph/node statements.
+    if (!object(value) || "@value" in value) return;
+    if ("@included" in value)
+      fail(
+        "unsupported-lossy-shape",
+        `${path}/@included`,
+        "Included node descriptions are outside this raw shape profile.",
+      );
+    const reverse = value["@reverse"];
+    if (object(reverse)) {
+      for (const [property, members] of Object.entries(reverse)) {
+        if (!Array.isArray(members)) continue;
+        for (const [index, member] of members.entries()) {
+          if (
+            object(member) &&
+            !("@value" in member) &&
+            typeof member["@id"] === "string" &&
+            inspected.has(member["@id"])
+          )
+            fail(
+              "unsupported-lossy-shape",
+              `${path}/@reverse/${pointer(property)}/${index}/@id`,
+              "Reverse statements about an inspected node are outside this raw shape profile.",
+            );
+        }
+      }
+    }
+    const id = value["@id"];
+    // Reference-only nodes (even index-annotated ones) can recur freely.
+    if (
+      typeof id === "string" &&
+      inspected.has(id) &&
+      Object.keys(value).some((key) => key !== "@id" && key !== "@index")
+    ) {
+      if (descriptions.has(id))
+        fail(
+          "unsupported-lossy-shape",
+          `${path}/@id`,
+          "Repeated descriptions of one expanded node identifier are outside this raw shape profile.",
+        );
+      descriptions.add(id);
+    }
+    for (const [key, child] of Object.entries(value))
+      visit(child, `${path}/${pointer(key)}`);
+  };
+  visit(expanded, "");
+}
 function remoteSnapshot(value: unknown, budget?: Budget): RemoteDocument {
   const snapshot = copyJson(value, budget);
   if (
@@ -292,6 +368,7 @@ const WARNING_EVENTS = new Set([
 async function prepare(
   input: unknown,
   options: ParseOptions,
+  factProperties: readonly string[] = [],
 ): Promise<Prepared> {
   // The first await is deliberately after this detached JSON-only snapshot.
   const raw = copyJson(input);
@@ -432,6 +509,7 @@ async function prepare(
   expansionBudget.estimate(raw);
   expansionBudget.estimate(diagnosticInput);
   const expanded = await expand(raw, false);
+  checkGraphFragments(expanded, factProperties);
   const diagnostic = await expand(diagnosticInput, true);
   const counts = new Map<string, number>();
   const count = (value: Json): void => {
@@ -946,6 +1024,14 @@ function notice(
  * may hold opaque JSON payloads are outside this profile. Each context graph is limited to depth 64 and 4096 unfolded
  * objects or definitions. Marker selection allows at most eight collision attempts.
  * The work budget is an admission estimate, not an exact heap or time limit.
+ * Expanded `@included` outside `@value` literals is rejected. Repeated
+ * descriptions of an inspected `@id` are also rejected across the document,
+ * including named graphs. Properties asserted through `@reverse` for inspected
+ * IDs are rejected too. Inspected IDs belong to the root node and, depending
+ * on the parser, the nodes directly under an activity's `object` or an actor's
+ * `endpoints`. Descriptions of other IDs may repeat, as may references with
+ * only `@id` and an optional `@index`. `@value` payloads are opaque to this
+ * check; other profile limits still apply.
  * Timestamp lexemes are bounded to 4096 code units, with arbitrary fractional
  * precision within that bound. Only plain JSON data properties are accepted;
  * own __proto__ keys, accessors, cycles, sparse arrays and nonfinite numbers fail.
@@ -1013,7 +1099,7 @@ export async function parseDeliverySuspensionActivityDocument(
   options: ParseOptions = {},
 ): Promise<ParseResult<DeliverySuspensionActivityFacts>> {
   try {
-    const prepared = await prepare(raw, options);
+    const prepared = await prepare(raw, options, [AS + "object"]);
     const node = prepared.node;
     const path = "/0";
     const rdfTypes = types(node, path);
@@ -1273,7 +1359,7 @@ export async function parseActorControlMetadata(
       expectedId: options.expectedId,
       contextLoader: options.contextLoader,
     };
-    const prepared = await prepare(raw, controlOptions);
+    const prepared = await prepare(raw, controlOptions, [AS + "endpoints"]);
     const identifier = metadataId(prepared, controlOptions);
     const inbox = controlLinks(
       occurrences(prepared.node, INBOX, "/0", prepared),

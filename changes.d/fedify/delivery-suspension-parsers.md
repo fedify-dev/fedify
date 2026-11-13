@@ -13,7 +13,10 @@ links:
     fields.  The default loader resolves preloaded contexts locally;
     applications can explicitly supply a context loader. A conservative context
     preflight reserves work for both expansions before processing, and marker
-    selection has a fixed collision limit. Strict HTTPS origin
+    selection has a fixed collision limit. The parsers reject expanded
+    `@included` outside `@value` literals, and repeated descriptions of an
+    inspected `@id` even when they occur in different named graphs. Reverse
+    assertions about inspected IDs are rejected as well. Strict HTTPS origin
     helpers validate origin spelling before URL normalization, including
     IDNA2008 validation against a pinned Unicode 12.0 repertoire. These tools
     expose unverified claims; they do not authenticate notices, establish

@@ -1,6 +1,6 @@
 // oxlint-disable no-await-in-loop -- Keep malformed-input cases sequential so context-cache and loader state cannot interfere across cases.
 import { deepStrictEqual, ok, strictEqual, throws } from "node:assert/strict";
-import { test } from "@fedify/fixture";
+import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   Create,
   Emoji,
@@ -377,6 +377,7 @@ test("delivery suspension Create Update and unverified Undo activity claims", as
     ),
   );
   strictEqual(update.kind, "update");
+  // Fragment admission precedes activity-ID checks for repeated descriptions.
   for (const type of ["Create", "Update"]) {
     unsuccessful(
       await parseDeliverySuspensionActivityDocument(
@@ -385,7 +386,7 @@ test("delivery suspension Create Update and unverified Undo activity claims", as
           id: "https://social.example/activities/1",
         }),
       ),
-      "invalid-activity-id",
+      "unsupported-lossy-shape",
     );
   }
   unsuccessful(
@@ -404,7 +405,9 @@ test("delivery suspension Create Update and unverified Undo activity claims", as
   ]) {
     unsuccessful(
       await parseDeliverySuspensionActivityDocument(activity("Undo", object)),
-      "invalid-activity-id",
+      typeof object === "string"
+        ? "invalid-activity-id"
+        : "unsupported-lossy-shape",
     );
   }
   unsuccessful(
@@ -1533,4 +1536,218 @@ test("delivery suspension bounds context expansion before materializing IRIs", a
       ),
       "resource-limit",
     );
+});
+
+test("delivery suspension rejects fragmented expanded node descriptions", async () => {
+  // Repeated key descriptions are unrelated to the actor's control claims.
+  for (const url of [
+    "https://wizard.casa/users/hongminhee",
+    "https://example.com/person2",
+  ]) {
+    const fixture = await mockDocumentLoader(url);
+    success(await parseActorControlMetadata(fixture.document));
+  }
+
+  const unrelated = {
+    object: { id: "https://social.example/other", type: "Note" },
+    "https://example.net/fragment": {
+      id: "https://social.example/other",
+      content: "Unrelated statements",
+    },
+  };
+  success(await parseDeliverySuspensionDocument(notice(unrelated)));
+  success(await parseActorControlMetadata(actor(unrelated)));
+  const id = "https://social.example/maintenance/1";
+  const reverseStatement = (predicate: string, subject: string) => ({
+    "@id": "https://other.example/value",
+    "@reverse": { [predicate]: [{ "@id": subject }] },
+  });
+  for (const predicate of [
+    F799 + "targetInbox",
+    AS + "attributedTo",
+    F799 + "announcement",
+  ]) {
+    unsuccessful(
+      await parseDeliverySuspensionDocument(
+        notice({
+          "https://example.net/reverse": reverseStatement(predicate, id),
+        }),
+      ),
+      "unsupported-lossy-shape",
+    );
+  }
+  unsuccessful(
+    await parseDeliverySuspensionActivityDocument(
+      activity(
+        "Create",
+        notice({
+          announcement: "https://social.example/activities/1",
+        }),
+        {
+          "https://example.net/reverse": reverseStatement(
+            F799 + "targetInbox",
+            id,
+          ),
+        },
+      ),
+    ),
+    "unsupported-lossy-shape",
+  );
+  unsuccessful(
+    await parseActorControlMetadata(
+      actor({
+        inbox: "https://social.example/inbox",
+        "https://example.net/reverse": reverseStatement(
+          "http://www.w3.org/ns/ldp#inbox",
+          "https://social.example/actor",
+        ),
+      }),
+    ),
+    "unsupported-lossy-shape",
+  );
+  unsuccessful(
+    await parseInboxControlMetadata({
+      "@context": contexts,
+      id: "https://social.example/inbox",
+      type: "OrderedCollection",
+      deliveryController: "https://social.example/actor",
+      "https://example.net/reverse": reverseStatement(
+        F799 + "deliveryController",
+        "https://social.example/inbox",
+      ),
+    }),
+    "unsupported-lossy-shape",
+  );
+  unsuccessful(
+    await parseActorControlMetadata(
+      actor({
+        endpoints: {
+          id: "https://social.example/endpoints",
+          sharedInbox: "https://social.example/shared",
+        },
+        "https://example.net/reverse": reverseStatement(
+          AS + "sharedInbox",
+          "https://social.example/endpoints",
+        ),
+      }),
+    ),
+    "unsupported-lossy-shape",
+  );
+  success(
+    await parseActorControlMetadata(
+      actor({
+        "https://example.net/reverse": reverseStatement(
+          "https://example.net/keyRelation",
+          "https://social.example/key",
+        ),
+      }),
+    ),
+  );
+  for (const extra of [
+    { "@included": [{ id, status: "cancelled" }] },
+    {
+      "@context": [...contexts, { included: "@included" }],
+      included: [{ id, status: "cancelled" }],
+    },
+    { "@included": [{ id: "https://social.example/other", type: "Note" }] },
+    { "https://example.net/nested": { id, status: "cancelled" } },
+    { "@graph": [{ id, status: "cancelled" }] },
+    { "https://example.net/nested": { id, type: "Note" } },
+  ])
+    unsuccessful(
+      await parseDeliverySuspensionDocument(notice(extra)),
+      "unsupported-lossy-shape",
+    );
+  for (const type of ["Create", "Update"]) {
+    unsuccessful(
+      await parseDeliverySuspensionActivityDocument(
+        activity(type, notice(), {
+          "https://example.net/fragment": { id, status: "cancelled" },
+        }),
+      ),
+      "unsupported-lossy-shape",
+    );
+  }
+  const actorId = "https://social.example/actor";
+  unsuccessful(
+    await parseActorControlMetadata(
+      actor({
+        inbox: "https://social.example/inbox",
+        "https://example.net/fragment": {
+          id: actorId,
+          inbox: "https://other.example/inbox",
+        },
+      }),
+    ),
+    "unsupported-lossy-shape",
+  );
+  unsuccessful(
+    await parseInboxControlMetadata({
+      "@context": contexts,
+      id: "https://social.example/inbox",
+      type: "OrderedCollection",
+      deliveryController: actorId,
+      "https://example.net/fragment": {
+        id: "https://social.example/inbox",
+        deliveryController: "https://other.example/actor",
+      },
+    }),
+    "unsupported-lossy-shape",
+  );
+  const endpoint = "https://social.example/endpoints";
+  unsuccessful(
+    await parseActorControlMetadata(
+      actor({
+        endpoints: {
+          id: endpoint,
+          sharedInbox: "https://social.example/shared",
+        },
+        "https://example.net/fragment": {
+          id: endpoint,
+          sharedInbox: "https://other.example/shared",
+        },
+      }),
+    ),
+    "unsupported-lossy-shape",
+  );
+  // A second mention that asserts no node statements is a reusable reference.
+  const references = success(
+    await parseActorControlMetadata(
+      actor({
+        inbox: "https://social.example/inbox",
+        "https://example.net/keys": [
+          {
+            id: "https://social.example/key/1",
+            "https://example.net/owner": { "@id": actorId },
+          },
+          {
+            id: "https://social.example/key/2",
+            "https://example.net/owner": { "@id": actorId, "@index": "owner" },
+          },
+        ],
+      }),
+    ),
+  );
+  strictEqual(references.inbox.state, "single");
+  const payload = {
+    "@included": [{ "@id": id, status: "cancelled" }],
+    "@reverse": { [F799 + "targetInbox"]: [{ "@id": id }] },
+    "@id": id,
+  };
+  const opaque = success(
+    await parseDeliverySuspensionDocument(
+      notice({
+        "https://example.net/payload": { "@value": payload, "@type": "@json" },
+        "https://example.net/distinct": {
+          id: "https://social.example/other",
+          type: "Note",
+        },
+      }),
+    ),
+  );
+  strictEqual(opaque.suspensionStatus, "active");
+  deepStrictEqual(
+    (opaque.raw as Record<string, unknown>)["https://example.net/payload"],
+    { "@value": payload, "@type": "@json" },
+  );
 });
