@@ -1,5 +1,6 @@
 ---
 links:
+  '#1438': https://github.com/fedify-dev/fedify/pull/1438
   '#906': https://github.com/fedify-dev/fedify/issues/906
 ---
  -  Added support for Ed25519 keys when signing requests with HTTP Message
@@ -11,4 +12,4 @@ links:
     `rsa-v1_5-sha256` ones.  Outgoing activities are still signed with an
     RSA-PKCS#1-v1.5 key pair, because the draft cavage HTTP Signatures that
     Fedify falls back to support only that key type, and a request signed with
-    an Ed25519 key is not retried with them.  [[#906] by Jae-Hyuk-Jang]
+    an Ed25519 key is not retried with them.  [[#906], [#1438] by Jae-Hyuk-Jang]
