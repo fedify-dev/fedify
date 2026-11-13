@@ -930,9 +930,8 @@ section for details.
 > [!WARNING]
 > Do not use `InProcessMessageQueue` on Cloudflare Workers.  A delayed
 > enqueue depends on `setTimeout()`, which may never run after the isolate
-> exits, and `listen()` polls memory that does not survive between requests.
-> Each isolate also has its own queue, so a message accepted in one request
-> is not visible to the next.  Use `WorkersMessageQueue` and a `queue()`
+> exits, and `listen()` polls memory that is not guaranteed to survive or
+> be shared across requests.  Use `WorkersMessageQueue` and a `queue()`
 > handler, as shown in [Manual queue processing](#manual-queue-processing),
 > or configure another durable queue.
 

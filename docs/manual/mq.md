@@ -49,8 +49,8 @@ Cons
 > `enqueue()` schedules a `setTimeout()` and resolves immediately, but a
 > Worker isolate can terminate after the response, so the timer may never
 > run and the message may never enter the queue.  `listen()` only polls
-> in-memory state.  Workers have no process that survives between requests,
-> and each isolate has its own queue.  Use
+> in-memory state, which is not guaranteed to survive or be shared across
+> requests.  Use
 > [`WorkersMessageQueue`](#workersmessagequeue-cloudflare-workers-only) with
 > a `queue()` handler, or another durable queue.  Do not treat a delayed
 > enqueue as reliable on Workers.
