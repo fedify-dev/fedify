@@ -1178,6 +1178,53 @@ test("verifyRequest() [rfc9421] successful GET verification", async () => {
   );
 });
 
+test("signRequest() and verifyRequest() [rfc9421] with an Ed25519 key", async () => {
+  const currentTime = Temporal.Instant.from("2024-03-05T08:09:44Z");
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  const signed = await signRequest(
+    new Request("https://example.com/inbox", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body: "Hello, world!",
+    }),
+    ed25519PrivateKey,
+    ed25519PublicKey.id!,
+    { spec: "rfc9421", currentTime, tracerProvider },
+  );
+  const { sig1 } = parseRfc9421SignatureInput(
+    signed.headers.get("Signature-Input")!,
+  );
+  assertEquals(sig1.alg, "ed25519");
+  assertEquals(sig1.keyId, ed25519PublicKey.id?.href);
+  const span = exporter.getSpan("http_signatures.sign");
+  assertEquals(span?.attributes["http_signatures.algorithm"], "ed25519");
+
+  const key = await verifyRequest(signed, {
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+    spec: "rfc9421",
+    currentTime,
+  });
+  assertEquals(key?.id?.href, ed25519PublicKey.id?.href);
+});
+
+test("signRequest() [draft-cavage] still rejects an Ed25519 key", async () => {
+  await assertRejects(
+    () =>
+      signRequest(
+        new Request("https://example.com/inbox", {
+          method: "POST",
+          body: "Hello, world!",
+        }),
+        ed25519PrivateKey,
+        ed25519PublicKey.id!,
+        { spec: "draft-cavage-http-signatures-12" },
+      ),
+    TypeError,
+    "Unsupported algorithm: Ed25519",
+  );
+});
+
 for (const failure of [
   "missing key",
   "invalid signature",
