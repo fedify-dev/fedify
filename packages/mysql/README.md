@@ -127,6 +127,13 @@ server cutoff applies to each attempt: CAS captures it after acquiring all
 locks, and unconditional writes capture it before any write-side lock waits, so
 a short TTL can already have elapsed at commit.
 
+### Backend verification
+
+CI runs the ordinary and atomic key-value suites against MariaDB 11.8 on
+Node.js, Bun, and Deno, alongside the full-package MySQL 8 jobs.  The MariaDB
+jobs run only the key-value suites because the message-queue suite has
+pre-existing MariaDB compatibility failures.
+
 ### Conflicts and cleanup
 
 CAS locks physical rows and absent key ranges before comparing.  Expired rows
