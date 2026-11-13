@@ -236,7 +236,7 @@ test("SqliteKvStore - complex values", async () => {
       },
     });
 
-    await store.set(["undefined"], undefined);
+    await assert.rejects(() => store.set(["undefined"], undefined));
     assert.strictEqual(await store.get(["undefined"]), undefined);
     assert.strictEqual(await store.cas(["undefined"], undefined, "baz"), true);
     assert.strictEqual(await store.get(["undefined"]), "baz");

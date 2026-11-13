@@ -415,6 +415,20 @@ To be released.
 [#1309]: https://github.com/fedify-dev/fedify/issues/1309
 [#1334]: https://github.com/fedify-dev/fedify/pull/1334
 
+### @fedify/sqlite
+
+ -  Added `AtomicKvStore` support to `SqliteKvStore` for consistent snapshots
+    and all-or-nothing changes across keys.  `set(key, undefined)` now rejects
+    instead of doing nothing; skip the call to preserve the former no-op, or
+    use `delete()` or `deleteMany()` for unconditional removal.  A non-null TTL
+    on CAS deletion also rejects; keep the CAS condition by using
+    `newValue: undefined` without a TTL.  Nonempty batch and mutation calls
+    require a writable connection outside caller-owned
+    transactions, including CAS mismatches.  [[#1361], [#1367], [#1430]]
+
+[#1367]: https://github.com/fedify-dev/fedify/issues/1367
+[#1430]: https://github.com/fedify-dev/fedify/pull/1430
+
 ### @fedify/testing
 
  -  Added outbound observer registration support to mock federations and
