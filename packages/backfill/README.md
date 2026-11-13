@@ -62,6 +62,37 @@ for await (
 }
 ~~~~
 
+The example uses `lookupObject()` because it applies the default FEP-fe34
+origin check before returning an object.  It compares the object's declared
+ID with the final document URL after redirects and returns `null` when their
+origins differ.
+
+Custom `documentLoader` implementations must provide the same validation.
+Fetching JSON and passing it directly to a vocabulary class's `fromJsonLd()`
+method is insufficient: the resulting object does not retain the URL from
+which the document was fetched, so `backfill()` cannot independently verify
+that its declared ID belongs to that origin.
+
+If an application already has a custom JSON-LD `DocumentLoader`, it should
+pass that loader through `lookupObject()` rather than parsing its response
+directly:
+
+~~~~ typescript
+import { type DocumentLoader, lookupObject } from "@fedify/vocab";
+
+declare const customJsonLdLoader: DocumentLoader;
+
+const documentLoader = (iri: URL, options?: { signal?: AbortSignal }) =>
+  lookupObject(iri, {
+    crossOrigin: "ignore",
+    documentLoader: customJsonLdLoader,
+    signal: options?.signal,
+  });
+~~~~
+
+The custom JSON-LD loader must set `documentUrl` to the final response URL
+after redirects.  `lookupObject()` uses that value for the origin check.
+
 The seed object itself is not yielded.  If it appears in the discovered
 collection, it is skipped by ID.
 
@@ -162,3 +193,6 @@ propagate.
 Dereferenced documents are cached in memory for one `backfill()` traversal.
 Applications that need persistent or shared caching can provide it through
 the `documentLoader`.
+
+Backfilled objects are unverified remote data.  Applications should verify
+their authenticity before persisting or otherwise trusting them.
