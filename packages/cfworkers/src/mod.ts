@@ -716,7 +716,7 @@ export class WorkersD1KvStore implements AtomicKvStore {
     if (compare) {
       for (const entry of entries) {
         const live = `SELECT 1 FROM "${this.#tableName}" AS current
-          WHERE current.key = ?1 AND (current.expires IS NULL OR current.expires > ${cutoff})`;
+          WHERE current.key COLLATE BINARY = ?1 AND (current.expires IS NULL OR current.expires > ${cutoff})`;
         const predicate =
           entry.expected === undefined
             ? `NOT EXISTS (${live})`
@@ -735,21 +735,21 @@ export class WorkersD1KvStore implements AtomicKvStore {
         entry.value === undefined
           ? this.#db
               .prepare(`
-        DELETE FROM "${this.#tableName}" WHERE key = ?1 AND ${permitted}
+        DELETE FROM "${this.#tableName}" WHERE key COLLATE BINARY = ?1 AND ${permitted}
       `)
               .bind(entry.key)
           : this.#db
               .prepare(`
         INSERT INTO "${this.#tableName}" (key, value, expires)
         SELECT ?1, ?2, ${cutoff} + ?3 WHERE ${permitted}
-        ON CONFLICT (key) DO UPDATE SET value = excluded.value, expires = excluded.expires
+        ON CONFLICT (key COLLATE BINARY) DO UPDATE SET value = excluded.value, expires = excluded.expires
       `)
               .bind(entry.key, entry.value, entry.ttl),
       );
     }
     statements.push(
       this.#db.prepare(`DELETE FROM "${this.#tableName}"
-      WHERE ${permitted} AND key IN (SELECT key FROM "${this.#tableName}"
+      WHERE ${permitted} AND key COLLATE BINARY IN (SELECT key FROM "${this.#tableName}"
         WHERE expires <= ${cutoff} LIMIT ${D1_EXPIRE_BATCH_SIZE})`),
     );
     // These two result counts distinguish mismatch from a missing guard.
@@ -779,7 +779,7 @@ export class WorkersD1KvStore implements AtomicKvStore {
     const row = await this.#db
       .prepare(`
       SELECT value FROM "${this.#tableName}"
-      WHERE key = ?1 AND (expires IS NULL OR expires > ${D1_NOW})
+      WHERE key COLLATE BINARY = ?1 AND (expires IS NULL OR expires > ${D1_NOW})
     `)
       .bind(encoded)
       .first<{ value: string }>();
@@ -813,12 +813,12 @@ export class WorkersD1KvStore implements AtomicKvStore {
       WITH cutoff(now) AS MATERIALIZED (SELECT ${D1_NOW}),
       live AS MATERIALIZED (
         SELECT current.key, octet_length(current.key) + octet_length(current.value) AS size FROM json_each(?1) AS input
-        JOIN main."${this.#tableName}" AS current ON current.key = input.value
+        JOIN main."${this.#tableName}" AS current ON current.key COLLATE BINARY = input.value
         CROSS JOIN cutoff
         WHERE current.expires IS NULL OR current.expires > cutoff.now
       ), budget AS (SELECT COALESCE(SUM(size), 0) AS bytes FROM live)
       SELECT live.key, CASE WHEN bytes <= 8388608 THEN current.value ELSE NULL END AS value, bytes
-      FROM live CROSS JOIN budget JOIN main."${this.#tableName}" AS current ON current.key = live.key
+      FROM live CROSS JOIN budget JOIN main."${this.#tableName}" AS current ON current.key COLLATE BINARY = live.key
     `)
       .bind(payload)
       .all<{ key: string; value: string | null; bytes: number }>();
@@ -858,7 +858,7 @@ export class WorkersD1KvStore implements AtomicKvStore {
     const encoded = this.#encodeKey(key);
     await this.initialize();
     await this.#db
-      .prepare(`DELETE FROM "${this.#tableName}" WHERE key = ?1`)
+      .prepare(`DELETE FROM "${this.#tableName}" WHERE key COLLATE BINARY = ?1`)
       .bind(encoded)
       .run();
   }
@@ -894,7 +894,7 @@ export class WorkersD1KvStore implements AtomicKvStore {
     await this.#db.batch([
       this.#db
         .prepare(`DELETE FROM "${this.#tableName}"
-      WHERE key IN (SELECT value FROM json_each(?1))`)
+      WHERE key COLLATE BINARY IN (SELECT value FROM json_each(?1))`)
         .bind(payload),
     ]);
   }
@@ -941,22 +941,22 @@ export class WorkersD1KvStore implements AtomicKvStore {
       WITH page AS (
         SELECT key, octet_length(key) + octet_length(value) AS size
         FROM "${this.#tableName}"
-        WHERE key > ?1 AND key < ?2
+        WHERE key COLLATE BINARY > ?1 AND key COLLATE BINARY < ?2
           AND (expires IS NULL OR expires > ${D1_NOW})
-        ORDER BY key
+        ORDER BY key COLLATE BINARY
         LIMIT ${D1_LIST_PAGE_ROWS}
       ), sized AS (
         SELECT
           key,
           size,
-          SUM(size) OVER (ORDER BY key ROWS UNBOUNDED PRECEDING) AS total,
+          SUM(size) OVER (ORDER BY key COLLATE BINARY ROWS UNBOUNDED PRECEDING) AS total,
           COUNT(*) OVER () AS page_rows
         FROM page
       )
       SELECT t.key, t.value, sized.page_rows
-      FROM sized JOIN "${this.#tableName}" AS t ON t.key = sized.key
+      FROM sized JOIN "${this.#tableName}" AS t ON t.key COLLATE BINARY = sized.key
       WHERE sized.total - sized.size < ${D1_LIST_PAGE_BYTES}
-      ORDER BY t.key
+      ORDER BY t.key COLLATE BINARY
     `);
     while (true) {
       const { results } = await statement

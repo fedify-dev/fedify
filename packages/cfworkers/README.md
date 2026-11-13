@@ -81,9 +81,10 @@ on first use.  The entry table is `fedify_kv` by default, configurable with
 `tableName`; `<tableName>_atomic` and `idx_<tableName>_expires` are reserved
 auxiliary names.  The entry table must have a single-column `key` primary
 index using `BINARY` collation, so differently cased keys remain distinct.
-Automatic initialization rejects incompatible primary indexes.  Table names
-ending in `_atomic` are rejected.  In production,
-create both tables and the index with [D1 migrations], then pass
+Automatic initialization rejects incompatible primary indexes.  Key lookups,
+mutations, and listing explicitly use binary comparisons even if the column
+declares another collation.  Table names ending in `_atomic` are rejected.  In
+production, create both tables and the index with [D1 migrations], then pass
 `initialized: true` to avoid repeating schema queries per request:
 
 ~~~~ sql

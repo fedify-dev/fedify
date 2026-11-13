@@ -798,7 +798,8 @@ each store instance creates and checks its schema on first use.  The names
 table and expiry index; table names ending in `_atomic` are rejected.
 The entry table must have a single-column `key` primary index using `BINARY`
 collation, so differently cased keys remain distinct.  Automatic initialization
-rejects incompatible primary indexes.
+rejects incompatible primary indexes.  Key lookups, mutations, and listing
+explicitly use binary comparisons even if the column declares another collation.
 
 Create both tables and the index with a [D1 migration][D1 migrations] in
 production, then pass `initialized: true` to avoid repeated schema queries:

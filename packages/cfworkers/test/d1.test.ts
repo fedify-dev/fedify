@@ -1010,6 +1010,49 @@ describe("WorkersD1KvStore atomic operations", () => {
     }
   });
 
+  it("uses binary key comparisons with a NOCASE column and binary primary index", async () => {
+    await env.D1.prepare(`CREATE TABLE mixed_collation (
+      key TEXT COLLATE NOCASE NOT NULL, value TEXT NOT NULL, expires INTEGER,
+      PRIMARY KEY (key COLLATE BINARY)
+    )`).run();
+    const store = new WorkersD1KvStore(env.D1, { tableName: "mixed_collation" });
+    await store.setMany([
+      { key: ["A"], value: "upper" },
+      { key: ["a"], value: "lower" },
+    ]);
+    expect(await store.get(["a"])).toBe("lower");
+    expect(await store.getMany([["a"], ["A"], ["a"]])).toEqual(["lower", "upper", "lower"]);
+    expect(await store.cas(["a"], "upper", "wrong")).toBe(false);
+    expect(await store.casMany([
+      { key: ["A"], expectedValue: "upper", newValue: "UPPER" },
+      { key: ["a"], expectedValue: "lower", newValue: "LOWER" },
+    ])).toBe(true);
+    expect(await store.getMany([["A"], ["a"]])).toEqual(["UPPER", "LOWER"]);
+    expect(await Array.fromAsync(store.list(["a"]))).toEqual([{ key: ["a"], value: "LOWER" }]);
+    await store.delete(["A"]);
+    expect(await store.getMany([["A"], ["a"]])).toEqual([undefined, "LOWER"]);
+    await store.set(["A"], "upper");
+    await store.deleteMany([["a"]]);
+    expect(await store.getMany([["A"], ["a"]])).toEqual(["upper", undefined]);
+    await store.set(["a"], "lower");
+    await insertRaw(["A"], "expired", 0, "mixed_collation");
+    await store.set(["trigger"], true);
+    expect(await store.get(["a"])).toBe("lower");
+    // Exercise ordering and the cursor beyond the 1,000-row page boundary.
+    for (let start = 0; start < 1002; start += 128) {
+      await store.setMany(Array.from({ length: Math.min(128, 1002 - start) }, (_, i) => ({
+        key: ["pages", i % 2 ? "a" : "A", (start + i).toString().padStart(4, "0")],
+        value: start + i,
+      })));
+    }
+    const rows = await Array.fromAsync(store.list(["pages"]));
+    expect(rows.map((row) => row.value)).toEqual([
+      ...Array.from({ length: 501 }, (_, i) => i * 2),
+      ...Array.from({ length: 501 }, (_, i) => i * 2 + 1),
+    ]);
+    await store.drop();
+  });
+
   it("rejects nonbinary key primary indexes before batch writes", async () => {
     for (const collation of ["NOCASE", "RTRIM"]) {
       await env.D1.prepare(`CREATE TABLE key_collation (
