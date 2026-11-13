@@ -71,6 +71,23 @@ for await (
 }
 ~~~~
 
+The example deliberately uses `lookupObject()`, which validates an object's
+declared ID against the final document URL after redirects.  A custom
+`documentLoader` must provide the same validation.  If an application has a
+custom JSON-LD `DocumentLoader`, pass it to `lookupObject()` rather than
+fetching JSON and parsing it directly with `fromJsonLd()`.  The JSON-LD loader
+must set `documentUrl` to the final response URL.
+
+Backfill also ignores a `documentLoader` result whose ID has a different
+origin from the requested IRI.  Because `BackfillDocumentLoader` does not
+expose the final response URL, this means an object reached through a
+cross-origin redirect is ignored.
+
+Backfilled objects remain unverified remote data.  Origin validation prevents
+one origin from impersonating another, but it does not authenticate the
+object with an HTTP signature or integrity proof.  Authenticate objects before
+persisting or otherwise trusting them.
+
 The seed object itself is not yielded.  If the same object appears in a
 discovered collection, it is skipped by ID.
 

@@ -276,6 +276,46 @@ describe("backfill", () => {
     ]);
   });
 
+  test("cross-origin embedded objects use dereferenced content", async () => {
+    const replyId = new URL("https://victim.example/reply");
+    const seed = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "@type": "Note",
+      "@id": "https://attacker.example/seed",
+      "replies": {
+        "@type": "Collection",
+        "items": [{
+          "@type": "Note",
+          "@id": replyId.href,
+          "content": "spoofed reply",
+        }],
+      },
+    });
+    const genuineReply = new Note({
+      id: replyId,
+      content: "genuine reply",
+    });
+    const requests: URL[] = [];
+
+    const items = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri);
+          return Promise.resolve(
+            iri.href === replyId.href ? genuineReply : null,
+          );
+        },
+      },
+      seed,
+      { strategies: ["reply-tree"] },
+    );
+
+    deepStrictEqual(requests, [replyId]);
+    strictEqual(items.length, 1);
+    deepStrictEqual(items[0].object.id, replyId);
+    strictEqual(items[0].object.content, "genuine reply");
+  });
+
   test("loader results cannot claim another origin", async () => {
     const attacker = (name: string) =>
       new URL(`https://attacker.example/${name}`);
