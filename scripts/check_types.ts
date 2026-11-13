@@ -70,6 +70,7 @@ export const COVERED_PATHS: readonly string[] = [
   "test/smoke/**",
   "docs/.vitepress/contributors.mts",
   "docs/.vitepress/contributors.test.mts",
+  "docs/.vitepress/twoslash-renderer.test.mts",
 ];
 
 const typeScriptExtension = /\.(?:[cm]?ts|tsx)$/;

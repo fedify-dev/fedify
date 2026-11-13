@@ -247,6 +247,9 @@ patchedDependencies:
   '@netlify/blobs@11.0.3':
     hash: b483cfeb8a23f6cc4bb068e59309e0be2cb7402cbda31a591b70b9a4adcc6f4f
     path: patches/@netlify__blobs@11.0.3.patch
+  '@shikijs/vitepress-twoslash@4.6.0':
+    hash: 44c85c72b746985e96a3025c28d3719cae0e3c5f0d8f967e0b212048b0d81ceb
+    path: patches/@shikijs__vitepress-twoslash@4.6.0.patch
 
 importers:
 
@@ -458,7 +461,7 @@ importers:
         version: 8.55.0
       '@shikijs/vitepress-twoslash':
         specifier: 4.6.0
-        version: 4.6.0(@nuxt/kit@4.4.2(magicast@0.5.2))(typescript@6.0.3)
+        version: 4.6.0(patch_hash=44c85c72b746985e96a3025c28d3719cae0e3c5f0d8f967e0b212048b0d81ceb)(@nuxt/kit@4.4.2(magicast@0.5.2))(typescript@6.0.3)
       '@teidesu/deno-types':
         specifier: ^2.1.4
         version: 2.1.10
@@ -27284,7 +27287,7 @@ snapshots:
       - supports-color
       - typescript
 
-  '@shikijs/vitepress-twoslash@4.6.0(@nuxt/kit@4.4.2(magicast@0.5.2))(typescript@6.0.3)':
+  '@shikijs/vitepress-twoslash@4.6.0(patch_hash=44c85c72b746985e96a3025c28d3719cae0e3c5f0d8f967e0b212048b0d81ceb)(@nuxt/kit@4.4.2(magicast@0.5.2))(typescript@6.0.3)':
     dependencies:
       '@shikijs/twoslash': 4.6.0(typescript@6.0.3)
       floating-vue: 5.4.0(@nuxt/kit@4.4.2(magicast@0.5.2))(vue@3.5.45(typescript@6.0.3))

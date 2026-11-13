@@ -138,3 +138,22 @@ mise run docs          # Start development server
 
 Always run `mise run docs:build` before committing to catch Twoslash type
 errors.
+
+
+Temporary popup optimization
+----------------------------
+
+The root *package.json* registers a pnpm patch for
+`@shikijs/vitepress-twoslash@4.6.0`, ported from
+[shikijs/shiki#1349] at commit
+`a5afc63679578b5d197665a8286ada283e76347b`. It compiles static popup contents
+as HTML strings to reduce the Vue compiler's memory use. Interpolated fences
+and custom renderers retain their original output. The package is pinned to
+the exact patched version so an update cannot silently drop the workaround.
+
+Run `mise run test:docs-twoslash` to check the installed patch through
+VitePress's highlighter. Remove the patch, its registration, and the temporary
+regression test and its task and type-check entries only after upgrading to a
+release containing the fix and verifying `mise run docs:build`.
+
+[shikijs/shiki#1349]: https://github.com/shikijs/shiki/pull/1349
