@@ -504,16 +504,17 @@ commit results need receipts or version checks, and ABA detection needs a
 non-reused version.
 
 `MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`,
-`MysqlKvStore`, and `WorkersD1KvStore` implement the atomic interface in their documented scopes.
-SQLite covers one configured table/database on a writable, normally locking
-connection.  Nonempty batches and ordinary mutations reject caller-owned
-transactions and use one transaction; snapshots and mismatching CAS can reject
-busy, including under rollback-journal reader contention.  Configure busy
-timeout on the connection; the KV store has no retry policy.  Use decoded JSON
-expectations, structural comparison, and the documented millisecond TTL
-precision and resource limits.  `SqliteMessageQueue` defaults to WAL on shared
-files; concurrent WAL use needs a patched SQLite engine (Bun 1.2.22 SQLite
-3.50.4 is affected by the WAL-reset bug).  See the adapter documentation.
+`MysqlKvStore`, and `WorkersD1KvStore` implement the atomic interface in their
+documented scopes. SQLite covers one configured table/database on a writable,
+normally locking connection.  Nonempty batches and ordinary mutations reject
+caller-owned transactions and use one transaction; snapshots and mismatching
+CAS can reject busy, including under rollback-journal reader contention.
+Configure busy timeout on the connection; the KV store has no retry policy.
+Use decoded JSON expectations, structural comparison, and the documented
+millisecond TTL precision and resource limits.  `SqliteMessageQueue` defaults
+to WAL on shared files; concurrent WAL use needs a patched SQLite engine (Bun
+1.2.22 SQLite 3.50.4 is affected by the WAL-reset bug).  See the adapter
+documentation.
 
 For PGlite, share one normal owner and table across wrappers, require standard
 JSONB/text-array codecs, and keep raw/manual transaction control and

@@ -1154,9 +1154,9 @@ check or an operation receipt before repeating effects.
 ### Current support
 
 `MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`,
-`MysqlKvStore`, and `WorkersD1KvStore` implement `AtomicKvStore` in their documented scopes.  Existing
-single-key CAS support does not imply atomic multi-key support.  The linked
-issues track separate adapter implementations:
+`MysqlKvStore`, and `WorkersD1KvStore` implement `AtomicKvStore` in their
+documented scopes.  Existing single-key CAS support does not imply atomic
+multi-key support.  The linked issues track separate adapter implementations:
 
 | Implementation        | `AtomicKvStore` | Status                                                                                            |
 | --------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
@@ -1171,9 +1171,7 @@ issues track separate adapter implementations:
 | `WorkersKvStore`      | No              | No CAS; cannot implement this contract with Workers KV.                                           |
 | `WorkersD1KvStore`    | Yes             | One configured table in one D1 database; see its codec, TTL, size and session restrictions above. |
 
-[PR #1360]: https://github.com/fedify-dev/fedify/pull/1360
 [#1365]: https://github.com/fedify-dev/fedify/issues/1365
-[#1379]: https://github.com/fedify-dev/fedify/issues/1379
 
 
 Bounding how long cache entries live

@@ -1010,6 +1010,35 @@ describe("WorkersD1KvStore atomic operations", () => {
     }
   });
 
+  it.each(["json_each", "json_tree", "shadowed_functions"])(
+    "keeps JSON functions available with application table %s",
+    async (tableName) => {
+      const unrelated = ["json_each", "json_tree"].filter((name) => name !== tableName);
+      for (const name of unrelated) {
+        await env.D1.prepare(`CREATE TABLE "${name}" (unrelated TEXT)`).run();
+      }
+      const store = new WorkersD1KvStore(env.D1, { tableName });
+      await store.setMany([
+        { key: ["a"], value: { first: 1, second: [2] } },
+        { key: ["b"], value: 2 },
+      ]);
+      expect(await store.getMany([["b"], ["missing"], ["a"], ["b"]])).toEqual([
+        2, undefined, { first: 1, second: [2] }, 2,
+      ]);
+      expect(await store.cas(["a"], { second: [2], first: 1 }, 3)).toBe(true);
+      expect(await store.casMany([
+        { key: ["a"], expectedValue: 0, newValue: 4 },
+        { key: ["b"], expectedValue: 2, newValue: 5 },
+      ])).toBe(false);
+      await store.deleteMany([["a"]]);
+      expect(await store.getMany([["a"], ["b"]])).toEqual([undefined, 2]);
+      await store.drop();
+      for (const name of unrelated) {
+        await env.D1.prepare(`DROP TABLE "${name}"`).run();
+      }
+    },
+  );
+
   it("supports backing table names that match list CTEs", async () => {
     for (const tableName of ["page", "sized"]) {
       const store = new WorkersD1KvStore(env.D1, { tableName });

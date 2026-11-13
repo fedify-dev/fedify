@@ -686,14 +686,15 @@ export class WorkersD1KvStore implements AtomicKvStore {
     });
   }
 
+  // Resolve JSON virtual tables outside main so application tables cannot shadow them.
   #matches(current: string, expected: string): string {
     return `CASE WHEN json_valid(${current}) AND json_valid(${expected}) THEN
       NOT EXISTS (
-        SELECT fullkey, type, atom FROM json_tree(${current})
-        EXCEPT SELECT fullkey, type, atom FROM json_tree(${expected})
+        SELECT fullkey, type, atom FROM temp.json_tree(${current})
+        EXCEPT SELECT fullkey, type, atom FROM temp.json_tree(${expected})
       ) AND NOT EXISTS (
-        SELECT fullkey, type, atom FROM json_tree(${expected})
-        EXCEPT SELECT fullkey, type, atom FROM json_tree(${current})
+        SELECT fullkey, type, atom FROM temp.json_tree(${expected})
+        EXCEPT SELECT fullkey, type, atom FROM temp.json_tree(${current})
       ) ELSE ${current} = ${expected} END`;
   }
 
@@ -812,7 +813,7 @@ export class WorkersD1KvStore implements AtomicKvStore {
       .prepare(`
       WITH cutoff(now) AS MATERIALIZED (SELECT ${D1_NOW}),
       live AS MATERIALIZED (
-        SELECT current.key, octet_length(current.key) + octet_length(current.value) AS size FROM json_each(?1) AS input
+        SELECT current.key, octet_length(current.key) + octet_length(current.value) AS size FROM temp.json_each(?1) AS input
         JOIN main."${this.#tableName}" AS current ON current.key COLLATE BINARY = input.value
         CROSS JOIN cutoff
         WHERE current.expires IS NULL OR current.expires > cutoff.now
@@ -894,7 +895,7 @@ export class WorkersD1KvStore implements AtomicKvStore {
     await this.#db.batch([
       this.#db
         .prepare(`DELETE FROM "${this.#tableName}"
-      WHERE key COLLATE BINARY IN (SELECT value FROM json_each(?1))`)
+      WHERE key COLLATE BINARY IN (SELECT value FROM temp.json_each(?1))`)
         .bind(payload),
     ]);
   }
