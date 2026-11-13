@@ -6,6 +6,8 @@ import metadata from "../deno.json" with { type: "json" };
 import { getTypeId } from "./type.ts";
 import { Application, Group, Organization, Person, Service } from "./vocab.ts";
 
+const ACTOR_HANDLE_TIMEOUT_MS = 10_000;
+
 /**
  * Actor types are {@link Object} types that are capable of performing
  * activities.
@@ -120,6 +122,8 @@ export interface GetActorHandleOptions extends NormalizeActorHandleOptions {
  *
  * @param actor The actor or actor URI to get the handle from.
  * @param options The extra options for getting the actor handle.
+ * @remarks WebFinger lookups made to resolve the handle share a 10-second
+ *          deadline, including cross-origin alias verification.
  * @returns The actor handle.  It starts with `@` and is followed by the
  *          username and domain, separated by `@` by default (it can be
  *          customized with the options).
@@ -164,29 +168,49 @@ async function getActorHandleInternal(
   actor: Actor | URL,
   options: GetActorHandleOptions = {},
 ): Promise<`@${string}@${string}` | `${string}@${string}`> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort(
+      new DOMException("Actor handle lookup timed out", "TimeoutError"),
+    );
+  }, ACTOR_HANDLE_TIMEOUT_MS);
+  try {
+    return await getActorHandleWithSignal(actor, options, controller.signal);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function getActorHandleWithSignal(
+  actor: Actor | URL,
+  options: GetActorHandleOptions,
+  signal: AbortSignal,
+): Promise<`@${string}@${string}` | `${string}@${string}`> {
   const actorId = actor instanceof URL ? actor : actor.id;
   if (actorId != null) {
     const result = await lookupWebFinger(actorId, {
       userAgent: options.userAgent,
       tracerProvider: options.tracerProvider,
+      signal,
     });
     if (result != null) {
       const aliases = [...(result.aliases ?? [])];
       if (result.subject != null) aliases.unshift(result.subject);
       for (const alias of aliases) {
+        if (signal.aborted) break;
         const match = alias.match(/^acct:([^@]+)@([^@]+)$/);
         if (match != null) {
           const hostname = new URL(`https://${match[2]}/`).hostname;
-          if (
-            hostname !== actorId.hostname &&
-            !await verifyCrossOriginActorHandle(
+          if (hostname !== actorId.hostname) {
+            const verified = await verifyCrossOriginActorHandle(
               actorId.href,
               alias,
               options.userAgent,
               options.tracerProvider,
-            )
-          ) {
-            continue;
+              signal,
+            );
+            if (signal.aborted) break;
+            if (!verified) continue;
           }
           return normalizeActorHandle(`@${match[1]}@${match[2]}`, options);
         }
@@ -212,10 +236,16 @@ async function verifyCrossOriginActorHandle(
   alias: string,
   userAgent: GetUserAgentOptions | string | undefined,
   tracerProvider: TracerProvider | undefined,
+  signal: AbortSignal,
 ): Promise<boolean> {
-  const response = await lookupWebFinger(alias, { userAgent, tracerProvider });
+  const response = await lookupWebFinger(alias, {
+    userAgent,
+    tracerProvider,
+    signal,
+  });
   if (response == null) return false;
   for (const alias of response.aliases ?? []) {
+    if (signal.aborted) return false;
     if (new URL(alias).href === actorId) return true;
   }
   return false;

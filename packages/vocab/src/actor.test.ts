@@ -193,6 +193,50 @@ test({
   },
 });
 
+test("getActorHandle() bounds repeated cross-origin alias checks", async () => {
+  const actorId = new URL("https://1.1.1.1/@john");
+  const actor = new Person({ id: actorId, preferredUsername: "john" });
+  const pending: Promise<Response>[] = [];
+  fetchMock.mockGlobal();
+  fetchMock.catch(500);
+  try {
+    fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
+      body: {
+        subject: actorId.href,
+        aliases: ["acct:john@8.8.8.8", "acct:john@8.8.8.8"],
+      },
+      headers: { "Content-Type": "application/jrd+json" },
+    });
+    fetchMock.get("begin:https://8.8.8.8/.well-known/webfinger?", () => {
+      const response = new Promise<Response>((resolve) => {
+        setTimeout(() => resolve(new Response(null, { status: 404 })), 6000);
+      });
+      pending.push(response);
+      return response;
+    });
+
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const result = await Promise.race([
+        getActorHandle(actor),
+        new Promise<never>((_, reject) => {
+          watchdog = setTimeout(
+            () => reject(new Error("Handle lookup exceeded its deadline.")),
+            11_000,
+          );
+        }),
+      ]);
+      deepStrictEqual(result, "@john@1.1.1.1");
+      ok(pending.length >= 2);
+    } finally {
+      clearTimeout(watchdog);
+      await Promise.all(pending);
+    }
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
 test("normalizeActorHandle()", () => {
   deepStrictEqual(normalizeActorHandle("@foo@BAR.COM"), "@foo@bar.com");
   deepStrictEqual(normalizeActorHandle("@BAZ@☃-⌘.com"), "@BAZ@☃-⌘.com");
