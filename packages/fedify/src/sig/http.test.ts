@@ -4447,6 +4447,50 @@ test("doubleKnock(): Accept-Signature challenge retry succeeds", async () => {
   fetchMock.hardReset();
 });
 
+test("doubleKnock(): Accept-Signature challenge for ed25519 is fulfilled with an Ed25519 key", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
+
+  fetchMock.post("https://example.com/inbox-challenge-ed25519", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature":
+            'sig1=("@method" "@target-uri" "@authority" "content-digest")' +
+            ';alg="ed25519";created;nonce="challenge-nonce-ed25519"',
+        },
+      });
+    }
+    const sigInput = req.headers.get("Signature-Input") ?? "";
+    if (
+      sigInput.includes('alg="ed25519"') &&
+      sigInput.includes("challenge-nonce-ed25519")
+    ) {
+      return new Response("", { status: 202 });
+    }
+    return new Response("Bad", { status: 400 });
+  });
+
+  const request = new Request("https://example.com/inbox-challenge-ed25519", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
+
+  const response = await doubleKnock(request, {
+    keyId: ed25519PublicKey.id!,
+    privateKey: ed25519PrivateKey,
+  });
+
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 2);
+
+  fetchMock.hardReset();
+});
+
 test("doubleKnock(): validates redirects after Accept-Signature challenge retry", async () => {
   fetchMock.spyGlobal();
   let requestCount = 0;

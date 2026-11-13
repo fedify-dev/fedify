@@ -2469,12 +2469,12 @@ async function doubleKnockCore(
         // RFC 9421 §5: If the response includes an Accept-Signature header,
         // attempt a challenge-driven retry before falling back to spec-swap.
         const acceptSigHeader = response.headers.get("Accept-Signature");
-        if (acceptSigHeader != null) {
+        const localAlg = getRfc9421SigningAlgorithm(identity.privateKey);
+        if (acceptSigHeader != null && localAlg != null) {
           const entries = validateAcceptSignature(
             parseAcceptSignature(acceptSigHeader),
           );
           const localKeyId = identity.keyId.href;
-          const localAlg = "rsa-v1_5-sha256";
           // RFC 9421 §5: "The target message of an Accept-Signature field MUST
           // include all labeled signatures indicated in the Accept-Signature
           // field."  We therefore accumulate every compatible entry's signature
