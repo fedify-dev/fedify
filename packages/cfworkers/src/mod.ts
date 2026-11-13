@@ -940,7 +940,7 @@ export class WorkersD1KvStore implements AtomicKvStore {
     const statement = this.#db.prepare(`
       WITH page AS (
         SELECT key, octet_length(key) + octet_length(value) AS size
-        FROM "${this.#tableName}"
+        FROM main."${this.#tableName}"
         WHERE key COLLATE BINARY > ?1 AND key COLLATE BINARY < ?2
           AND (expires IS NULL OR expires > ${D1_NOW})
         ORDER BY key COLLATE BINARY
@@ -954,7 +954,7 @@ export class WorkersD1KvStore implements AtomicKvStore {
         FROM page
       )
       SELECT t.key, t.value, sized.page_rows
-      FROM sized JOIN "${this.#tableName}" AS t ON t.key COLLATE BINARY = sized.key
+      FROM sized JOIN main."${this.#tableName}" AS t ON t.key COLLATE BINARY = sized.key
       WHERE sized.total - sized.size < ${D1_LIST_PAGE_BYTES}
       ORDER BY t.key COLLATE BINARY
     `);

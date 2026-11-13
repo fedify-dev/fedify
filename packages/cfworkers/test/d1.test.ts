@@ -1010,6 +1010,25 @@ describe("WorkersD1KvStore atomic operations", () => {
     }
   });
 
+  it("supports backing table names that match list CTEs", async () => {
+    for (const tableName of ["page", "sized"]) {
+      const store = new WorkersD1KvStore(env.D1, { tableName });
+      await store.setMany([
+        { key: ["a"], value: "first" },
+        { key: ["a", "child"], value: "child" },
+        { key: ["b"], value: "second" },
+      ]);
+      const expected = [
+        { key: ["a", "child"], value: "child" },
+        { key: ["a"], value: "first" },
+        { key: ["b"], value: "second" },
+      ];
+      expect(await Array.fromAsync(store.list())).toEqual(expected);
+      expect(await Array.fromAsync(store.list(["a"]))).toEqual(expected.slice(0, 2));
+      await store.drop();
+    }
+  });
+
   it("uses binary key comparisons with a NOCASE column and binary primary index", async () => {
     await env.D1.prepare(`CREATE TABLE mixed_collation (
       key TEXT COLLATE NOCASE NOT NULL, value TEXT NOT NULL, expires INTEGER,
