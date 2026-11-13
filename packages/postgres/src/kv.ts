@@ -490,6 +490,18 @@ export class PostgresKvStore implements AtomicKvStore {
     `;
   }
 
+  #escapedTableName(sql: Sql | TransactionSql): string {
+    // Scoped clients do not expose options. The driver's identifier helper
+    // contains the exact escaped SQL name, including its column.to transform.
+    const identifier = sql(this.#tableName);
+    if (!("value" in identifier) || typeof identifier.value !== "string") {
+      throw new TypeError(
+        "The PostgreSQL client must expose its escaped identifier.",
+      );
+    }
+    return identifier.value;
+  }
+
   async #resolvedTable(sql: Sql | TransactionSql): Promise<string> {
     // Qualify the actual relation so internal CTE names cannot shadow it.
     // PostgreSQL formats both components; do not transform them a second time.
@@ -497,8 +509,7 @@ export class PostgresKvStore implements AtomicKvStore {
       SELECT pg_catalog.format('%I.%I', n.nspname, c.relname) AS name
       FROM pg_catalog.pg_class AS c
       JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
-      WHERE c.oid = (SELECT typrelid FROM pg_catalog.pg_type
-        WHERE oid = pg_typeof(NULL::${sql(this.#tableName)})::oid)
+      WHERE c.oid = pg_catalog.to_regclass(${this.#escapedTableName(sql)})
     `;
     if (typeof relation?.name !== "string") {
       throw new TypeError("The backing table could not be resolved.");
@@ -522,8 +533,7 @@ export class PostgresKvStore implements AtomicKvStore {
           WHERE i.inhparent = c.oid AND NOT child.relispartition
         ) AS supported
       FROM pg_catalog.pg_class AS c
-      WHERE c.oid = (SELECT typrelid FROM pg_catalog.pg_type
-        WHERE oid = pg_typeof(NULL::${sql(this.#tableName)})::oid)
+      WHERE c.oid = pg_catalog.to_regclass(${this.#escapedTableName(sql)})
     `;
   }
 
@@ -555,6 +565,8 @@ export class PostgresKvStore implements AtomicKvStore {
     payload: string,
     cutoff?: string,
   ): Promise<void> {
+    const [support] = await this.#support(sql);
+    this.#assertSupport(support?.supported);
     const origin =
       cutoff === undefined
         ? sql`statement_timestamp()`
@@ -585,6 +597,8 @@ export class PostgresKvStore implements AtomicKvStore {
     sql: Sql | TransactionSql,
     payload: string,
   ): Promise<void> {
+    const [support] = await this.#support(sql);
+    this.#assertSupport(support?.supported);
     const table = sql.unsafe(await this.#resolvedTable(sql));
     const [result] = await sql`
       WITH support AS (${this.#support(sql)}), input AS (${this.#input(sql, payload)}),
@@ -729,15 +743,7 @@ export class PostgresKvStore implements AtomicKvStore {
   async #initializeTable(): Promise<void> {
     // Caller rollback can remove a previously created table. Check each time,
     // but avoid write-class DDL when reads reuse a table in READ ONLY scope.
-    // Scoped clients do not expose options. The driver's identifier helper
-    // contains the exact escaped SQL name, including its column.to transform.
-    const identifier = this.#sql(this.#tableName);
-    if (!("value" in identifier) || typeof identifier.value !== "string") {
-      throw new TypeError(
-        "The PostgreSQL client must expose its escaped identifier.",
-      );
-    }
-    const table = identifier.value;
+    const table = this.#escapedTableName(this.#sql);
     const [existing] = await this.#sql`
       SELECT to_regclass(${table}) IS NOT NULL AS present
     `;

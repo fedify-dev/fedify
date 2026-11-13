@@ -1479,3 +1479,77 @@ dbTest(
     }
   },
 );
+
+dbTest(
+  "PostgresKvStore resolves relation names that shadow built-in types",
+  async () => {
+    const sql = postgres(dbUrl!, { max: 1 });
+    const schema = `fedify_types_${crypto.randomUUID().replaceAll("-", "")}`;
+    try {
+      await sql`CREATE SCHEMA ${sql(schema)}`;
+      await sql`SET search_path TO ${sql(schema)}`;
+      const store = new PostgresKvStore(sql, { tableName: "text" });
+      await store.set(key, 1);
+      assert.equal(await store.get(key), 1);
+      assert.deepEqual(await store.getMany([key]), [1]);
+      await store.setMany([
+        { key, value: 2 },
+        { key: ["b"], value: 3 },
+      ]);
+      assert.equal(
+        await store.casMany([{ key, expectedValue: 2, newValue: 4 }]),
+        true,
+      );
+      await store.deleteMany([["b"]]);
+      assert.deepEqual(await store.getMany([key, ["b"]]), [4, undefined]);
+    } finally {
+      await sql`RESET search_path`;
+      await sql`DROP SCHEMA IF EXISTS ${sql(schema)} CASCADE`;
+      await sql.end();
+    }
+  },
+);
+
+for (const operation of ["setMany", "deleteMany"] as const) {
+  dbTest(
+    `PostgresKvStore ${operation} rejects unsupported tables before statement triggers`,
+    async () => {
+      const f = fixture();
+      const child = `${f.tableName}_child`;
+      const audit = `${f.tableName}_audit`;
+      const fn = `${f.tableName}_audit_fn`;
+      try {
+        await f.store.set(key, 1);
+        const before = await state(f.sql, f.tableName);
+        await f.sql`CREATE TABLE ${f.sql(child)} () INHERITS (${f.sql(f.tableName)})`;
+        await f.sql`CREATE TABLE ${f.sql(audit)} (event text)`;
+        await f.sql`CREATE FUNCTION ${f.sql(fn)}() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          INSERT INTO ${f.sql(audit)} VALUES (TG_OP);
+          RETURN NULL;
+        END
+      $$`;
+        await f.sql`CREATE TRIGGER audit_statement AFTER INSERT OR UPDATE OR DELETE
+        ON ${f.sql(f.tableName)} FOR EACH STATEMENT EXECUTE FUNCTION ${f.sql(fn)}()`;
+        await assert.rejects(
+          operation === "setMany"
+            ? f.store.setMany([{ key, value: 2 }])
+            : f.store.deleteMany([key]),
+          TypeError,
+        );
+        assert.deepEqual(await state(f.sql, f.tableName), before);
+        assert.equal(
+          (await f.sql`SELECT count(*)::int AS size FROM ${f.sql(audit)}`)[0]
+            .size,
+          0,
+        );
+      } finally {
+        await f.sql`DROP TRIGGER IF EXISTS audit_statement ON ${f.sql(f.tableName)}`;
+        await f.sql`DROP FUNCTION IF EXISTS ${f.sql(fn)}()`;
+        await f.sql`DROP TABLE IF EXISTS ${f.sql(audit)}`;
+        await f.sql`DROP TABLE IF EXISTS ${f.sql(child)}`;
+        await f.dispose();
+      }
+    },
+  );
+}
