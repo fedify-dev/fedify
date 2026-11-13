@@ -110,6 +110,17 @@ Nested savepoints do not isolate overlapping operations in one outer
 transaction. Successful calls remain provisional until the outer commit.  The
 adapter does not commit, roll back, or release that outer transaction.
 
+Mutating forms of `cas()` acquire the table write lock and use one server
+timestamp for comparison and the replacement's TTL origin.  A `cas()` from
+`undefined` to `undefined` stays read-only.  If a trigger skips a matching
+write, the call rejects and rolls back its database effects; `false` means only
+a comparison mismatch.  `cas()` owns a transaction on pooled clients and uses a
+savepoint on transaction-scoped clients.  Reserved clients use a savepoint
+inside an existing manual transaction or a transaction owned by the call.
+Caller transaction isolation is unchanged.  Use reserved clients exclusively
+and sequentially during the call.  CAS locks in caller-owned transactions
+remain until the outer commit, including after a mismatch.
+
 Conditional batches and multi-key deletions acquire a [table write lock] before
 a fresh comparison/deletion snapshot.  This protects absent keys against
 ordinary and direct SQL writers, but serializes all writes to the table and its
@@ -125,8 +136,8 @@ and driver probing because an outer rollback can undo earlier DDL.  Setup runs
 before the batch savepoint, so a setup error can abort the caller transaction.
 With `initialized: true`, providing the schema remains the caller's
 responsibility. Pooled batch mutations start best-effort expiry cleanup after
-commit; caller-owned batches do not sweep expired rows.  Logical expiry is
-independent of cleanup.
+commit; caller-owned batches and `cas()` do not sweep expired rows.  Logical
+expiry is independent of cleanup.
 
 [table write lock]: https://www.postgresql.org/docs/18/sql-lock.html
 [ordinary autovacuum]: https://www.postgresql.org/docs/18/routine-vacuuming.html#AUTOVACUUM

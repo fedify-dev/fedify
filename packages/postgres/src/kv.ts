@@ -266,6 +266,9 @@ export class PostgresKvStore implements AtomicKvStore {
 
   /**
    * {@inheritDoc AtomicKvStore.cas}
+   * Mutating forms use a table-wide write lock and transaction or savepoint. Caller-owned
+   * clients require exclusive sequential use; reserved clients are supported.
+   * A trigger-skipped matching write rejects and rolls back its effects.
    * @since 2.4.0
    */
   async cas(
@@ -285,59 +288,86 @@ export class PostgresKvStore implements AtomicKvStore {
     const payload = JSON.stringify([
       { key, expected: expectedValue, value: newValue, ttl },
     ]);
-    await this.initialize();
-    // Range validation is not an expiry decision. The final CAS statement
-    // alone supplies its liveness cutoff and replacement's TTL origin.
+    await this.#initializeBatch();
+    // Validate TTL ranges before locking; comparison and mutation below share
+    // one cutoff chosen after concurrent writers have finished.
     await this.#validatePayload(this.#sql, payload, ttl === null ? 0 : 1);
 
+    // This pure absence check needs no mutation or write lock.
     if (expectedValue === undefined && newValue === undefined) {
       return (await this.get(key)) === undefined;
     }
 
-    let result;
-    if (expectedValue === undefined) {
-      result = await this.#sql`
-        INSERT INTO ${this.#sql(this.#tableName)} AS existing
-          (key, value, created, ttl)
-        VALUES (
-          ${key},
-          ${this.#json(newValue)},
-          statement_timestamp(),
-          ${ttl}
-        )
-        ON CONFLICT (key)
-          DO UPDATE SET
-            value = EXCLUDED.value,
-            created = EXCLUDED.created,
-            ttl = EXCLUDED.ttl
-          WHERE NOT coalesce(existing.ttl IS NULL
-            OR existing.created + existing.ttl > statement_timestamp(), false)
-        RETURNING key;
+    const applied = await this.#casScope(async (sql) => {
+      // A fresh comparison after this lock also protects absent keys from
+      // ordinary writers. Caller-owned locks survive until the outer commit.
+      await sql`LOCK TABLE ${sql(this.#tableName)} IN SHARE ROW EXCLUSIVE MODE`;
+      const table = sql.unsafe(await this.#resolvedTable(sql));
+      const live = sql`key = ${key} AND
+        (ttl IS NULL OR created + ttl > statement_timestamp())`;
+      const matches =
+        expectedValue === undefined
+          ? sql`NOT EXISTS (SELECT 1 FROM ${table} WHERE ${live})`
+          : sql`EXISTS (SELECT 1 FROM ${table} WHERE ${live}
+            AND value = ${this.#json(expectedValue)})`;
+      const [comparison] = await sql`
+        SELECT ${matches} AS matches,
+          to_char(statement_timestamp() AT TIME ZONE 'UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cutoff
       `;
-    } else if (newValue === undefined) {
-      result = await this.#sql`
-        DELETE FROM ${this.#sql(this.#tableName)}
-        WHERE key = ${key}
-          AND (ttl IS NULL OR created + ttl > statement_timestamp())
-          AND value = ${this.#json(expectedValue)}
-        RETURNING key;
-      `;
-    } else {
-      result = await this.#sql`
-        UPDATE ${this.#sql(this.#tableName)}
-        SET
-          value = ${this.#json(newValue)},
-          created = statement_timestamp(),
-          ttl = ${ttl}
-        WHERE key = ${key}
-          AND (ttl IS NULL OR created + ttl > statement_timestamp())
-          AND value = ${this.#json(expectedValue)}
-        RETURNING key;
-      `;
-    }
+      if (!comparison.matches) return false;
+      const cutoff = sql`${comparison.cutoff}::text::timestamptz`;
+      let result;
+      if (expectedValue === undefined) {
+        result = await sql`
+          INSERT INTO ${sql(this.#tableName)} AS existing
+            (key, value, created, ttl)
+          VALUES (
+            ${key},
+            ${this.#json(newValue)},
+            ${cutoff},
+            ${ttl}
+          )
+          ON CONFLICT (key)
+            DO UPDATE SET
+              value = EXCLUDED.value,
+              created = EXCLUDED.created,
+              ttl = EXCLUDED.ttl
+            WHERE NOT coalesce(existing.ttl IS NULL
+              OR existing.created + existing.ttl > ${cutoff}, false)
+          RETURNING key;
+        `;
+      } else if (newValue === undefined) {
+        result = await sql`
+          DELETE FROM ${sql(this.#tableName)}
+          WHERE key = ${key}
+            AND (ttl IS NULL OR created + ttl > ${cutoff})
+            AND value = ${this.#json(expectedValue)}
+          RETURNING key;
+        `;
+      } else {
+        result = await sql`
+          UPDATE ${sql(this.#tableName)}
+          SET
+            value = ${this.#json(newValue)},
+            created = ${cutoff},
+            ttl = ${ttl}
+          WHERE key = ${key}
+            AND (ttl IS NULL OR created + ttl > ${cutoff})
+            AND value = ${this.#json(expectedValue)}
+          RETURNING key;
+        `;
+      }
 
-    await this.#expire();
-    return result.length > 0;
+      if (result.length !== 1) {
+        throw new Error(
+          "A matching CAS mutation did not affect exactly one row.",
+        );
+      }
+      return true;
+    });
+    if (!this.#callerOwned()) await this.#expire();
+    return applied;
   }
 
   /**
@@ -488,6 +518,54 @@ export class PostgresKvStore implements AtomicKvStore {
       FROM jsonb_array_elements(${payload}::text::jsonb)
         WITH ORDINALITY AS items(item, ord)
     `;
+  }
+
+  async #casScope(
+    operation: (sql: Sql | TransactionSql) => Promise<boolean>,
+  ): Promise<boolean> {
+    const sql = this.#sql;
+    if ("savepoint" in sql && typeof sql.savepoint === "function") {
+      return await sql.savepoint(operation);
+    }
+    if (!("release" in sql)) {
+      return await (sql as Sql).begin(
+        "isolation level read committed",
+        operation,
+      );
+    }
+
+    // Reserved clients do not expose transaction status or savepoint(). Probe
+    // for an outer transaction without risking a COMMIT of caller-owned work.
+    const name = `fedify_cas_${crypto.randomUUID().replaceAll("-", "")}`;
+    let nested = true;
+    try {
+      await sql`SAVEPOINT ${sql(name)}`;
+    } catch (error) {
+      if (
+        !(
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          error.code === "25P01"
+        )
+      )
+        throw error;
+      nested = false;
+      await sql`BEGIN`;
+    }
+    try {
+      const result = await operation(sql);
+      if (nested) await sql`RELEASE SAVEPOINT ${sql(name)}`;
+      else await sql`COMMIT`;
+      return result;
+    } catch (error) {
+      // Rollback errors must reject too, never turn into a comparison mismatch.
+      if (nested) {
+        await sql`ROLLBACK TO SAVEPOINT ${sql(name)}`;
+        await sql`RELEASE SAVEPOINT ${sql(name)}`;
+      } else await sql`ROLLBACK`;
+      throw error;
+    }
   }
 
   #escapedTableName(sql: Sql | TransactionSql): string {

@@ -1000,7 +1000,7 @@ dbTest(
 );
 
 dbTest(
-  "PostgresKvStore single CAS liveness and TTL origin follow its final statement",
+  "PostgresKvStore single CAS liveness and TTL origin follow lock acquisition",
   async () => {
     const f = fixture();
     const validated = Promise.withResolvers<void>();
@@ -1557,3 +1557,170 @@ for (const operation of ["setMany", "deleteMany"] as const) {
     },
   );
 }
+
+for (const operation of [
+  "insert",
+  "update",
+  "delete",
+  "expired-update",
+] as const) {
+  for (const client of [
+    "pool",
+    "transaction",
+    "reserved",
+    "reserved-transaction",
+  ] as const) {
+    dbTest(
+      `PostgresKvStore single CAS rolls back skipped ${operation} on ${client}`,
+      async () => {
+        const f = fixture();
+        const audit = `${f.tableName}_audit`;
+        const fn = `${f.tableName}_filter`;
+        try {
+          await f.store.initialize();
+          if (operation !== "insert") await f.store.set(key, 1);
+          if (operation === "expired-update") {
+            await f.sql`UPDATE ${f.sql(f.tableName)} SET created = statement_timestamp() - interval '1 hour', ttl = interval '1 second'`;
+          }
+          const before = await state(f.sql, f.tableName);
+          await f.sql`CREATE TABLE ${f.sql(audit)} (event text)`;
+          await f.sql`CREATE FUNCTION ${f.sql(fn)}() RETURNS trigger LANGUAGE plpgsql AS $$
+          BEGIN
+            INSERT INTO ${f.sql(audit)} VALUES (TG_OP);
+            RETURN NULL;
+          END
+        $$`;
+          const event =
+            operation === "insert"
+              ? f.sql`INSERT`
+              : operation === "delete"
+                ? f.sql`DELETE`
+                : f.sql`UPDATE`;
+          await f.sql`CREATE TRIGGER filter_rows BEFORE ${event} ON ${f.sql(f.tableName)}
+          FOR EACH ROW EXECUTE FUNCTION ${f.sql(fn)}()`;
+          const run = async (sql: postgres.Sql | postgres.TransactionSql) => {
+            const store = new PostgresKvStore(sql, {
+              tableName: f.tableName,
+              initialized: true,
+            });
+            const value = operation === "delete" ? undefined : 2;
+            // A pooled mismatch can sweep expired rows; retain the legacy row
+            // when specifically exercising the upsert's UPDATE trigger.
+            if (operation !== "expired-update") {
+              assert.equal(await store.cas(key, "wrong", value), false);
+            }
+            await assert.rejects(
+              store.cas(
+                key,
+                operation === "insert" || operation === "expired-update"
+                  ? undefined
+                  : 1,
+                value,
+              ),
+            );
+            assert.equal((await sql`SELECT 1 AS healthy`)[0].healthy, 1);
+          };
+          if (client === "pool") await run(f.sql);
+          else if (client === "transaction") await f.sql.begin(run);
+          else {
+            const sql = await f.sql.reserve();
+            let transaction = client === "reserved-transaction";
+            try {
+              if (transaction) await sql`BEGIN`;
+              await run(sql);
+              if (transaction) await sql`COMMIT`;
+              transaction = false;
+            } finally {
+              if (transaction) await sql`ROLLBACK`;
+              sql.release();
+            }
+          }
+          assert.deepEqual(await state(f.sql, f.tableName), before);
+          assert.equal(
+            (await f.sql`SELECT count(*)::int AS size FROM ${f.sql(audit)}`)[0]
+              .size,
+            0,
+          );
+        } finally {
+          await f.sql`DROP TRIGGER IF EXISTS filter_rows ON ${f.sql(f.tableName)}`;
+          await f.sql`DROP FUNCTION IF EXISTS ${f.sql(fn)}()`;
+          await f.sql`DROP TABLE IF EXISTS ${f.sql(audit)}`;
+          await f.dispose();
+        }
+      },
+    );
+  }
+}
+
+for (const outer of [false, true]) {
+  dbTest(
+    `PostgresKvStore single CAS preserves reserved transaction ownership outer=${outer}`,
+    async () => {
+      const f = fixture();
+      try {
+        await f.store.initialize();
+        const sql = await f.sql.reserve();
+        let transaction = outer;
+        try {
+          if (outer) await sql`BEGIN`;
+          const store = new PostgresKvStore(sql, {
+            tableName: f.tableName,
+            initialized: true,
+          });
+          assert.equal(await store.cas(key, undefined, 1), true);
+          assert.equal(await store.cas(key, "wrong", 2), false);
+          assert.equal(await store.cas(key, 1, 2), true);
+          if (outer) await sql`ROLLBACK`;
+          transaction = false;
+        } finally {
+          if (transaction) await sql`ROLLBACK`;
+          sql.release();
+        }
+        assert.equal(await f.store.get(key), outer ? undefined : 2);
+      } finally {
+        await f.dispose();
+      }
+    },
+  );
+}
+
+dbTest(
+  "PostgresKvStore single CAS retains repeatable-read caller support",
+  async () => {
+    const f = fixture();
+    try {
+      await f.store.set(key, 1);
+      await f.sql.begin("isolation level repeatable read", async (sql) => {
+        const store = new PostgresKvStore(sql, {
+          tableName: f.tableName,
+          initialized: true,
+        });
+        assert.equal(await store.cas(key, 1, 2), true);
+        assert.equal(await store.cas(key, 1, 3), false);
+      });
+      assert.equal(await f.store.get(key), 2);
+    } finally {
+      await f.dispose();
+    }
+  },
+);
+
+dbTest(
+  "PostgresKvStore single CAS absence checks retain read-only caller support",
+  async () => {
+    const f = fixture();
+    try {
+      await f.store.set(key, 1);
+      await f.sql.begin("read only", async (sql) => {
+        const store = new PostgresKvStore(sql, {
+          tableName: f.tableName,
+          initialized: true,
+        });
+        assert.equal(await store.cas(["missing"], undefined, undefined), true);
+        assert.equal(await store.cas(key, undefined, undefined), false);
+      });
+    } finally {
+      await f.dispose();
+    }
+  },
+);

@@ -519,6 +519,12 @@ the store.  Production codecs can support different values and comparison
 rules. Cache cleanup examples apply only to cache prefixes; authoritative state
 such as budgets and replay cutoffs needs its own retention policy.
 
+Mutating single-key PostgreSQL `cas()` takes a table write lock and rolls back
+trigger-skipped matching mutations instead of returning `false`.  It supports
+reserved clients using a per-call transaction or a savepoint in an existing
+manual transaction.  Caller-owned connections require exclusive sequential use;
+CAS locks remain until outer commit even on mismatch.
+
 For PostgreSQL atomic operations, use one ordinary table or declarative
 partition and the default JSON codec (`jsonb` equality ignores object member
 order).  Nonempty `casMany()` and multi-key `deleteMany()` require a pool or

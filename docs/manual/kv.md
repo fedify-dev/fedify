@@ -344,6 +344,17 @@ Await each call before sending another command on that transaction: nested
 savepoints do not isolate overlapping calls.  Success remains provisional until
 the outer commit, and successful batch locks remain held until then.
 
+Mutating forms of `cas()` acquire the table write lock and use one server
+timestamp for comparison and the replacement's TTL origin.  A `cas()` from
+`undefined` to `undefined` stays read-only.  If a trigger skips a matching
+write, the call rejects and rolls back its database effects; `false` means only
+a comparison mismatch.  `cas()` owns a transaction on pooled clients and uses a
+savepoint on transaction-scoped clients.  Reserved clients use a savepoint
+inside an existing manual transaction or a transaction owned by the call.
+Caller transaction isolation is unchanged.  Use reserved clients exclusively
+and sequentially during the call.  CAS locks in caller-owned transactions
+remain until the outer commit, including after a mismatch.
+
 Conditional batches and multi-key deletions acquire a
 [table write lock] before a
 fresh snapshot, protecting absent keys against ordinary and direct SQL writers.
@@ -373,8 +384,8 @@ attempted write rolls back the batch.
 Caller-owned batches with `initialized: false` repeat idempotent table setup
 and driver probing after possible outer rollback.  Setup precedes the batch
 savepoint and its errors can abort the outer transaction.  `initialized: true`
-keeps schema responsibility with the caller.  Only pooled batches start
-best-effort cleanup after commit; logical expiry never depends on cleanup.
+keeps schema responsibility with the caller.  Only pooled batches and `cas()`
+start best-effort cleanup after commit; logical expiry never depends on cleanup.
 
 Atomic operations do not strengthen unlogged-table durability or override
 server WAL, `synchronous_commit`, storage, or replica settings.  Lost responses
