@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/adonisjs: Integrate Fedify with AdonisJS
 ================================================
 

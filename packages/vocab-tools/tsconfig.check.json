@@ -1,12 +1,5 @@
 {
   "extends": "../../tsconfig.node.json",
   "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
-  "exclude": [
-    "dist",
-    "dist-tests",
-    "node_modules",
-    // Uses Deno's @std/testing and bun:test snapshots; owned by
-    // check:types:deno until #1288.
-    "src/class.test.ts"
-  ]
+  "exclude": ["dist", "dist-tests", "node_modules"]
 }

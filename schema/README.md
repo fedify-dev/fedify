@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 Fedify JSON schemas
 ===================
 
@@ -51,7 +49,7 @@ The *.json* files here are generated from those objects.  After editing an
 embedded schema, regenerate the published copies:
 
 ~~~~ sh
-deno task -f @fedify/cli generate-bench-schema
+mise run generate:bench-schema
 ~~~~
 
 The matching TypeScript types live next to each schema

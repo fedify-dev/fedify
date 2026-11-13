@@ -91,8 +91,7 @@ jobs:
       - name: Run smoke tests
         run: |
           set -a && source test/smoke/.env.test && set +a
-          deno run --allow-net --allow-env --unstable-temporal \
-            test/smoke/orchestrator.ts
+          node --experimental-strip-types test/smoke/orchestrator.ts
 
       - name: Collect logs on failure
         if: failure()

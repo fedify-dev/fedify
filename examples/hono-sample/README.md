@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 Hono integration sample
 =======================
 

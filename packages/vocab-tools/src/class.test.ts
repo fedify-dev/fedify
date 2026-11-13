@@ -6,6 +6,18 @@ import { generateClasses, sortTopologically } from "./class.ts";
 import { getDataCheck } from "./type.ts";
 import { loadSchemaFiles, type TypeSchema } from "./schema.ts";
 
+// The part of Deno's global that the Deno snapshot test uses, declared here
+// so that the Node.js-based type check does not need Deno's types.  It is only
+// accessed after checking that it exists.
+declare const Deno: {
+  test(
+    name: string,
+    fn: (
+      t: Parameters<typeof import("@std/testing/snapshot").assertSnapshot>[0],
+    ) => Promise<void>,
+  ): void;
+};
+
 test("sortTopologically()", () => {
   const sorted = sortTopologically({
     "https://example.com/quux": {

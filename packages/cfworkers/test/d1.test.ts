@@ -530,7 +530,15 @@ describe("WorkersD1KvStore", () => {
     // A page that ends exactly at the row limit needs one more query:
     await store.delete(["paged-other"]);
     await store.delete(["other"]);
-    for (const key of keys.slice(2000)) await store.delete(key);
+    await env.D1.batch(
+      keys
+        .slice(2000)
+        .map((key) =>
+          env.D1.prepare("DELETE FROM fedify_kv WHERE key = ?").bind(
+            JSON.stringify(key),
+          ),
+        ),
+    );
     before = spy.queries.length;
     expect((await collect(store.list())).length).toBe(2000);
     expect(spy.queries.length - before).toBe(3);

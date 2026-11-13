@@ -134,9 +134,3 @@ proper_nouns = [
   "WebFinger",
   "x-forwarded-fetch",
 ]
-
-[code_block.formatters]
-#javascript = ["deno", "fmt", "--ext=js", "-"]
-#json = ["deno", "fmt", "--ext=jsonc", "-"]
-#jsonc = ["deno", "fmt", "--ext=jsonc", "-"]
-#typescript = ["deno", "fmt", "--ext=ts", "-"]

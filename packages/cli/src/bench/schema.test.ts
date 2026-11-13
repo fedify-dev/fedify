@@ -123,7 +123,7 @@ for (const { name, fileName, schema } of PUBLISHED_SCHEMAS) {
       published,
       serializeSchema(schema),
       `schema/bench/${fileName} is out of sync; run ` +
-        `scripts/generate-bench-schema.ts`,
+        `mise run generate:bench-schema`,
     );
   });
 }

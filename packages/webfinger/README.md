@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/webfinger: WebFinger client library for ActivityPub
 ===========================================================
 

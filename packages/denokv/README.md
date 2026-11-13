@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/denokv: Adapt Fedify with Deno KV
 =========================================
 
@@ -63,8 +61,8 @@ const federation = createFederation({
 
 `DenoKvStore` is a key–value store implementation for [Deno] runtime that uses
 Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and good
-performance for Deno environments.  It's suitable for production use in Deno
-applications.
+performance for Deno environments.  It can be used in existing Deno
+applications, but it is not recommended for new projects.
 
 
 `DenoKvMessageQueue`
@@ -72,8 +70,8 @@ applications.
 
 `DenoKvMessageQueue` is a message queue implementation for [Deno] runtime that
 uses Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and
-good performance for Deno environments.  It's suitable for production use in
-Deno applications.
+good performance for Deno environments.  It can be used in existing Deno
+applications, but it is not recommended for new projects.
 
 
 Installation

@@ -1,0 +1,10 @@
+{
+  "name": "@fedify/smoke-test-harness",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "srvx": "catalog:"
+  }
+}

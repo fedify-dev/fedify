@@ -165,7 +165,10 @@ test("response body capture revokes locked readers and bounds callback cleanup",
         new Response(body),
         {
           ...limits,
-          timeoutMs: 25,
+          // Only the hanging callback has to reach the deadline.  The other
+          // modes settle on their own, so a short deadline would race them
+          // when the machine is busy.
+          timeoutMs: mode === "hangs" ? 25 : 5_000,
         },
         async (stream, current) => {
           signal = current;
@@ -307,7 +310,10 @@ test("response body capture bounds oversized and nonterminating sources", async 
         new Response(original),
         {
           maxBytes: 17,
-          timeoutMs: 50,
+          // Only the source that never yields bytes has to reach the
+          // deadline.  The others hit the byte limit first, which can take
+          // longer than a short deadline on a busy machine.
+          timeoutMs: mode === "empty-infinite" ? 50 : 5_000,
         },
         async (body) => {
           const reader = body.getReader();

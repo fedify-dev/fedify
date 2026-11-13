@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/elysia: Integrate Fedify with Elysia
 ============================================
 

@@ -58,12 +58,15 @@ test("stopping a command waits for its output and kills descendants", async () =
     await child.stop();
     await child.status;
     // Linux may briefly retain a killed, reparented process as a zombie.
+    // Once it is reaped, opening its stat file fails with ENOENT, or reading
+    // an already opened one fails with ESRCH.
     if (process.platform === "linux") {
       try {
         const stat = await readFile(`/proc/${pid}/stat`, "utf8");
         equal(stat.split(") ")[1][0], "Z", "descendant is no longer running");
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        const { code } = error as NodeJS.ErrnoException;
+        if (code !== "ENOENT" && code !== "ESRCH") throw error;
       }
     } else {
       throws(() => process.kill(pid, 0), { code: "ESRCH" });

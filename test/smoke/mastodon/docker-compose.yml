@@ -14,9 +14,6 @@
 #   - All services share a single network for simplicity; DNS resolution
 #     is unambiguous because backend names differ from Caddy aliases
 
-volumes:
-  harness-node-modules:
-
 networks:
   smoke:
     driver: bridge
@@ -44,33 +41,28 @@ services:
 
   # Fedify test harness — renamed to avoid colliding with the Caddy alias.
   fedify-harness-backend:
-    image: denoland/deno:2.9.7
+    image: node:22-slim
     working_dir: /workspace
     volumes:
       - ../../../:/workspace
-      - harness-node-modules:/workspace/node_modules
       - ./.certs:/certs:ro
     command:
-      - run
-      - --allow-net
-      - --allow-env
-      - --allow-read
-      - --allow-write
-      - --unstable-temporal
+      - node
+      - --experimental-strip-types
       - test/smoke/harness/main.ts
     environment:
       HARNESS_ORIGIN: "https://fedify-harness"
       STRICT_MODE: "1"
-      DENO_CERT: "/certs/ca.crt"
+      NODE_EXTRA_CA_CERTS: "/certs/ca.crt"
     networks: [smoke]
     ports: ["3001:3001"]
     healthcheck:
       test:
         [
           "CMD",
-          "deno",
-          "eval",
-          "const r = await fetch('http://localhost:3001/_test/health'); if (!r.ok) Deno.exit(1);",
+          "node",
+          "-e",
+          "fetch('http://localhost:3001/_test/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1));",
         ]
       interval: 5s
       retries: 30

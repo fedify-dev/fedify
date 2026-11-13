@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/astro: Integrate Fedify with `Astro`
 ============================================
 
