@@ -119,11 +119,13 @@ reject, and a lost response can leave commit status unknown.  Re-read and
 re-evaluate the application rule after a mismatch; include a non-reused
 version in values if ABA changes must be detected.
 
-Values use `JSON.stringify()`/`JSON.parse()`, including their coercions:
-nonfinite numbers become `null`, and undefined object members are omitted.
-Top-level `undefined` is only an absence/deletion sentinel in CAS; it cannot
-be stored.  Functions, symbols, cycles and `BigInt` values without a JSON
-serialization reject.  CAS compares the persisted JSON structurally, ignoring
+Values use `JSON.stringify()` and `JSON.parse()`.  During serialization,
+`JSON.stringify()` coerces nonfinite numbers to `null`.  Object members with
+`undefined`, function, or symbol values are omitted; in arrays, those elements
+become `null`.  Top-level `undefined` is only an absence/deletion sentinel in
+CAS; it cannot be stored.  Serialization rejects when `JSON.stringify()`
+returns `undefined` or throws.  Cycles and `BigInt` values need a custom JSON
+serialization.  CAS compares the persisted JSON structurally, ignoring
 object member order while retaining array order and types.  Values deeper
 than SQLite's 1,000-level JSON limit use exact serialized comparison instead.
 External guard writes, triggers and custom constraints that alter the

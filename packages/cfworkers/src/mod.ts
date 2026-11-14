@@ -357,9 +357,10 @@ const D1_EXPIRE_BATCH_SIZE = 100;
  * Sessions retain their own bookmark and sequential-consistency behavior;
  * the adapter never replaces them or calls `withSession()`.
  *
- * Values round-trip through `JSON.stringify()` and `JSON.parse()`, including
- * JSON coercions such as nonfinite numbers becoming `null` and omitted
- * undefined object members.  Values without a JSON serialization reject.
+ * Values round-trip through `JSON.stringify()` and `JSON.parse()`.
+ * Serialization coerces nonfinite numbers to `null`.  Object members with
+ * `undefined`, function, or symbol values are omitted; in arrays, those
+ * elements become `null`.  Values without a JSON serialization reject.
  * CAS compares persisted JSON structurally, ignoring object member order but
  * preserving array order and types.  Beyond SQLite's 1,000-level JSON depth
  * limit, comparison falls back to exact serialized equality.  Include a
