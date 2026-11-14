@@ -318,6 +318,81 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+#### PostgreSQL atomic operations
+
+*This API is available since Fedify 2.5.0.*
+
+`PostgresKvStore` implements `AtomicKvStore` within one configured ordinary
+table or declarative partition, using the existing schema and
+PostgreSQL-representable Unicode string keys.  Ordinary inheritance parents and
+children are unsupported for nonempty batches.  Tables where row-level security
+is active for the current role are also rejected, because policies can filter
+individual mutations.  `getMany()` returns one
+input-ordered snapshot; `setMany()` writes one batch; `casMany()` compares all
+expectations before applying any changes.  JSON `null` remains distinct from
+missing or expired `undefined`.
+
+Nonempty `casMany()` and `deleteMany()` with more than one key require a pool
+or a `READ COMMITTED` transaction-scoped Postgres.js client.  Reserved clients
+reject those scopes before SQL; they still support ordinary methods, the
+single-statement batches, single-key deletion, and empty batches.  Unsupported
+caller isolation rejects.  Method presence does not certify a client's scope.
+
+Caller-owned transactions must be used exclusively and sequentially throughout
+each atomic call, including initialization, every store wrapper, and raw SQL.
+Await each call before sending another command on that transaction: nested
+savepoints do not isolate overlapping calls.  Success remains provisional until
+the outer commit, and successful batch locks remain held until then.
+
+Mutating forms of `cas()` acquire the table write lock and use one server
+timestamp for comparison and the replacement's TTL origin.  A `cas()` from
+`undefined` to `undefined` stays read-only.  If a trigger skips a matching
+write, the call rejects and rolls back its database effects; `false` means only
+a comparison mismatch.  `cas()` owns a transaction on pooled clients and uses a
+savepoint on transaction-scoped clients.  Reserved clients use a savepoint
+inside an existing manual transaction or a transaction owned by the call.
+Caller transaction isolation is unchanged.  Use reserved clients exclusively
+and sequentially during the call.  CAS locks in caller-owned transactions
+remain until the outer commit, including after a mismatch.
+
+Conditional batches and multi-key deletions acquire a
+[table write lock] before a
+fresh snapshot, protecting absent keys against ordinary and direct SQL writers.
+This serializes writes to the whole table and its descendants, and can interfere
+with autovacuum.  A mismatch releases locks acquired in the batch savepoint;
+previous writes and setup may still hold locks.  Prior caller writes can cause
+lock-upgrade deadlocks, requiring outer rollback before retry.  Errors and
+configured lock timeouts reject; no automatic retry occurs.
+
+The default JSON codec uses PostgreSQL `jsonb` equality: object member order
+is ignored, array order matters, Dates normalize to strings, and nonfinite
+numbers normalize to JSON `null`.  Big integers, circular/unencodable values,
+NUL characters, and malformed Unicode reject.  Irreversible value/JSON
+transforms are unsupported; identifier transforms remain usable.  Raw SQL
+values must round-trip through the JavaScript JSON codec for CAS expectations.
+
+TTLs retain PostgreSQL interval, session-timezone, and calendar semantics at
+microsecond precision, using one server expiry cutoff per operation.  Omitting
+a replacement TTL clears expiry; zero durations expire immediately, and
+negative Temporal durations reject. A blocked write's TTL origin may precede
+its commit.  Invalid JSON/TTL inputs reject even on mismatch.  There is no
+fixed batch-count or key-length maximum; backend field, index, protocol, and
+memory limits apply without splitting. A physical index-size error arises on an
+attempted write; a mismatch does not attempt insertion, while a failed
+attempted write rolls back the batch.
+
+Caller-owned batches with `initialized: false` repeat idempotent table setup
+and driver probing after possible outer rollback.  Setup precedes the batch
+savepoint and its errors can abort the outer transaction.  `initialized: true`
+keeps schema responsibility with the caller.  Only pooled batches and `cas()`
+start best-effort cleanup after commit; logical expiry never depends on cleanup.
+
+Atomic operations do not strengthen unlogged-table durability or override
+server WAL, `synchronous_commit`, storage, or replica settings.  Lost responses
+can leave commit status unknown.  See the
+[package's atomic scope guide]
+for the full client, codec, limit, and transaction contract.
+
 #### PostgreSQL expiry index
 
 *This optimization is available since Fedify 2.5.0.*
@@ -412,6 +487,8 @@ its `AT TIME ZONE` equivalent, and has either no predicate or
 `WHERE ttl IS NOT NULL`.
 
 [`PostgresKvStore`]: https://jsr.io/@fedify/postgres/doc/kv/~/PostgresKvStore
+[table write lock]: https://www.postgresql.org/docs/18/sql-lock.html
+[package's atomic scope guide]: https://github.com/fedify-dev/fedify/tree/main/packages/postgres#atomic-keyvalue-operations
 [partitioned index procedure]: https://www.postgresql.org/docs/current/ddl-partitioning.html#DDL-PARTITIONING-DECLARATIVE-MAINTENANCE
 
 ### [`PgliteKvStore`]
@@ -1008,15 +1085,15 @@ check or an operation receipt before repeating effects.
 
 ### Current support
 
-`MemoryKvStore`, `SqliteKvStore`, and `PgliteKvStore` implement the full
-`AtomicKvStore` contract.
-Existing single-key CAS support does not imply atomic multi-key support.
-The linked issues track separate adapter implementations:
+`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, and `PgliteKvStore`
+implement `AtomicKvStore` in their documented scopes.  Existing single-key CAS
+support does not imply atomic multi-key support.  The linked issues track
+separate adapter implementations:
 
 | Implementation        | `AtomicKvStore` | Status                                                                                            |
 | --------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
 | `MemoryKvStore`       | Yes             | Development and testing only; one instance.                                                       |
-| `PostgresKvStore`     | No              | Planned in [#1364].                                                                               |
+| `PostgresKvStore`     | Yes             | One table; see [client and transaction restrictions](#postgresql-atomic-operations).              |
 | `RedisKvStore`        | No              | Planned in [#1365].                                                                               |
 | `PgliteKvStore`       | Yes             | Since 2.5.0; one normal PGlite owner and table, JSONB comparison.                                 |
 | `SqliteKvStore`       | Yes             | One configured table/database; writable handles, JSON values; see [SQLite scope](#sqlitekvstore). |
@@ -1027,7 +1104,6 @@ The linked issues track separate adapter implementations:
 | `WorkersD1KvStore`    | No              | Base adapter [PR #1360] supports single-key CAS; atomic follow-up is [#1379].                     |
 
 [PR #1360]: https://github.com/fedify-dev/fedify/pull/1360
-[#1364]: https://github.com/fedify-dev/fedify/issues/1364
 [#1365]: https://github.com/fedify-dev/fedify/issues/1365
 [#1368]: https://github.com/fedify-dev/fedify/issues/1368
 [#1379]: https://github.com/fedify-dev/fedify/issues/1379
@@ -1641,6 +1717,14 @@ For example, `PgliteKvStore` uses the exclusive transaction callback of
 one supported PGlite owner.  Independent store wrappers share that owner, whose
 client queue excludes other normal queries for the callback's entire lifetime,
 including checks for absent keys.
+
+For PostgreSQL adapters, locking only existing rows does not protect absent
+keys.  `PostgresKvStore` uses a table write lock followed by a fresh READ
+COMMITTED snapshot; its [client restrictions](#postgresql-atomic-operations)
+also require exclusive sequential use of caller-owned transactions.  PostgreSQL
+locks and nested savepoints do not isolate overlapping calls in the same outer
+transaction.  Test supported independent clients rather than assuming one
+transaction-scoped handle provides that concurrency.
 
 Run the [shared atomic conformance tests](./test.md), using independent
 clients sharing an isolated backend for persistent adapters.  Add

@@ -864,8 +864,8 @@ test(
           `;
           assert.equal(written.fresh, true, "CAS must not backdate its TTL");
         }
-        // These rows expire after the transaction began.  The first CAS above
-        // has already put cleanup on cooldown, so they remain physically present.
+        // These rows expire after the transaction began. Caller-owned CAS
+        // defers cleanup, so they remain physically present.
         await tx`
           INSERT INTO ${tx(tableName)} (key, value, created, ttl)
           SELECT ARRAY[key], '"expired"'::jsonb, statement_timestamp(), INTERVAL '0'

@@ -138,6 +138,41 @@ test(
   },
 );
 
+for (const difference of ["timezone", "offset"] as const) {
+  test(
+    `PostgresKvStore does not reuse an expiry index with a different ${difference}`,
+    { skip },
+    async () => {
+      if (!dbUrl) return;
+      const { sql, tableName, statements } = database();
+      const store = new PostgresKvStore(sql, { tableName });
+      try {
+        await legacyTable(sql, tableName);
+        const expression =
+          difference === "timezone"
+            ? sql`timezone('Etc/GMT+1', timezone('UTC', created) + ttl)`
+            : sql`timezone('UTC', timezone('UTC', created) + ttl + interval '1 second')`;
+        await sql`CREATE INDEX ${sql(`near_match_${tableName}`)} ON ${sql(tableName)}
+          ((${expression})) WHERE ttl IS NOT NULL`;
+        assert.equal((await indexes(sql, tableName)).length, 1);
+        statements.length = 0;
+        await store.initialize();
+        assert.equal((await indexes(sql, tableName)).length, 2);
+        assert(statements.some((query) => /CREATE INDEX/.test(query)));
+        statements.length = 0;
+        await new PostgresKvStore(sql, { tableName }).initialize();
+        assert.equal((await indexes(sql, tableName)).length, 2);
+        assert(
+          !statements.some((query) => /LOCK TABLE|CREATE INDEX/.test(query)),
+        );
+      } finally {
+        await store.drop();
+        await sql.end();
+      }
+    },
+  );
+}
+
 test(
   "PostgresKvStore leaves populated legacy tables unlocked until manual migration",
   { skip },
@@ -239,9 +274,10 @@ test(
       )} VALUES (ARRAY['null-created'], '1', NULL, INTERVAL '1 day')`;
       assert.equal(await store.get(["null-created"]), undefined);
       assert.equal(
-        await store.cas(["null-created"], undefined, "wrong"),
-        false,
+        await store.cas(["null-created"], undefined, "recovered"),
+        true,
       );
+      assert.equal(await store.get(["null-created"]), "recovered");
     } finally {
       await store.drop();
       await sql.end();
