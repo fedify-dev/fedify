@@ -2,19 +2,36 @@
 links:
   '#1135': https://github.com/fedify-dev/fedify/issues/1135
   '#1360': https://github.com/fedify-dev/fedify/pull/1360
+  '#1361': https://github.com/fedify-dev/fedify/issues/1361
+  '#1379': https://github.com/fedify-dev/fedify/issues/1379
+  '#1432': https://github.com/fedify-dev/fedify/pull/1432
+  '#1440': https://github.com/fedify-dev/fedify/pull/1440
 ---
  -  Added `WorkersD1KvStore`, a `KvStore` implementation backed by
-    Cloudflare D1.  Fedify writes to its key–value store about as often as it
-    reads from it, and some of its records, such as idempotency records and
-    signature nonces, need strong consistency, which Workers KV does not
-    provide.  `WorkersD1KvStore` is strongly consistent and supports `cas()`,
-    so features that need atomic updates no longer fall back to non-atomic
-    code paths or become unavailable, as forwarding to FEP-ef61 portable
-    inboxes does with Workers KV.  It is now the recommended `KvStore` for
-    Cloudflare Workers; consider migrating from `WorkersKvStore`.
-    [[#1135], [#1360] by Beiyan Yunyi]
+    Cloudflare D1.  It is now the recommended store for Cloudflare Workers;
+    consider migrating from `WorkersKvStore`.  Its consistent reads and
+    single-key `cas()` enable features that Workers KV cannot support, such
+    as forwarding to FEP-ef61 portable inboxes.
+    [[#1135], [#1360] by Beiyan Yunyi] [[#1440]]
 
-    Pass the `D1Database` binding itself, since D1 sessions can read stale
-    data from replicas.  Because the store is constructed per request, create
-    its table with a D1 migration and pass `initialized: true` in production
-    to avoid an extra query per request.
+    The store also implements `AtomicKvStore` for snapshot reads and
+    all-or-nothing multi-key writes, deletions, and compare-and-swap (CAS)
+    batches.  Single-key and multi-key CAS use the same JSON comparison and
+    millisecond TTL rules.  Calls that exceed the size limits are rejected
+    rather than split into smaller batches.  `WorkersKvStore` still has
+    neither CAS nor atomic multi-key support.
+    [[#1361], [#1379], [#1432], [#1440]]
+
+    Switching from `WorkersKvStore` does not copy existing Workers KV entries
+    into D1.  If the old idempotency records are not migrated separately, an
+    activity processed before the switch may be processed again if it is
+    redelivered afterward.
+
+    Pass the `D1Database` binding itself for fresh primary reads;
+    D1 sessions created by the caller may read from stale replicas.  In
+    production, create the entry table, its `<tableName>_atomic` guard table,
+    and the expiry index with D1 migrations before using `initialized: true`
+    to skip per-instance schema queries.  See the [D1 store guide] for the
+    schema and operation limits.
+
+[D1 store guide]: https://fedify.dev/manual/kv#workersd1kvstore-cloudflare-workers-only

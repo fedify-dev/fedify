@@ -1217,24 +1217,22 @@ check or an operation receipt before repeating effects.
 
 ### Current support
 
-`MemoryKvStore`, `PostgresKvStore`, `RedisKvStore`, `SqliteKvStore`,
-`PgliteKvStore`, `MysqlKvStore`, and `WorkersD1KvStore` implement
-`AtomicKvStore` in their documented scopes.  Existing single-key CAS support
-does not imply atomic multi-key support.  The linked issues track separate
-adapter implementations:
+The table below shows which stores implement `AtomicKvStore` and the scope
+each one covers.  Single-key CAS support does not imply atomic multi-key
+support.
 
-| Implementation        | `AtomicKvStore` | Status                                                                                            |
-| --------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
-| `MemoryKvStore`       | Yes             | Development and testing only; one instance.                                                       |
-| `PostgresKvStore`     | Yes             | One table; see [client and transaction restrictions](#postgresql-atomic-operations).              |
-| `RedisKvStore`        | Yes             | Official Redis 7.2.17, 7.4.12, or 8.10.3; standalone or one Cluster slot; 128 entries/1 MiB.      |
-| `PgliteKvStore`       | Yes             | Since 2.5.0; one normal PGlite owner and table, JSONB comparison.                                 |
-| `SqliteKvStore`       | Yes             | One configured table/database; writable handles, JSON values; see [SQLite scope](#sqlitekvstore). |
-| `MysqlKvStore`        | Yes             | InnoDB; one primary database/table, up to 1,000 entries per operation.                            |
-| `DenoKvStore`         | No              | No atomic adapter child issue; deprecated since 2.5.0.                                            |
-| `NetlifyBlobsKvStore` | No              | Single-key CAS only; no atomic adapter child issue.                                               |
-| `WorkersKvStore`      | No              | No CAS; cannot implement this contract with Workers KV.                                           |
-| `WorkersD1KvStore`    | Yes             | One configured table in one D1 database; see its codec, TTL, size and session restrictions above. |
+| Implementation                                                  | `AtomicKvStore` | Scope and limits                                                                                                |
+| --------------------------------------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------- |
+| [`MemoryKvStore`](#memorykvstore)                               | Yes             | Development and testing only; one instance.                                                                     |
+| [`PostgresKvStore`](#postgresql-atomic-operations)              | Yes             | One table; client and transaction restrictions apply.                                                           |
+| [`RedisKvStore`](#rediskvstore)                                 | Yes             | Official Redis 7.2.17, 7.4.12, or 8.10.3; standalone or one Cluster slot; up to 128 entries and 1 MiB per call. |
+| [`PgliteKvStore`](#pglitekvstore)                               | Yes             | One PGlite owner and table; JSONB comparison.                                                                   |
+| [`SqliteKvStore`](#sqlitekvstore)                               | Yes             | One configured table in one database; writable handles, JSON values.                                            |
+| [`MysqlKvStore`](#mysqlkvstore)                                 | Yes             | InnoDB; one table in one primary database, up to 1,000 entries per operation.                                   |
+| [`DenoKvStore`](#denokvstore-deno-only)                         | No              | Deprecated since 2.5.0.                                                                                         |
+| [`NetlifyBlobsKvStore`](#netlifyblobskvstore)                   | No              | Single-key CAS only.                                                                                            |
+| [`WorkersKvStore`](#workerskvstore-cloudflare-workers-only)     | No              | No CAS; cannot implement this contract with Workers KV.                                                         |
+| [`WorkersD1KvStore`](#workersd1kvstore-cloudflare-workers-only) | Yes             | One configured table in one D1 database; codec, TTL, size and session restrictions apply.                       |
 
 
 Bounding how long cache entries live
