@@ -536,11 +536,13 @@ automatically moved. Each batch request is limited to 128 entries and 1 MiB of
 key, encoded value/expectation, and argument data. TTLs round up to seconds
 with a minimum of one second and batch maximum of 2,147,483,647 seconds. With
 `JsonCodec`, CAS compares encoded bytes, so object property order matters.
-Grant read/write key access for `EVAL`, including snapshots. Snapshot reads
-route to primaries, but Cluster `list()` retains its existing `SCAN` coverage
-limitation. Redis persistence/failover and ioredis replays remain separate from
-per-call atomicity; a later CAS mismatch does not prove a prior attempt never
-committed. Deno KV and
+Grant read/write key access for `EVAL`, including snapshots. Snapshots also
+require `GET`; mutations require `GET` for CAS or `EXISTS` for unconditional
+batches, plus the applicable `DEL`, `SET`, or `SETEX` permissions. Snapshot
+reads route to primaries, but Redis Cluster `list()` retains its existing `SCAN`
+coverage limitation. Redis persistence/failover and ioredis replays remain
+separate from per-call atomicity; a later CAS mismatch does not prove a prior
+attempt never committed. Deno KV and
 Netlify Blobs have no atomic adapter child issue.  `WorkersKvStore` lacks CAS.
 D1 operations cover one configured table in one database, with JSON
 serialization and millisecond TTLs.  Check the [atomic support matrix] and

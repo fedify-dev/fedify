@@ -474,18 +474,12 @@ To be released.
     rejects a `ttl` option when deleting (`newValue` is `undefined`), where it
     previously ignored the TTL.  Omit `ttl` when deleting.
     [[#1361], [#1364], [#1429]]
- -  Fixed duplicate expiry-index creation when reinitializing `PostgresKvStore`
-    with an existing `AT TIME ZONE` index on PostgreSQL 18.7.  Index detection
-    now checks the stored expression rather than index-definition syntax,
-    preserving both documented `timezone()` and `AT TIME ZONE` forms.
-    [[#1434]]
 
 [index migration guide]: https://fedify.dev/manual/kv#postgresql-expiry-index
 [#1309]: https://github.com/fedify-dev/fedify/issues/1309
 [#1334]: https://github.com/fedify-dev/fedify/pull/1334
 [#1364]: https://github.com/fedify-dev/fedify/issues/1364
 [#1429]: https://github.com/fedify-dev/fedify/pull/1429
-[#1434]: https://github.com/fedify-dev/fedify/pull/1434
 
 ### @fedify/redis
 
@@ -507,6 +501,7 @@ To be released.
     support.
 
 [#1365]: https://github.com/fedify-dev/fedify/issues/1365
+[#1434]: https://github.com/fedify-dev/fedify/pull/1434
 
 ### @fedify/sqlite
 
