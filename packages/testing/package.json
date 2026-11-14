@@ -58,6 +58,7 @@
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:^",
+    "@logtape/logtape": "catalog:",
     "@standard-schema/spec": "catalog:",
     "@std/assert": "catalog:",
     "@std/async": "catalog:",
