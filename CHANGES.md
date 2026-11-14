@@ -11,7 +11,7 @@ To be released.
  -  Added `AtomicKvStore`, `isAtomicKvStore()`, and optional multi-key methods
     on `KvStore` for snapshot reads and all-or-nothing writes, deletions, and
     compare-and-swap (CAS) batches.  `MemoryKvStore` implements the atomic
-    contract for development and tests.  [[#1361], [#1363], [#1395]]
+    contract for development and tests.  [[#1361], [#1363], [#1395], [#1440]]
 
     The PostgreSQL, Redis, PGlite, SQLite, MySQL/MariaDB, and Cloudflare D1
     adapters also implement `AtomicKvStore`.  `isAtomicKvStore()` checks method
@@ -172,6 +172,7 @@ To be released.
 [#1396]: https://github.com/fedify-dev/fedify/pull/1396
 [#1415]: https://github.com/fedify-dev/fedify/pull/1415
 [#1435]: https://github.com/fedify-dev/fedify/pull/1435
+[#1440]: https://github.com/fedify-dev/fedify/pull/1440
 
 ### @fedify/backfill
 
@@ -202,14 +203,20 @@ To be released.
     consider migrating from `WorkersKvStore`.  Its consistent reads and
     single-key `cas()` enable features that Workers KV cannot support, such
     as forwarding to FEP-ef61 portable inboxes.
-    [[#1135], [#1360] by Beiyan Yunyi\]
+    [[#1135], [#1360] by Beiyan Yunyi\] [[#1440]]
 
     The store also implements `AtomicKvStore` for snapshot reads and
     all-or-nothing multi-key writes, deletions, and compare-and-swap (CAS)
     batches.  Single-key and multi-key CAS use the same JSON comparison and
     millisecond TTL rules.  Calls that exceed the size limits are rejected
     rather than split into smaller batches.  `WorkersKvStore` still has
-    neither CAS nor atomic multi-key support.  [[#1361], [#1379], [#1432]]
+    neither CAS nor atomic multi-key support.
+    [[#1361], [#1379], [#1432], [#1440]]
+
+    Switching from `WorkersKvStore` does not copy existing Workers KV entries
+    into D1.  If the old idempotency records are not migrated separately, an
+    activity processed before the switch may be processed again if it is
+    redelivered afterward.
 
     Pass the `D1Database` binding itself for fresh primary reads;
     D1 sessions created by the caller may read from stale replicas.  In
@@ -439,7 +446,7 @@ To be released.
 
  -  Added `AtomicKvStore` support to `MysqlKvStore`: `getMany()`, `setMany()`,
     `deleteMany()`, and `casMany()` read or change related keys together on
-    MySQL and MariaDB InnoDB tables.  [[#1361], [#1368], [#1433]]
+    MySQL and MariaDB InnoDB tables.  [[#1361], [#1368], [#1433], [#1440]]
 
     Single-key operations use the same transactions and JSON codec, so reads
     include transaction setup and commit round trips.  `set(key, undefined)`
@@ -475,7 +482,7 @@ To be released.
  -  Added atomic snapshots and multi-key writes, deletions, and conditional
     updates to `PgliteKvStore` through `AtomicKvStore`.  Wrappers sharing one
     PGlite owner can commit related keys together with JSONB comparison and
-    per-entry TTLs.  [[#1361], [#1366], [#1431]]
+    per-entry TTLs.  [[#1361], [#1366], [#1431], [#1440]]
 
     Malformed keys, negative or overflowing TTLs, and TTLs on CAS deletions
     now reject before mutation.  Mutation cleanup shares the transaction,
@@ -512,7 +519,7 @@ To be released.
     mutations instead of returning `false`.  `PostgresKvStore.cas()` now
     rejects a `ttl` option when deleting (`newValue` is `undefined`), where it
     previously ignored the TTL.  Omit `ttl` when deleting.
-    [[#1361], [#1364], [#1429]]
+    [[#1361], [#1364], [#1429], [#1440]]
  -  Fixed `PostgresKvStore.initialize()` creating a duplicate expiry index on
     PostgreSQL 18.7 when a valid, manually created `AT TIME ZONE` expiry index
     already exists.
@@ -533,7 +540,7 @@ To be released.
     nonempty batches until audited and added in a Fedify update.
     These restrictions preserve the audited atomicity guarantees; select a
     supported Redis release for nonempty batches.  Existing keys are not
-    relocated.  [[#1361], [#1365], [#1434]]
+    relocated.  [[#1361], [#1365], [#1434], [#1440]]
 
     Storing `undefined` or a top-level value that JSON cannot encode now
     rejects instead of writing undecodable bytes.  CAS deletions with a
@@ -555,7 +562,8 @@ To be released.
     on CAS deletion also rejects; keep the CAS condition by using
     `newValue: undefined` without a TTL.  Nonempty batch and mutation calls
     require a writable connection outside caller-owned
-    transactions, including CAS mismatches.  [[#1361], [#1367], [#1430]]
+    transactions, including CAS mismatches.
+    [[#1361], [#1367], [#1430], [#1440]]
 
 [#1367]: https://github.com/fedify-dev/fedify/issues/1367
 [#1430]: https://github.com/fedify-dev/fedify/pull/1430
@@ -576,7 +584,7 @@ To be released.
     support fractional milliseconds.  Single and batch CAS results
     for reordered object members are checked for consistency even when
     `objectKeyOrder` is omitted.
-    [[#1361], [#1363], [#1395]]
+    [[#1361], [#1363], [#1395], [#1440]]
  -  Mock inbox contexts made by `createInboxContext()` now have the
     `authentication` property, which can be given as an option and defaults
     to evidence that nothing was authenticated.  [[#1290], [#1299]]

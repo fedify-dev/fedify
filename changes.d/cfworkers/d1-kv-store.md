@@ -22,6 +22,11 @@ links:
     neither CAS nor atomic multi-key support.
     [[#1361], [#1379], [#1432], [#1440]]
 
+    Switching from `WorkersKvStore` does not copy existing Workers KV entries
+    into D1.  If the old idempotency records are not migrated separately, an
+    activity processed before the switch may be processed again if it is
+    redelivered afterward.
+
     Pass the `D1Database` binding itself for fresh primary reads;
     D1 sessions created by the caller may read from stale replicas.  In
     production, create the entry table, its `<tableName>_atomic` guard table,
