@@ -176,34 +176,27 @@ To be released.
 ### @fedify/cfworkers
 
  -  Added `WorkersD1KvStore`, a `KvStore` implementation backed by
-    Cloudflare D1.  Fedify writes to its key–value store about as often as it
-    reads from it, and some of its records, such as idempotency records and
-    signature nonces, need strong consistency, which Workers KV does not
-    provide.  `WorkersD1KvStore` is strongly consistent and supports `cas()`,
-    so features that need atomic updates no longer fall back to non-atomic
-    code paths or become unavailable, as forwarding to FEP-ef61 portable
-    inboxes does with Workers KV.  It is now the recommended `KvStore` for
-    Cloudflare Workers; consider migrating from `WorkersKvStore`.
+    Cloudflare D1.  It is now the recommended store for Cloudflare Workers;
+    consider migrating from `WorkersKvStore`.  Its consistent reads and
+    single-key `cas()` enable features that Workers KV cannot support, such
+    as forwarding to FEP-ef61 portable inboxes.
     [[#1135], [#1360] by Beiyan Yunyi\]
 
-    Pass the `D1Database` binding itself, since D1 sessions can read stale
-    data from replicas.  Because the store is constructed per request, create
-    its table with a D1 migration and pass `initialized: true` in production
-    to avoid an extra query per request.
+    The store also implements `AtomicKvStore` for snapshot reads and
+    all-or-nothing multi-key writes, deletions, and compare-and-swap (CAS)
+    batches.  Single-key and multi-key CAS use the same JSON comparison and
+    millisecond TTL rules.  Calls that exceed the size limits are rejected
+    rather than split into smaller batches.  `WorkersKvStore` still has
+    neither CAS nor atomic multi-key support.  [[#1361], [#1379], [#1432]]
 
- -  Added atomic multi-key snapshots, writes, deletions and conditional
-    updates to `WorkersD1KvStore`.  Applications can now reserve a record
-    and update a shared budget together, with every comparison checked
-    before any change commits.  Single-key and multi-key CAS share JSON
-    comparison and millisecond TTL rules; oversized calls reject instead
-    of splitting.  [[#1361], [#1379], [#1432]]
+    Pass the `D1Database` binding itself for fresh primary reads;
+    D1 sessions created by the caller may read from stale replicas.  In
+    production, create the entry table, its `<tableName>_atomic` guard table,
+    and the expiry index with D1 migrations before using `initialized: true`
+    to skip per-instance schema queries.  See the [D1 store guide] for the
+    schema and operation limits.
 
-    Production D1 migrations must create both the entry table and its
-    `<tableName>_atomic` guard table, plus the expiry index, before using
-    `initialized: true`.  Pass the D1 binding for fresh primary snapshots;
-    caller-owned sessions can read stale replicas.  `WorkersKvStore`
-    remains without CAS or atomic multi-key support.
-
+[D1 store guide]: https://fedify.dev/manual/kv#workersd1kvstore-cloudflare-workers-only
 [#1135]: https://github.com/fedify-dev/fedify/issues/1135
 [#1360]: https://github.com/fedify-dev/fedify/pull/1360
 [#1379]: https://github.com/fedify-dev/fedify/issues/1379
