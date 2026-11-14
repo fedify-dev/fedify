@@ -270,6 +270,45 @@ jobs:
       env:
         AMQP_ORDERING_TEST: "true"
 
+  test-mariadb-kv:
+    name: MariaDB KV (${{ matrix.runtime }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [node, bun, deno]
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: mariadb
+          MARIADB_DATABASE: fedify
+        ports:
+        - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MISE_DISABLE_TOOLS: ${{ matrix.runtime != 'deno' && 'deno' || '' }}
+      MYSQL_URL: mysql://root:mariadb@127.0.0.1:3306/fedify
+    steps:
+    - uses: actions/checkout@v6
+    - uses: ./.github/actions/setup-mise
+    - name: Test MariaDB KV on Node.js
+      if: matrix.runtime == 'node'
+      run: mise exec -- node --experimental-transform-types --test packages/mysql/src/kv.test.ts packages/mysql/src/atomic-kv.test.ts
+    - name: Test MariaDB KV on Bun
+      if: matrix.runtime == 'bun'
+      run: mise exec -- bun test --timeout=60000 packages/mysql/src/kv.test.ts packages/mysql/src/atomic-kv.test.ts
+    - name: Prepare Deno workspace imports
+      if: matrix.runtime == 'deno'
+      run: mise run deno:cache
+    - name: Test MariaDB KV on Deno
+      if: matrix.runtime == 'deno'
+      run: mise run --skip-deps test:deno packages/mysql/src/kv.test.ts packages/mysql/src/atomic-kv.test.ts
+
   test-cfworkers:
     runs-on: ubuntu-latest
     env:

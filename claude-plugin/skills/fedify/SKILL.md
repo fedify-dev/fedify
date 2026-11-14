@@ -471,6 +471,19 @@ atomicity or durability.  `getMany()` returns an input-ordered snapshot;
 `casMany()` checks every expectation before committing all changes.  On
 `false`, reread and re-evaluate application eligibility before retrying.
 
+`MysqlKvStore` implements `AtomicKvStore` on an InnoDB table in one primary
+database.  It supports up to 1,000 entries per call and serialized keys up to
+768 Unicode code points.  Use a normal mysql2 pool with `autocommit` enabled,
+default object/type decoding, and one fixed-offset or UTC session time zone
+across clients.  Initialization validates the schema even with
+`initialized: true`; do not use caller-owned pool transactions, replica reads,
+or change the schema during operations.  Values round-trip through JSON and
+CAS compares decoded structures; `set(undefined)` rejects and omitted TTLs
+clear expiry.  TTLs are truncated to safe integer microseconds.  Deadlocks and
+MariaDB snapshot conflicts retry with fresh comparisons up to five attempts;
+backend errors reject, and lost commit responses can have unknown outcomes.
+See *packages/mysql/README.md* for the full schema, codec and server limits.
+
 `expectedValue: undefined` means absence; `newValue: undefined` means deletion
 in CAS. Atomic stores reject `set(key, undefined)` and `setMany()` entries
 whose value is `undefined`.  They also reject TTLs on deletions and duplicate
@@ -482,17 +495,17 @@ for a shared backend.  Separate calls do not form a transaction; uncertain
 commit results need receipts or version checks, and ABA detection needs a
 non-reused version.
 
-`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, and `PgliteKvStore`
-implement the atomic interface in their documented scopes.
+`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`, and
+`MysqlKvStore` implement the atomic interface in their documented scopes.
 SQLite covers one configured table/database on a writable, normally locking
 connection.  Nonempty batches and ordinary mutations reject caller-owned
 transactions and use one transaction; snapshots and mismatching CAS can reject
 busy, including under rollback-journal reader contention.  Configure busy
-timeout on the connection; the KV store has no retry policy.  Use decoded
-JSON expectations, structural comparison, and the documented millisecond TTL
+timeout on the connection; the KV store has no retry policy.  Use decoded JSON
+expectations, structural comparison, and the documented millisecond TTL
 precision and resource limits.  `SqliteMessageQueue` defaults to WAL on shared
-files; concurrent WAL use needs a patched SQLite engine (Bun 1.2.22
-SQLite 3.50.4 is affected by the WAL-reset bug).  See the adapter documentation.
+files; concurrent WAL use needs a patched SQLite engine (Bun 1.2.22 SQLite
+3.50.4 is affected by the WAL-reset bug).  See the adapter documentation.
 
 For PGlite, share one normal owner and table across wrappers, require standard
 JSONB/text-array codecs, and keep raw/manual transaction control and
@@ -504,12 +517,11 @@ engine insertion failures roll back, while mismatch does not prove proposed
 writes would fit.  Do not infer crash durability, browser persistence, or
 worker-proxy support.  Read the PGlite package README's synchronization policy.
 
-The Redis and MySQL atomic extensions are tracked separately in
-issues #1365 and #1368; Deno KV and Netlify Blobs have no atomic adapter
-child issue.  `WorkersKvStore` lacks CAS.  `WorkersD1KvStore` supports
-single-key CAS; its atomic extension is tracked in #1379.  Check the
-[atomic support matrix] and installed declarations before selecting a
-production adapter.
+The Redis atomic extension is tracked separately in issue #1365; Deno KV and
+Netlify Blobs have no atomic adapter child issue.  `WorkersKvStore` lacks CAS.
+`WorkersD1KvStore` supports single-key CAS; its atomic extension is tracked in
+#1379.  Check the [atomic support matrix] and installed declarations before
+selecting a production adapter.
 
 `MemoryKvStore` is development-only and retains references, including
 references to the same object stored under several keys.  Keep stored and
