@@ -91,9 +91,14 @@ To be released.
     `inbox` or `outbox` queue to make fanout delivery work.  [[#1389], [#1392]]
  -  Limited WebFinger lookups made through federation contexts to 10 seconds
     per lookup.  \[[GHSA-9pmv-w936-hj3f]]
+ -  Limited each outgoing activity delivery attempt to 30 seconds, including
+    redirects and HTTP signature retries, so a slow remote inbox cannot hold a
+    delivery worker indefinitely.  Timed-out attempts follow the configured
+    retry schedule.  [GHSA-fq5h-gjhp-g75x]
 
 [mastodon/mastodon\#41640]: https://github.com/mastodon/mastodon/issues/41640
 [GHSA-9pmv-w936-hj3f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9pmv-w936-hj3f
+[GHSA-fq5h-gjhp-g75x]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-fq5h-gjhp-g75x
 [#554]: https://github.com/fedify-dev/fedify/issues/554
 [#664]: https://github.com/fedify-dev/fedify/issues/664
 [#1339]: https://github.com/fedify-dev/fedify/issues/1339
