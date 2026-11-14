@@ -458,9 +458,17 @@ existing Deno applications throughout the 2.x series.
 On Cloudflare Workers, use `WorkersD1KvStore` (backed by D1) rather than
 `WorkersKvStore` (backed by Workers KV).  Fedify's key–value workload is
 balanced between reads and writes and needs strong consistency, and only
-`WorkersD1KvStore` supports `cas()`.  Pass the `D1Database` binding itself,
-not a D1 session, and create its table with a D1 migration and
-`initialized: true`, since the store is constructed per request.
+`WorkersD1KvStore` implements `AtomicKvStore`.  Pass the `D1Database` binding
+for fresh primary reads; caller-owned sessions can serve stale `getMany()`
+snapshots even after their first `first-primary` query.  CAS always uses a
+write transaction with a guard row, including absence-only CAS.  Create both
+the entry table and `<tableName>_atomic` guard table plus the expiry index
+with a D1 migration before using `initialized: true`.  The entry table needs
+a single-column `key` primary index with `BINARY` collation.  Follow the
+complete schema and codec/TTL/batch limits in the
+[KV manual][atomic support matrix]; a table name ending in `_atomic` is
+reserved.  Single and multi-key writes share the same protocol; oversized calls
+reject instead of splitting.
 
 For application transitions across several keys, require `AtomicKvStore`
 from `@fedify/fedify` and narrow an existing `KvStore` with
@@ -495,17 +503,18 @@ for a shared backend.  Separate calls do not form a transaction; uncertain
 commit results need receipts or version checks, and ABA detection needs a
 non-reused version.
 
-`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`, and
-`MysqlKvStore` implement the atomic interface in their documented scopes.
-SQLite covers one configured table/database on a writable, normally locking
-connection.  Nonempty batches and ordinary mutations reject caller-owned
-transactions and use one transaction; snapshots and mismatching CAS can reject
-busy, including under rollback-journal reader contention.  Configure busy
-timeout on the connection; the KV store has no retry policy.  Use decoded JSON
-expectations, structural comparison, and the documented millisecond TTL
-precision and resource limits.  `SqliteMessageQueue` defaults to WAL on shared
-files; concurrent WAL use needs a patched SQLite engine (Bun 1.2.22 SQLite
-3.50.4 is affected by the WAL-reset bug).  See the adapter documentation.
+`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`,
+`MysqlKvStore`, and `WorkersD1KvStore` implement the atomic interface in their
+documented scopes. SQLite covers one configured table/database on a writable,
+normally locking connection.  Nonempty batches and ordinary mutations reject
+caller-owned transactions and use one transaction; snapshots and mismatching
+CAS can reject busy, including under rollback-journal reader contention.
+Configure busy timeout on the connection; the KV store has no retry policy.
+Use decoded JSON expectations, structural comparison, and the documented
+millisecond TTL precision and resource limits.  `SqliteMessageQueue` defaults
+to WAL on shared files; concurrent WAL use needs a patched SQLite engine (Bun
+1.2.22 SQLite 3.50.4 is affected by the WAL-reset bug).  See the adapter
+documentation.
 
 For PGlite, share one normal owner and table across wrappers, require standard
 JSONB/text-array codecs, and keep raw/manual transaction control and
@@ -519,9 +528,9 @@ worker-proxy support.  Read the PGlite package README's synchronization policy.
 
 The Redis atomic extension is tracked separately in issue #1365; Deno KV and
 Netlify Blobs have no atomic adapter child issue.  `WorkersKvStore` lacks CAS.
-`WorkersD1KvStore` supports single-key CAS; its atomic extension is tracked in
-#1379.  Check the [atomic support matrix] and installed declarations before
-selecting a production adapter.
+D1 operations cover one configured table in one database, with JSON
+serialization and millisecond TTLs.  Check the [atomic support matrix] and
+installed declarations before selecting a production adapter.
 
 `MemoryKvStore` is development-only and retains references, including
 references to the same object stored under several keys.  Keep stored and

@@ -4,7 +4,11 @@ import type {
   KVNamespace,
   Queue,
 } from "@cloudflare/workers-types";
-import type { KvStore, MessageQueue } from "@fedify/fedify/federation";
+import type {
+  AtomicKvStore,
+  KvStore,
+  MessageQueue,
+} from "@fedify/fedify/federation";
 import {
   WorkersD1KvStore,
   WorkersKvStore,
@@ -21,8 +25,8 @@ declare const kv: KVNamespace;
 declare const queue: Queue;
 
 export const store: KvStore = new WorkersKvStore(kv);
-export const d1Store: KvStore = new WorkersD1KvStore(d1);
-export const d1SessionStore: KvStore = new WorkersD1KvStore(d1Session, {
+export const d1Store: AtomicKvStore = new WorkersD1KvStore(d1);
+export const d1SessionStore: AtomicKvStore = new WorkersD1KvStore(d1Session, {
   tableName: "fedify_kv",
   initialized: true,
 });

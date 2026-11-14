@@ -67,7 +67,9 @@
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.31",
     "@cloudflare/workers-types": "catalog:",
+    "@fedify/testing": "workspace:^",
     "semver": "^7.7.2",
+    "temporal-polyfill": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "~3.2.0",
@@ -79,6 +81,6 @@
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
-    "test": "tsc -p test/typecheck/tsconfig.json --noEmit && node --test test/peer-dependencies.check.mjs && vitest run"
+    "test": "tsc -p test/typecheck/tsconfig.json --noEmit && node --test test/peer-dependencies.check.mjs test/d1.atomic.check.mjs && vitest run"
   }
 }

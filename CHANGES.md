@@ -167,8 +167,23 @@ To be released.
     its table with a D1 migration and pass `initialized: true` in production
     to avoid an extra query per request.
 
+ -  Added atomic multi-key snapshots, writes, deletions and conditional
+    updates to `WorkersD1KvStore`.  Applications can now reserve a record
+    and update a shared budget together, with every comparison checked
+    before any change commits.  Single-key and multi-key CAS share JSON
+    comparison and millisecond TTL rules; oversized calls reject instead
+    of splitting.  [[#1361], [#1379], [#1432]]
+
+    Production D1 migrations must create both the entry table and its
+    `<tableName>_atomic` guard table, plus the expiry index, before using
+    `initialized: true`.  Pass the D1 binding for fresh primary snapshots;
+    caller-owned sessions can read stale replicas.  `WorkersKvStore`
+    remains without CAS or atomic multi-key support.
+
 [#1135]: https://github.com/fedify-dev/fedify/issues/1135
 [#1360]: https://github.com/fedify-dev/fedify/pull/1360
+[#1379]: https://github.com/fedify-dev/fedify/issues/1379
+[#1432]: https://github.com/fedify-dev/fedify/pull/1432
 
 ### @fedify/cli
 

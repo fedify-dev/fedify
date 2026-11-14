@@ -760,14 +760,14 @@ database.  Fedify writes to its key–value store about as often as it reads
 from it, and some of its records, such as idempotency records and signature
 nonces, need strong consistency.  D1 fits this workload better than
 [Cloudflare Workers KV], which is tuned for read-heavy workloads and is
-eventually consistent.  [`WorkersD1KvStore`] also supports
-`~KvStore.cas()`, which some Fedify features need to work atomically.
+eventually consistent.  [`WorkersD1KvStore`] implements `AtomicKvStore`,
+including single-key CAS, snapshot reads and conditional multi-key writes.
 
 Best for
 :   Production use in Cloudflare Workers environments.
 
 Pros
-:   Persistent storage, strong consistency, supports `~KvStore.cas()`.
+:   Persistent storage, primary reads and atomic multi-key operations.
 
 Cons
 :   Only available in Cloudflare Workers runtime.
@@ -793,10 +793,16 @@ export default {
 
 The store keeps its entries in a table named `fedify_kv` by default, which
 you can change with the `tableName` option.  Without `initialized: true`,
-each store instance creates the table on its first use.  Since you construct
-the store for every request, that costs an extra D1 query per request, so
-create the table with a [D1 migration][D1 migrations] in production and pass
-`initialized: true`:
+each store instance creates and checks its schema on first use.  The names
+`<tableName>_atomic` and `idx_<tableName>_expires` are reserved for the guard
+table and expiry index; table names ending in `_atomic` are rejected.
+The entry table must have a single-column `key` primary index using `BINARY`
+collation, so differently cased keys remain distinct.  Automatic initialization
+rejects incompatible primary indexes.  Key lookups, mutations, and listing
+explicitly use binary comparisons even if the column declares another collation.
+
+Create both tables and the index with a [D1 migration][D1 migrations] in
+production, then pass `initialized: true` to avoid repeated schema queries:
 
 ~~~~ sql
 CREATE TABLE IF NOT EXISTS fedify_kv (
@@ -805,12 +811,54 @@ CREATE TABLE IF NOT EXISTS fedify_kv (
   expires INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_fedify_kv_expires ON fedify_kv (expires);
+CREATE TABLE IF NOT EXISTS fedify_kv_atomic (
+  singleton INTEGER PRIMARY KEY,
+  cutoff INTEGER NOT NULL,
+  matched INTEGER NOT NULL
+);
 ~~~~
 
-Expired entries are never returned.  Every `~KvStore.set()` and every
-`~KvStore.cas()` that writes also purges up to 100 expired entries from the
-table, so expired entries do not pile up while the store is in use.  Entries
-set without a TTL never expire and stay until they are deleted.
+Atomic operations cover all keys in one configured table in one D1 database.
+`getMany()` reads one snapshot and preserves input order, missing values and
+duplicate keys.  `setMany()`, `deleteMany()` and `casMany()` commit each batch
+as a unit; `casMany()` compares every expectation before changing any entry.
+Single-key `set()` and `cas()` use the same guard protocol.  Each nonempty
+set or CAS writes and removes a private guard row, including absence-only
+CAS.  A mismatch leaves all user values and TTLs unchanged.  Backend errors
+reject, and a lost response can leave commit status unknown.  Re-read and
+re-evaluate the application rule after a mismatch; include a non-reused
+version in values if ABA changes must be detected.
+
+Values use `JSON.stringify()` and `JSON.parse()`.  During serialization,
+`JSON.stringify()` coerces nonfinite numbers to `null`.  Object members with
+`undefined`, function, or symbol values are omitted; in arrays, those elements
+become `null`.  Top-level `undefined` is only an absence/deletion sentinel in
+CAS; it cannot be stored.  Serialization rejects when `JSON.stringify()`
+returns `undefined` or throws.  Cycles and `BigInt` values need a custom JSON
+serialization.  CAS compares the persisted JSON structurally, ignoring
+object member order while retaining array order and types.  Values deeper
+than SQLite's 1,000-level JSON limit use exact serialized comparison instead.
+External guard writes, triggers and custom constraints that alter the
+protocol, and raw JSON rows with duplicate object members, are unsupported.
+
+TTLs use one database-clock cutoff per operation and are truncated to integer
+milliseconds.  Nonpositive durations, including positive durations shorter
+than one millisecond after truncation, expire immediately.  Durations whose
+absolute total exceeds `8.64e15` milliseconds, nonfinite totals, and calendar
+durations requiring a reference date reject.  Replacing without a TTL clears
+the previous expiry.  Successful sets and CAS also purge up to 100 entries
+expired at the same cutoff; a mismatch does not run that cleanup.
+
+Snapshots accept up to 256 input keys, counting duplicates.  Their separate
+8 MiB byte budget counts encoded keys and values once per unique, live row;
+missing and expired keys contribute no bytes to that budget.  For maximum-size
+values, the byte budget usually binds first.  Mutations accept up to 128
+entries and 16 MiB of encoded keys, expectations and replacements combined.
+Each encoded key/value row and each bound string is limited to 1,999,000 UTF-8
+bytes.  `getMany()` and `deleteMany()` keys also have a 1,999,000-byte
+aggregate encoded-key limit, and the final escaped JSON key payload must fit
+the same limit.  Oversized operations reject without splitting; backend or
+runtime limits can also reject smaller calls.
 
 > [!WARNING]
 > Pass the `D1Database` binding itself (e.g., `env.DB`) to get strongly
@@ -1108,10 +1156,10 @@ check or an operation receipt before repeating effects.
 
 ### Current support
 
-`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`, and
-`MysqlKvStore` implement `AtomicKvStore` in their documented scopes.  Existing
-single-key CAS support does not imply atomic multi-key support.  The linked
-issues track separate adapter implementations:
+`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`,
+`MysqlKvStore`, and `WorkersD1KvStore` implement `AtomicKvStore` in their
+documented scopes.  Existing single-key CAS support does not imply atomic
+multi-key support.  The linked issues track separate adapter implementations:
 
 | Implementation        | `AtomicKvStore` | Status                                                                                            |
 | --------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
@@ -1124,11 +1172,9 @@ issues track separate adapter implementations:
 | `DenoKvStore`         | No              | No atomic adapter child issue; deprecated since 2.5.0.                                            |
 | `NetlifyBlobsKvStore` | No              | Single-key CAS only; no atomic adapter child issue.                                               |
 | `WorkersKvStore`      | No              | No CAS; cannot implement this contract with Workers KV.                                           |
-| `WorkersD1KvStore`    | No              | Base adapter [PR #1360] supports single-key CAS; atomic follow-up is [#1379].                     |
+| `WorkersD1KvStore`    | Yes             | One configured table in one D1 database; see its codec, TTL, size and session restrictions above. |
 
-[PR #1360]: https://github.com/fedify-dev/fedify/pull/1360
 [#1365]: https://github.com/fedify-dev/fedify/issues/1365
-[#1379]: https://github.com/fedify-dev/fedify/issues/1379
 
 
 Bounding how long cache entries live
