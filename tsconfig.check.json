@@ -1,6 +1,6 @@
 // Node.js tooling outside the packages: repository scripts and their tests,
 // the monitoring example's validator, and the documentation's contributor
-// list helper.  Each package has its own tsconfig.check.json.
+// list helper and regression tests.  Each package has its own tsconfig.check.json.
 {
   "extends": "./tsconfig.node.json",
   "include": [
@@ -8,7 +8,8 @@
     "scripts/**/*.mts",
     "examples/monitoring/validate.ts",
     "docs/.vitepress/contributors.mts",
-    "docs/.vitepress/contributors.test.mts"
+    "docs/.vitepress/contributors.test.mts",
+    "docs/.vitepress/twoslash-renderer.test.mts"
   ],
   "exclude": [
     // Deno scripts; owned by check:types:deno.
