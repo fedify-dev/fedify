@@ -434,6 +434,10 @@ To be released.
     the index exists, writes whose expiration overflows PostgreSQL's timestamp
     range fail atomically, including writes from older versions.
     [[#1309], [#1334]]
+ -  Fixed `PostgresKvStore.initialize()` creating a duplicate expiry index on
+    PostgreSQL 18.7 when a valid, manually created `AT TIME ZONE` expiry index
+    already exists.
+    [[#1309], [#1435]]
 
 [index migration guide]: https://fedify.dev/manual/kv#postgresql-expiry-index
 [#1309]: https://github.com/fedify-dev/fedify/issues/1309

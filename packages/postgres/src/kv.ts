@@ -397,6 +397,8 @@ export class PostgresKvStore implements KvStore {
           WHERE c.oid = (SELECT typrelid FROM pg_type
             WHERE oid = pg_typeof(NULL::${sql(this.#tableName)})::oid)
         `;
+        // Index-key rendering adds wrapper parentheses for SQL-syntax functions
+        // on some PostgreSQL versions. Compare the stored expression instead.
         const indexed = async () => {
           const [result] = await sql`
             SELECT EXISTS (
@@ -409,7 +411,7 @@ export class PostgresKvStore implements KvStore {
                 AND NOT i.indisunique AND i.indnatts = 1
                 AND a.amname = 'btree' AND i.indkey[0] = 0
                 AND o.opcdefault AND o.opcintype = 'timestamptz'::regtype
-                AND pg_get_indexdef(i.indexrelid, 1, false) IN (
+                AND pg_get_expr(i.indexprs, i.indrelid, false) IN (
                   ${"timezone('UTC'::text, (timezone('UTC'::text, created) + ttl))"},
                   ${"(((created AT TIME ZONE 'UTC'::text) + ttl) AT TIME ZONE 'UTC'::text)"}
                 )
