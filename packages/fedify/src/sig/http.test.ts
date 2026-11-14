@@ -1178,6 +1178,53 @@ test("verifyRequest() [rfc9421] successful GET verification", async () => {
   );
 });
 
+test("signRequest() and verifyRequest() [rfc9421] with an Ed25519 key", async () => {
+  const currentTime = Temporal.Instant.from("2024-03-05T08:09:44Z");
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  const signed = await signRequest(
+    new Request("https://example.com/inbox", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body: "Hello, world!",
+    }),
+    ed25519PrivateKey,
+    ed25519PublicKey.id!,
+    { spec: "rfc9421", currentTime, tracerProvider },
+  );
+  const { sig1 } = parseRfc9421SignatureInput(
+    signed.headers.get("Signature-Input")!,
+  );
+  assertEquals(sig1.alg, "ed25519");
+  assertEquals(sig1.keyId, ed25519PublicKey.id?.href);
+  const span = exporter.getSpan("http_signatures.sign");
+  assertEquals(span?.attributes["http_signatures.algorithm"], "ed25519");
+
+  const key = await verifyRequest(signed, {
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+    spec: "rfc9421",
+    currentTime,
+  });
+  assertEquals(key?.id?.href, ed25519PublicKey.id?.href);
+});
+
+test("signRequest() [draft-cavage] still rejects an Ed25519 key", async () => {
+  await assertRejects(
+    () =>
+      signRequest(
+        new Request("https://example.com/inbox", {
+          method: "POST",
+          body: "Hello, world!",
+        }),
+        ed25519PrivateKey,
+        ed25519PublicKey.id!,
+        { spec: "draft-cavage-http-signatures-12" },
+      ),
+    TypeError,
+    "Unsupported algorithm: Ed25519",
+  );
+});
+
 for (const failure of [
   "missing key",
   "invalid signature",
@@ -4395,6 +4442,112 @@ test("doubleKnock(): Accept-Signature challenge retry succeeds", async () => {
   });
 
   assertEquals(response.status, 202);
+  assertEquals(requestCount, 2);
+
+  fetchMock.hardReset();
+});
+
+test("doubleKnock(): Accept-Signature challenge for ed25519 is fulfilled with an Ed25519 key", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
+
+  fetchMock.post("https://example.com/inbox-challenge-ed25519", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature":
+            'sig1=("@method" "@target-uri" "@authority" "content-digest")' +
+            ';alg="ed25519";created;nonce="challenge-nonce-ed25519"',
+        },
+      });
+    }
+    const sigInput = req.headers.get("Signature-Input") ?? "";
+    if (
+      sigInput.includes('alg="ed25519"') &&
+      sigInput.includes("challenge-nonce-ed25519")
+    ) {
+      return new Response("", { status: 202 });
+    }
+    return new Response("Bad", { status: 400 });
+  });
+
+  const request = new Request("https://example.com/inbox-challenge-ed25519", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
+
+  const response = await doubleKnock(request, {
+    keyId: ed25519PublicKey.id!,
+    privateKey: ed25519PrivateKey,
+  });
+
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 2);
+
+  fetchMock.hardReset();
+});
+
+test("doubleKnock(): an Ed25519 key returns an error response without draft-cavage fallback", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
+
+  fetchMock.post("https://example.com/inbox-ed25519-not-found", () => {
+    requestCount++;
+    return new Response("Not Found", { status: 404 });
+  });
+
+  const request = new Request("https://example.com/inbox-ed25519-not-found", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
+
+  const response = await doubleKnock(request, {
+    keyId: ed25519PublicKey.id!,
+    privateKey: ed25519PrivateKey,
+  });
+
+  assertEquals(response.status, 404);
+  assertEquals(requestCount, 1);
+
+  fetchMock.hardReset();
+});
+
+test("doubleKnock(): an Ed25519 key returns a 401 left after the challenge retry", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
+
+  fetchMock.post("https://example.com/inbox-ed25519-still-unauthorized", () => {
+    requestCount++;
+    return new Response("Not Authorized", {
+      status: 401,
+      headers: {
+        "Accept-Signature":
+          'sig1=("@method" "@target-uri" "@authority" "content-digest")' +
+          ';alg="ed25519";created',
+      },
+    });
+  });
+
+  const request = new Request(
+    "https://example.com/inbox-ed25519-still-unauthorized",
+    {
+      method: "POST",
+      body: "Test message",
+      headers: { "Content-Type": "text/plain" },
+    },
+  );
+
+  const response = await doubleKnock(request, {
+    keyId: ed25519PublicKey.id!,
+    privateKey: ed25519PrivateKey,
+  });
+
+  assertEquals(response.status, 401);
   assertEquals(requestCount, 2);
 
   fetchMock.hardReset();

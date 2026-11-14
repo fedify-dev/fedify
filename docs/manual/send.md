@@ -1486,10 +1486,16 @@ the actor has any RSA-PKCS#1-v1.5 key pair.  If there are multiple key pairs,
 Fedify selects the first RSA-PKCS#1-v1.5 key pair among them.
 
 > [!NOTE]
-> Although HTTP Message Signatures support other than RSA-PKCS#1-v1.5,
-> Fedify currently supports only RSA-PKCS#1-v1.5 key pairs for generating
-> HTTP Message Signatures.  This limitation will be lifted in the future
-> releases.
+> Since Fedify 2.5.0, `signRequest()` can also generate HTTP Message
+> Signatures with Ed25519 keys, and an `Accept-Signature` challenge that asks
+> for the `ed25519` algorithm can be fulfilled when the request is signed with
+> an Ed25519 key.  However, the draft cavage version still supports only
+> RSA-PKCS#1-v1.5 keys, so Fedify keeps signing outgoing activities with
+> an RSA-PKCS#1-v1.5 key pair: if the recipient server rejects HTTP Message
+> Signatures, Fedify retries with the draft cavage version (see
+> [*Double-knocking HTTP Signatures*](#double-knocking-http-signatures)).
+> A request signed with an Ed25519 key is not retried with the draft cavage
+> version; the recipient server's response is returned as is.
 
 [RFC 9421]: https://www.rfc-editor.org/rfc/rfc9421
 
