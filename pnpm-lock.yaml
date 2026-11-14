@@ -2088,6 +2088,9 @@ importers:
       '@fedify/fixture':
         specifier: workspace:^
         version: link:../fixture
+      '@logtape/logtape':
+        specifier: 'catalog:'
+        version: 2.2.0
       '@standard-schema/spec':
         specifier: 'catalog:'
         version: 1.1.0

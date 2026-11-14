@@ -545,8 +545,34 @@ have `~Context.verifyPortableObject` as their default: activities that inboxes
 receive, including queued ones, objects that `~Context.lookupObject()` returns,
 and the activities passed to the `onOutboxError` callback.  So
 `create.getObject()` in an inbox listener verifies portable objects even
-without options.  A clone does not inherit the default; pass
-`verifyPortableObject` to `clone()` if you need it.
+without options.
+
+A [clone](#immutability) does not inherit the default, though.  Without
+a verifier, the clone's accessors no longer verify embedded portable objects,
+and refuse to dereference portable references.  So pass `verifyPortableObject`
+to `clone()` if you need it:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+import type { Create } from "@fedify/vocab";
+declare const ctx: Context<void>;
+declare const create: Create;
+// ---cut-before---
+const copy = create.clone(
+  { summary: "A copy" },
+  // Keeps verifying portable objects that the copy's accessors dereference:
+  { verifyPortableObject: ctx.verifyPortableObject },
+);
+~~~~
+
+Cloning an object that has a default verifier without
+the `verifyPortableObject` option logs a warning in the
+[`["fedify", "vocab", "portable"]`](./log.md#fedify-vocab-portable) category.
+Pass `verifyPortableObject: undefined` to drop the default deliberately
+without the warning.  Either way, nested objects that the clone shares with
+the source keep their own defaults.  To get a separate copy instead, serialize
+the object and re-parse it with `fromJsonLd()`, passing the verifier again,
+as the [*Immutability* section](#immutability) shows.
 
 #### Compatible identifiers
 
@@ -950,6 +976,9 @@ return the shared instance.  A parsed source can return a fresh object instead:
 if its cached JSON-LD contains an embedded object with its own `@context`, the
 accessor re-parses that object on each call.  Hydrating that returned object
 does not update the nested instance stored in the source or clone.
+The clone also does not inherit the source's document loaders or default
+portable object verifier; see the [*Default verifiers*
+section](#default-verifiers).
 
 If you need to preserve the received representation while resolving properties,
 keep the received JSON-LD document.  To resolve properties in a separate object

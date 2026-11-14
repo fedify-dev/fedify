@@ -1,6 +1,7 @@
 import type { Activity } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../federation/context.ts";
+import { getDefaultPortableObjectVerifier } from "../utils/portable-verifier.ts";
 import type { ActivityTransformer } from "./types.ts";
 
 const logger = getLogger(["fedify", "compat", "transformers"]);
@@ -38,7 +39,10 @@ export function autoIdAssigner<TContextData>(
       "set the id for the activity.",
     { id: id.href },
   );
-  return activity.clone({ id });
+  return activity.clone({ id }, {
+    // A clone does not inherit the default verifier, so keep it:
+    verifyPortableObject: getDefaultPortableObjectVerifier(activity),
+  });
 }
 
 /**
@@ -93,6 +97,9 @@ export function actorDehydrator<TContextData>(
   if (activity.actorIds.length < 1) return activity;
   return activity.clone({
     actors: activity.actorIds,
+  }, {
+    // A clone does not inherit the default verifier, so keep it:
+    verifyPortableObject: getDefaultPortableObjectVerifier(activity),
   });
 }
 

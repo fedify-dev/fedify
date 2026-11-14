@@ -855,6 +855,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       ? activity.clone({}, {
         documentLoader: this.documentLoader,
         contextLoader: this.contextLoader,
+        // _verifyPortableObject is an internal cross-package contract
+        // documented in @fedify/vocab-tools.  clone() does not inherit
+        // the default verifier, so pass it on:
+        verifyPortableObject: Reflect.get(activity, "_verifyPortableObject"),
       })
       : activity;
     if (receivedActivity !== activity) {
