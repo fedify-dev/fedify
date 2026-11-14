@@ -55,6 +55,7 @@ const tsc = join(root, "node_modules", "typescript7", "bin", "tsc");
 export const EXTRA_PROJECTS: readonly string[] = [
   "tsconfig.check.json",
   "examples/test-examples/tsconfig.check.json",
+  "test/smoke/tsconfig.check.json",
 ];
 
 /**
@@ -66,8 +67,10 @@ export const COVERED_PATHS: readonly string[] = [
   "scripts/**",
   "examples/monitoring/validate.ts",
   "examples/test-examples/**",
+  "test/smoke/**",
   "docs/.vitepress/contributors.mts",
   "docs/.vitepress/contributors.test.mts",
+  "docs/.vitepress/twoslash-renderer.test.mts",
 ];
 
 const typeScriptExtension = /\.(?:[cm]?ts|tsx)$/;

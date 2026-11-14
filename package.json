@@ -27,7 +27,8 @@
       "esbuild"
     ],
     "patchedDependencies": {
-      "@netlify/blobs@11.0.3": "patches/@netlify__blobs@11.0.3.patch"
+      "@netlify/blobs@11.0.3": "patches/@netlify__blobs@11.0.3.patch",
+      "@shikijs/vitepress-twoslash@4.6.0": "patches/@shikijs__vitepress-twoslash@4.6.0.patch"
     }
   },
   "type": "module"

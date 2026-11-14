@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/cfworkers: Adapt Fedify with Cloudflare Workers
 =======================================================
 

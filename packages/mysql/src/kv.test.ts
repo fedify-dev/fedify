@@ -71,7 +71,7 @@ test(
       // Insert an already-expired row directly
       await pool.query(
         `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
-         VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
+         VALUES (?, ?, DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
         [JSON.stringify(["expired-key"]), JSON.stringify("expired-value")],
       );
 
@@ -169,7 +169,7 @@ test("MysqlKvStore.get()", { skip: dbUrl == null }, async () => {
     await store.initialize();
     await pool.query(
       `INSERT INTO \`${tableName}\` (\`key\`, \`value\`)
-       VALUES (?, CAST(? AS JSON))`,
+       VALUES (?, ?)`,
       [JSON.stringify(["foo", "bar"]), JSON.stringify(["foobar"])],
     );
     assert.deepStrictEqual(await store.get(["foo", "bar"]), ["foobar"]);
@@ -177,7 +177,7 @@ test("MysqlKvStore.get()", { skip: dbUrl == null }, async () => {
     // Insert with immediately expired TTL
     await pool.query(
       `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
-       VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
+       VALUES (?, ?, DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
       [JSON.stringify(["foo", "bar", "ttl"]), JSON.stringify(["foobar"])],
     );
     assert.strictEqual(await store.get(["foo", "bar", "ttl"]), undefined);
@@ -194,31 +194,31 @@ test("MysqlKvStore.set()", { skip: dbUrl == null }, async () => {
   try {
     await store.set(["foo", "baz"], "baz");
     const [rows] = await pool.query<mysql.RowDataPacket[]>(
-      `SELECT * FROM \`${tableName}\` WHERE \`key\` = ?`,
+      `SELECT CAST(value AS CHAR CHARACTER SET utf8mb4) AS value, expires FROM \`${tableName}\` WHERE \`key\` = ?`,
       [JSON.stringify(["foo", "baz"])],
     );
     assert.strictEqual(rows.length, 1);
-    assert.strictEqual(rows[0].value, "baz");
+    assert.strictEqual(JSON.parse(rows[0].value), "baz");
     assert.strictEqual(rows[0].expires, null);
 
     await store.set(["foo", "qux"], "qux", {
       ttl: Temporal.Duration.from({ days: 1 }),
     });
     const [rows2] = await pool.query<mysql.RowDataPacket[]>(
-      `SELECT * FROM \`${tableName}\` WHERE \`key\` = ?`,
+      `SELECT CAST(value AS CHAR CHARACTER SET utf8mb4) AS value, expires FROM \`${tableName}\` WHERE \`key\` = ?`,
       [JSON.stringify(["foo", "qux"])],
     );
     assert.strictEqual(rows2.length, 1);
-    assert.strictEqual(rows2[0].value, "qux");
+    assert.strictEqual(JSON.parse(rows2[0].value), "qux");
     assert.notStrictEqual(rows2[0].expires, null);
 
     await store.set(["foo", "quux"], true);
     const [rows3] = await pool.query<mysql.RowDataPacket[]>(
-      `SELECT * FROM \`${tableName}\` WHERE \`key\` = ?`,
+      `SELECT CAST(value AS CHAR CHARACTER SET utf8mb4) AS value, expires FROM \`${tableName}\` WHERE \`key\` = ?`,
       [JSON.stringify(["foo", "quux"])],
     );
     assert.strictEqual(rows3.length, 1);
-    assert.strictEqual(rows3[0].value, true);
+    assert.strictEqual(JSON.parse(rows3[0].value), true);
     assert.strictEqual(rows3[0].expires, null);
   } finally {
     await store.drop();
@@ -226,28 +226,17 @@ test("MysqlKvStore.set()", { skip: dbUrl == null }, async () => {
   }
 });
 
-test(
-  "MysqlKvStore.set() - undefined value is a no-op",
-  { skip: dbUrl == null },
-  async () => {
-    if (dbUrl == null) return;
-
-    const { pool, store } = getStore();
-    try {
-      // Setting undefined on a nonexistent key should leave the key absent
-      await store.set(["foo"], undefined);
-      assert.strictEqual(await store.get(["foo"]), undefined);
-
-      // Setting a real value then overwriting with undefined should be a no-op
-      await store.set(["bar"], "value");
-      await store.set(["bar"], undefined);
-      assert.deepStrictEqual(await store.get(["bar"]), "value");
-    } finally {
-      await store.drop();
-      await pool.end();
-    }
-  },
-);
+test("MysqlKvStore.set() rejects undefined before I/O", async () => {
+  const store = new MysqlKvStore({
+    query() {
+      throw new Error("Unexpected I/O");
+    },
+    getConnection() {
+      throw new Error("Unexpected I/O");
+    },
+  } as unknown as mysql.Pool);
+  await assert.rejects(store.set(["foo"], undefined), TypeError);
+});
 
 test("MysqlKvStore.delete()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return;
@@ -348,7 +337,7 @@ test(
       // Insert expired entry directly
       await pool.query(
         `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
-         VALUES (?, CAST(? AS JSON),
+         VALUES (?, ?,
                  DATE_SUB(NOW(6), INTERVAL 30 MINUTE))`,
         [
           JSON.stringify(["list-test", "expired"]),
@@ -533,7 +522,7 @@ test(
       // set()'s #expire() does not clean it up
       await pool.query(
         `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
-         VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
+         VALUES (?, ?, DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
         [JSON.stringify(["expired-key"]), JSON.stringify("expired-value")],
       );
 
@@ -577,7 +566,7 @@ test(
       // table but should be treated as absent by cas().
       await pool.query(
         `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
-         VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
+         VALUES (?, ?, DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
         [JSON.stringify(["key"]), JSON.stringify("old-value")],
       );
 
@@ -627,7 +616,7 @@ test(
       // write—violating CAS atomicity.
       await pool.query(
         `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
-         VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
+         VALUES (?, ?, DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
         [JSON.stringify(["key"]), JSON.stringify("stale")],
       );
 

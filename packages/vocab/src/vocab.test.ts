@@ -77,6 +77,22 @@ import {
   Tombstone,
 } from "./vocab.ts";
 
+// The parts of Deno's global that the Deno-only tests use, declared here so
+// that the Node.js-based type check does not need Deno's types.  They are only
+// accessed after checking that Deno exists.
+declare const Deno: {
+  inspect(
+    value: unknown,
+    options?: { colors?: boolean; sorted?: boolean; compact?: boolean },
+  ): string;
+  test(
+    name: string,
+    fn: (
+      t: Parameters<typeof import("@std/testing/snapshot").assertSnapshot>[0],
+    ) => Promise<void>,
+  ): void;
+};
+
 const CONTEXT_HISTORY_CONTEXT = {
   contextHistory: {
     "@id": "https://w3id.org/fep/171b/contextHistory",

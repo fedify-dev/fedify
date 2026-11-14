@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/solidstart: Integrate Fedify with SolidStart
 ====================================================
 

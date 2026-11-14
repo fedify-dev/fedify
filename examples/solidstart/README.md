@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 Fedify–SolidStart integration example application
 =================================================
 

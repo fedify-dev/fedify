@@ -34,7 +34,6 @@ export const DENO_CHECK = "check:types:deno";
 export const DENO_EXTRA_ENTRY_POINTS: readonly string[] = [
   "scripts/check_types_deno.ts",
   "scripts/install.ts",
-  "test/smoke/orchestrator.ts",
 ];
 
 export const OWNERSHIP: readonly Ownership[] = [
@@ -64,11 +63,6 @@ export const OWNERSHIP: readonly Ownership[] = [
     reason: "Runs on Deno to compile the standalone CLI executables.",
   },
   {
-    path: "packages/fedify/scripts/generate-map-local-vector.ts",
-    owner: DENO_CHECK,
-    reason: "Runs on Deno and uses Deno's file system APIs.",
-  },
-  {
     path: "packages/uri-template/old/**",
     owner: DENO_CHECK,
     reason: "Legacy Deno tests that import npm: specifiers.",
@@ -77,20 +71,6 @@ export const OWNERSHIP: readonly Ownership[] = [
     path: "packages/*/src/**/*.bench.ts",
     owner: DENO_CHECK,
     reason: "Benchmarks registered with Deno.bench() for `deno bench`.",
-  },
-  {
-    path: "packages/vocab/src/vocab.test.ts",
-    owner: DENO_CHECK,
-    reason:
-      "Its Deno branch uses @std/testing snapshots; porting them to " +
-      "Node.js belongs to #1288.",
-  },
-  {
-    path: "packages/vocab-tools/src/class.test.ts",
-    owner: DENO_CHECK,
-    reason:
-      "Its runtime branches use @std/testing and bun:test snapshots; " +
-      "porting them belongs to #1288.",
   },
   {
     path: "packages/astro/compat/src/**",

@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/amqp: AMQP/RabbitMQ driver for Fedify
 =============================================
 

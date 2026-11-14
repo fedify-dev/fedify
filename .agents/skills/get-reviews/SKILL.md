@@ -6,8 +6,6 @@ description: >-
 argument-hint: "Provide the number of the pull request to get the reviews."
 ---
 
-<!-- deno-fmt-ignore-file -->
-
 Get reviews from GitHub pull requests
 =====================================
 

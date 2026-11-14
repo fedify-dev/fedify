@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 <!-- Replace `프레임워크` with the name of the framework you are integrating with -->
 
 @fedify/프레임워크: Integrate Fedify with 프레임워크

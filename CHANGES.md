@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 Fedify changelog
 ================
 
@@ -407,6 +405,25 @@ To be released.
 [#1356]: https://github.com/fedify-dev/fedify/pull/1356
 [#1420]: https://github.com/fedify-dev/fedify/pull/1420
 
+### @fedify/mysql
+
+ -  Added `AtomicKvStore` support to `MysqlKvStore`: `getMany()`, `setMany()`,
+    `deleteMany()`, and `casMany()` read or change related keys together on
+    MySQL and MariaDB InnoDB tables.  [[#1361], [#1368], [#1433]]
+
+    Single-key operations use the same transactions and JSON codec, so reads
+    include transaction setup and commit round trips.  `set(key, undefined)`
+    now rejects; use deletion instead.  Initialization validates the schema
+    even with `initialized: true`, and custom pool connections need
+    `destroy()`.  Use `autocommit`, default mysql2 decoding and one fixed-offset
+    or UTC session time zone; `NO_BACKSLASH_ESCAPES` is unsupported.  Batches
+    accept up to 1,000 entries and serialized keys up to 768 Unicode code
+    points.  TTLs are truncated to safe integer microseconds, approximately
+    ±285 years.  See the package README for schema and server restrictions.
+
+[#1368]: https://github.com/fedify-dev/fedify/issues/1368
+[#1433]: https://github.com/fedify-dev/fedify/pull/1433
+
 ### @fedify/nestjs
 
  -  Fixed the `ContextDataFactory` type to declare the Express `Request` and
@@ -423,6 +440,27 @@ To be released.
 [#1287]: https://github.com/fedify-dev/fedify/issues/1287
 [#1357]: https://github.com/fedify-dev/fedify/pull/1357
 
+### @fedify/pglite
+
+ -  Added atomic snapshots and multi-key writes, deletions, and conditional
+    updates to `PgliteKvStore` through `AtomicKvStore`.  Wrappers sharing one
+    PGlite owner can commit related keys together with JSONB comparison and
+    per-entry TTLs.  [[#1361], [#1366], [#1431]]
+
+    Malformed keys, negative or overflowing TTLs, and TTLs on CAS deletions
+    now reject before mutation.  Mutation cleanup shares the transaction,
+    so cleanup failures roll back writes; legacy invalid TTL rows require
+    removal together or direct SQL remediation.
+
+    Existing single-key mutations and the new batch mutations await the
+    PGlite owner's filesystem synchronization policy after a successful
+    transaction, including read-only CAS mismatches.  If synchronization fails,
+    the operation rejects instead of returning `false`; any committed mutations
+    remain applied, so retrying blindly can repeat a change.
+
+[#1366]: https://github.com/fedify-dev/fedify/issues/1366
+[#1431]: https://github.com/fedify-dev/fedify/pull/1431
+
 ### @fedify/postgres
 
  -  Added an expression index for `PostgresKvStore` expiry cleanup, avoiding a
@@ -434,6 +472,17 @@ To be released.
     the index exists, writes whose expiration overflows PostgreSQL's timestamp
     range fail atomically, including writes from older versions.
     [[#1309], [#1334]]
+ -  Added atomic multi-key snapshots, writes, deletions, and conditional updates
+    to `PostgresKvStore` through the `AtomicKvStore` interface.  Conditional
+    batches and multi-key deletions require pooled or sequentially used
+    `READ COMMITTED` transaction clients; reserved clients reject these
+    scopes.  Nonempty batches reject active row-level security to prevent
+    policies from filtering individual mutations.  Mutating single-key `cas()`
+    calls also serialize table writes and roll back trigger-skipped matching
+    mutations instead of returning `false`.  `PostgresKvStore.cas()` now
+    rejects a `ttl` option when deleting (`newValue` is `undefined`), where it
+    previously ignored the TTL.  Omit `ttl` when deleting.
+    [[#1361], [#1364], [#1429]]
  -  Fixed `PostgresKvStore.initialize()` creating a duplicate expiry index on
     PostgreSQL 18.7 when a valid, manually created `AT TIME ZONE` expiry index
     already exists.
@@ -442,6 +491,22 @@ To be released.
 [index migration guide]: https://fedify.dev/manual/kv#postgresql-expiry-index
 [#1309]: https://github.com/fedify-dev/fedify/issues/1309
 [#1334]: https://github.com/fedify-dev/fedify/pull/1334
+[#1364]: https://github.com/fedify-dev/fedify/issues/1364
+[#1429]: https://github.com/fedify-dev/fedify/pull/1429
+
+### @fedify/sqlite
+
+ -  Added `AtomicKvStore` support to `SqliteKvStore` for consistent snapshots
+    and all-or-nothing changes across keys.  `set(key, undefined)` now rejects
+    instead of doing nothing; skip the call to preserve the former no-op, or
+    use `delete()` or `deleteMany()` for unconditional removal.  A non-null TTL
+    on CAS deletion also rejects; keep the CAS condition by using
+    `newValue: undefined` without a TTL.  Nonempty batch and mutation calls
+    require a writable connection outside caller-owned
+    transactions, including CAS mismatches.  [[#1361], [#1367], [#1430]]
+
+[#1367]: https://github.com/fedify-dev/fedify/issues/1367
+[#1430]: https://github.com/fedify-dev/fedify/pull/1430
 
 ### @fedify/testing
 

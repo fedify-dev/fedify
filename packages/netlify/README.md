@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/netlify: Run Fedify with Netlify blobs and async workloads
 ==================================================================
 

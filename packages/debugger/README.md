@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/debugger: Embedded ActivityPub debug dashboard for Fedify
 =================================================================
 

@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/h3: Integrate Fedify with h3
 ====================================
 

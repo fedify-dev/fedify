@@ -6,7 +6,7 @@
  * necessary to trigger the specific lint rule being tested.
  */
 
-import { map, pipe, prop, toArray } from "@fxts/core";
+import { pipe } from "@fxts/core";
 import * as parser from "@typescript-eslint/parser";
 import { Linter } from "eslint";
 import { equal, ok } from "node:assert/strict";
@@ -35,9 +35,22 @@ type Diagnostic = {
  * the same code additionally goes through oxlint, so every rule is exercised
  * end-to-end through the oxlint JS plugin adapter as well.
  */
-const lintTest = (code: string): Diagnostic[] => [
-  ...("Deno" in globalThis ? testDenoLint(code) : testEslint(code)),
-  ...(oxlintUnavailable ? [] : testOxlint(code)),
+const lintTest = (code: string): Diagnostic[] =>
+  lintLanes(code).flatMap((lane) => lane.diagnostics);
+
+/** The diagnostics of one linter, kept apart so each can be asserted. */
+type Lane = {
+  name: string;
+  diagnostics: Diagnostic[];
+};
+
+const lintLanes = (code: string): Lane[] => [
+  "Deno" in globalThis
+    ? { name: "Deno Lint", diagnostics: testDenoLint(code) }
+    : { name: "ESLint", diagnostics: testEslint(code) },
+  ...(oxlintUnavailable
+    ? []
+    : [{ name: "Oxlint", diagnostics: testOxlint(code) }]),
 ];
 
 const testDenoLint = (code: string) =>
@@ -104,21 +117,26 @@ function assertNoErrors(code: string) {
 }
 
 /**
- * Assert that the code has exactly one error matching the given rule.
+ * Assert that every linter that runs reports an error from each given rule.
+ * Each linter is checked on its own, so one that misses a rule fails the
+ * test even when another reports it.
  */
-const assertHasError = (ruleName: string) => (code: string) => {
-  const diagnostics = lintTest(code);
-  const ruleId = `${PLUGIN_NAME}/${ruleName}`;
-  const matched = diagnostics.some((d) => d.id === ruleId);
-  ok(
-    matched,
-    `Expected error from ${ruleName} but got: ${
-      diagnostics.length === 0
-        ? "no errors"
-        : diagnostics.map((d) => d.id).join(", ")
-    }`,
-  );
-};
+const assertHasError =
+  (...ruleNames: string[]) =>
+  (code: string) => {
+    for (const { name, diagnostics } of lintLanes(code)) {
+      for (const ruleName of ruleNames) {
+        ok(
+          diagnostics.some((d) => d.id === `${PLUGIN_NAME}/${ruleName}`),
+          `Expected ${name} to report ${ruleName} but got: ${
+            diagnostics.length === 0
+              ? "no errors"
+              : diagnostics.map((d) => d.id).join(", ")
+          }`,
+        );
+      }
+    }
+  };
 
 /**
  * Complete valid code that passes all lint rules.
@@ -876,19 +894,5 @@ test("Integration: ❌ Multiple errors - missing id and inbox", () =>
     COMPLETE_VALID_CODE,
     replace("id: ctx.getActorUri(identifier),", "// id: REMOVED"),
     replace("inbox: ctx.getInboxUri(identifier),", "// inbox: REMOVED"),
-    lintTest,
-    map(prop("id")),
-    toArray,
-    (ids) =>
-      (() => {
-        for (const ruleName of [
-          "actor-id-required",
-          "actor-inbox-property-required",
-        ]) {
-          ok(
-            ids.includes(`${PLUGIN_NAME}/${ruleName}`),
-            `Expected ${ruleName} error`,
-          );
-        }
-      })(),
+    assertHasError("actor-id-required", "actor-inbox-property-required"),
   ));

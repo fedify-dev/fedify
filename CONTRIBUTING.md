@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 Contributing guide
 ==================
 
@@ -617,11 +615,8 @@ The vocabulary generator already has separate Node.js, Bun, and Deno snapshots.
 `Deno.inspect()` also use it and run only on Deno.  Workers test discovery uses
 `node:fs/promises` and `node:path` in place of `@std/fs` and `@std/path`.
 Deno cache preparation and standalone CLI compilation still use `@std/path`,
-so its import-map entry stays.  The unused `@std/fs` entry is left for the
-dependency cleanup in [issue #1284].  Changing the default runtime must not
-drop assertions or alter path handling.
-
-[issue #1284]: https://github.com/fedify-dev/fedify/issues/1284
+so its import-map entry stays.  Changing the default runtime must not drop
+assertions or alter path handling.
 
 
 Dependencies

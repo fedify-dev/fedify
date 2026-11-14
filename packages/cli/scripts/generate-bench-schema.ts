@@ -7,7 +7,7 @@
  * guard keeps the two identical, so run this script after editing an embedded
  * schema.
  *
- * Usage: `deno run -A scripts/generate-bench-schema.ts`
+ * Usage: `mise run generate:bench-schema`
  * @module
  */
 

@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/fastify: Integrate Fedify with Fastify
 ==============================================
 

@@ -3,7 +3,7 @@ import { generateCryptoKeyPair } from "@fedify/fedify/sig";
 import { Accept, Activity, Create, Follow, Note, Person } from "@fedify/vocab";
 import { store } from "./store.ts";
 
-const ORIGIN = Deno.env.get("HARNESS_ORIGIN") ?? "http://fedify-harness:3001";
+const ORIGIN = process.env.HARNESS_ORIGIN ?? "http://fedify-harness:3001";
 
 const rsaKeyPair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
 const kv = new MemoryKvStore();
@@ -12,7 +12,7 @@ const federation = createFederation<void>({
   kv,
   origin: ORIGIN,
   allowPrivateAddress: true,
-  skipSignatureVerification: !Deno.env.get("STRICT_MODE"),
+  skipSignatureVerification: !process.env.STRICT_MODE,
 });
 
 export async function resetFederationTestState(): Promise<void> {
@@ -57,7 +57,7 @@ federation
     // in non-strict mode Mastodon generates https:// actor URIs but only
     // serves HTTP.  In strict mode the Caddy proxy handles TLS, so we
     // keep the original https:// scheme.
-    const actorUri = Deno.env.get("STRICT_MODE")
+    const actorUri = process.env.STRICT_MODE
       ? followerUri.href
       : followerUri.href.replace(/^https:\/\//, "http://");
     const recipient = {

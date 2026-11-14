@@ -5,6 +5,7 @@
 // https://github.com/fedify-dev/fedify/issues/938
 
 import { encodeMultibase, exportDidKey } from "@fedify/vocab-runtime";
+import { mkdir, writeFile } from "node:fs/promises";
 import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
 
@@ -244,8 +245,8 @@ const output = new URL(
   "../test-vectors/fep-8b32/map-local-create-note.json",
   import.meta.url,
 );
-await Deno.mkdir(new URL("./", output), { recursive: true });
-await Deno.writeTextFile(output, JSON.stringify(vector, null, 2) + "\n");
+await mkdir(new URL("./", output), { recursive: true });
+await writeFile(output, JSON.stringify(vector, null, 2) + "\n");
 
 const contextConflictOuterContext = [...context, { "@language": "en" }];
 const contextConflictInnerUnsecuredDocument = {
@@ -348,7 +349,7 @@ const contextConflictOutput = new URL(
   "../test-vectors/fep-8b32/map-local-context-conflict.json",
   import.meta.url,
 );
-await Deno.writeTextFile(
+await writeFile(
   contextConflictOutput,
   JSON.stringify(contextConflictVector, null, 2) + "\n",
 );

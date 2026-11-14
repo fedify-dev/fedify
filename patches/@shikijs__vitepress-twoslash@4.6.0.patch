@@ -1,0 +1,128 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index dbc928b18c143e3e281c95108568894cc0ee1cb9..27ef389ad94cf09948c65fb156218dbd9cd883d3 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1,10 +1,26 @@
+ import { createTransformerFactory } from "@shikijs/twoslash/core";
+ import { removeTwoslashNotations } from "twoslash";
+ import { createTwoslasher } from "twoslash-vue";
++import { hastToHtml } from "shiki/core";
+ import { defaultHoverInfoProcessor, rendererRich } from "@shikijs/twoslash";
+ import { fromMarkdown } from "mdast-util-from-markdown";
+ import { gfmFromMarkdown } from "mdast-util-gfm";
+ import { defaultHandlers, toHast } from "mdast-util-to-hast";
++// src/popup-optimization.ts
++const popups = /* @__PURE__ */ new WeakSet();
++function registerPopup(node) {
++	popups.add(node);
++}
++function optimizePopupContent(node) {
++	if (node.type === "element" && popups.has(node)) {
++		node.properties["v-html"] = JSON.stringify(hastToHtml(node.children)).replaceAll("<", "\\u003c");
++		delete node.properties["v-pre"];
++		node.children = [];
++		return;
++	}
++	for (const child of node.children ?? []) if (child.type === "element") optimizePopupContent(child);
++	if (node.type === "element" && node.content) optimizePopupContent(node.content);
++}
+ // src/renderer-floating-vue.ts
+ const RE_JSDOC_LINK = /\{@link ([^}]*)\}/g;
+ const RE_PARAM_NAME = /^([\w$-]+)/;
+@@ -80,6 +96,7 @@ function rendererFloatingVue(options = {}) {
+ }
+ function vPre(el) {
+ 	if (el.type === "element") {
++		registerPopup(el);
+ 		el.properties = el.properties || {};
+ 		el.properties["v-pre"] = "";
+ 	}
+@@ -134,6 +151,12 @@ function compose(parts) {
+ const RE_NEWLINE = /\n/g;
+ const RE_TWOSLASH = /\btwoslash\b/;
+ const RE_LEFT_BRACE = /\{/g;
++const knownPreHooks = /* @__PURE__ */ new Set([
++	"vitepress:add-class",
++	"vitepress:add-dir",
++	"vitepress:v-pre"
++]);
++
+ /**
+ * Create a Shiki transformer for VitePress to enable twoslash integration
+ *
+@@ -166,21 +189,53 @@ function transformerTwoslash(options = {}) {
+ 		explicitTrigger
+ 	});
+ 	const trigger = explicitTrigger instanceof RegExp ? explicitTrigger : RE_TWOSLASH;
+-	return {
++	const retainedVPre = /* @__PURE__ */ new WeakSet();
++	function canOptimize(transformers, own) {
++		if (options.optimizePopups === false || options.renderer != null || !transformers) return false;
++		const ownIndex = transformers.indexOf(own);
++		const vPreHooks = transformers.filter((i) => i.name === "vitepress:v-pre");
++		if (ownIndex < 0 || vPreHooks.length !== 1 || transformers.indexOf(vPreHooks[0]) >= ownIndex) return false;
++		return transformers.every((item, index) => !item.pre || item.enforce == null && (index >= ownIndex || knownPreHooks.has(item.name || "")));
++	}
++	const transformer = {
+ 		...twoslash,
+ 		name: "@shikijs/vitepress-twoslash",
+ 		preprocess(code, options) {
++			retainedVPre.delete(this.meta);
+ 			const cleanup = options.transformers?.find((i) => i.name === "vitepress:clean-up");
+ 			if (cleanup) options.transformers?.splice(options.transformers.indexOf(cleanup), 1);
+ 			if (!explicitTrigger || options.meta?.__raw?.match(trigger)) {
+ 				const vPre = options.transformers?.find((i) => i.name === "vitepress:v-pre");
+-				if (vPre) options.transformers?.splice(options.transformers.indexOf(vPre), 1);
++				if (vPre) {
++					if (options.structure !== "inline" && canOptimize(options.transformers, transformer)) retainedVPre.add(this.meta);
++					else options.transformers?.splice(options.transformers.indexOf(vPre), 1);
++				}
+ 			}
+ 			return twoslash.preprocess.call(this, code, options);
+ 		},
++		pre(node) {
++			node = twoslash.pre?.call(this, node) || node;
++			if (retainedVPre.has(this.meta)) {
++				const isStatic = "v-pre" in node.properties;
++				delete node.properties["v-pre"];
++				if (isStatic && this.meta.twoslash && canOptimize(this.options.transformers, transformer)) optimizePopupContent(node);
++			}
++			return node;
++		},
++		root(node) {
++			if (retainedVPre.has(this.meta)) {
++				const transformers = this.options.transformers || [];
++				if (transformers.findIndex((i) => i.name === "vitepress:v-pre") > transformers.indexOf(transformer)) {
++					for (const child of node.children) if (child.type === "element" && child.tagName === "pre") delete child.properties["v-pre"];
++				}
++				retainedVPre.delete(this.meta);
++			}
++			return twoslash.root?.call(this, node) || node;
++		},
+ 		postprocess(html) {
+ 			if (this.meta.twoslash) return html.replace(RE_LEFT_BRACE, "&#123;");
+ 		}
+ 	};
++	return transformer;
+ }
+ export { defaultHoverInfoProcessor, rendererFloatingVue, transformerTwoslash };
+diff --git a/dist/types-BNt51DSh.d.mts b/dist/types-BNt51DSh.d.mts
+index 80f853003724c49b6a16783d374739b90457a005..b67ba4de7f8ecca78868b8fdde13fe1da10dd571 100644
+--- a/dist/types-BNt51DSh.d.mts
++++ b/dist/types-BNt51DSh.d.mts
+@@ -20,6 +20,15 @@ interface TransformerTwoslashVueOptions extends TransformerTwoslashOptions {
+   twoslashOptions?: TransformerTwoslashOptions['twoslashOptions'] & VueSpecificOptions;
+ }
+ interface VitePressPluginTwoslashOptions extends TransformerTwoslashVueOptions, TwoslashFloatingVueRendererOptions {
++  /**
++   * Compile default-renderer popups as static HTML in ordinary VitePress fences.
++   * Interpolated fences, custom renderers and unrecognized hook orders retain
++   * their full HAST. Disable this to inspect popup descendants in later hooks
++   * or apply scoped SFC styles to them.
++   * @default true
++   */
++  optimizePopups?: boolean;
++
+   /**
+    * Requires adding `twoslash` to the code block explicitly to run twoslash
+    * @default true

@@ -92,6 +92,41 @@ the backend storage. It provides persistent storage with minimal configuration.
 It's suitable for development and testing. It uses native sqlite modules,
 [`node:sqlite`] for Node.js and Deno, [`bun:sqlite`] for Bun.
 
+Since Fedify 2.5.0, `SqliteKvStore` implements
+[`AtomicKvStore`](#atomic-operations-across-keys) across all keys in its
+configured table in one SQLite database.  `getMany()` returns an input-ordered
+snapshot; writes, deletions and conditional batches commit together.  Empty
+batches bypass the database.  Mutation keys must be distinct, batches must be
+dense, and `set(key, undefined)` and TTLs on CAS deletion reject.
+
+Nonempty batch operations and ordinary mutations require a writable connection
+outside caller-owned transactions.  They reserve SQLite's writer slot even for
+snapshots and CAS mismatches.  Busy errors can reject these calls, including
+when rollback-journal readers prevent completion; `false` means only a
+successfully completed comparison mismatch.  Configure a caller-owned
+[busy timeout] if needed; the KV
+store does not retry or change connection settings.  Ordinary `get()` and
+`list()` retain their single-statement behavior.  Initialize outside caller
+transactions before using those ordinary reads there.
+
+Values use JSON serialization and structural comparison of decoded stored
+values against raw expectations, ignoring object member order.  Use decoded
+JSON shapes as expectations: a date becomes a string, and undefined object
+members disappear.  TTLs share one millisecond-resolution cutoff and preserve
+representable fractional milliseconds.  Nonpositive TTLs expire immediately;
+omitting a replacement TTL clears it.  Calendar-dependent, nonfinite and
+out-of-range durations reject.  There is no fixed batch-count limit, but memory,
+disk and SQLite limits still apply; an operation is never split into commits.
+
+Use normal SQLite locking and journaling.  Atomicity alone does not establish
+crash durability, which depends on connection settings and the filesystem.
+Concurrent WAL writes/checkpoints require the [SQLite WAL-reset fix]
+(3.51.3 or the 3.50.7/3.44.6 backports, or a verified equivalent fix).
+Bun 1.2.22's SQLite 3.50.4 is affected.  `SqliteMessageQueue` enables WAL by
+default on shared database files, so the prerequisite also applies to combined
+KV and queue deployments.  See the [SQLite package README] for the complete
+value, expiry, connection and durability restrictions.
+
 Best for
 :   Development and testing.
 
@@ -162,6 +197,9 @@ const federation = createFederation<void>({
 [`SqliteKvStore`]: https://jsr.io/@fedify/sqlite/doc/kv/~/SqliteKvStore
 [`node:sqlite`]: https://nodejs.org/api/sqlite.html
 [`bun:sqlite`]: https://bun.com/docs/api/sqlite
+[busy timeout]: https://sqlite.org/c3ref/busy_timeout.html
+[SQLite WAL-reset fix]: https://sqlite.org/wal.html#walresetbug
+[SQLite package README]: https://github.com/fedify-dev/fedify/tree/main/packages/sqlite#atomic-operations
 [conditional exports]: https://nodejs.org/api/packages.html#conditional-exports
 
 ### [`RedisKvStore`]
@@ -280,6 +318,81 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+#### PostgreSQL atomic operations
+
+*This API is available since Fedify 2.5.0.*
+
+`PostgresKvStore` implements `AtomicKvStore` within one configured ordinary
+table or declarative partition, using the existing schema and
+PostgreSQL-representable Unicode string keys.  Ordinary inheritance parents and
+children are unsupported for nonempty batches.  Tables where row-level security
+is active for the current role are also rejected, because policies can filter
+individual mutations.  `getMany()` returns one
+input-ordered snapshot; `setMany()` writes one batch; `casMany()` compares all
+expectations before applying any changes.  JSON `null` remains distinct from
+missing or expired `undefined`.
+
+Nonempty `casMany()` and `deleteMany()` with more than one key require a pool
+or a `READ COMMITTED` transaction-scoped Postgres.js client.  Reserved clients
+reject those scopes before SQL; they still support ordinary methods, the
+single-statement batches, single-key deletion, and empty batches.  Unsupported
+caller isolation rejects.  Method presence does not certify a client's scope.
+
+Caller-owned transactions must be used exclusively and sequentially throughout
+each atomic call, including initialization, every store wrapper, and raw SQL.
+Await each call before sending another command on that transaction: nested
+savepoints do not isolate overlapping calls.  Success remains provisional until
+the outer commit, and successful batch locks remain held until then.
+
+Mutating forms of `cas()` acquire the table write lock and use one server
+timestamp for comparison and the replacement's TTL origin.  A `cas()` from
+`undefined` to `undefined` stays read-only.  If a trigger skips a matching
+write, the call rejects and rolls back its database effects; `false` means only
+a comparison mismatch.  `cas()` owns a transaction on pooled clients and uses a
+savepoint on transaction-scoped clients.  Reserved clients use a savepoint
+inside an existing manual transaction or a transaction owned by the call.
+Caller transaction isolation is unchanged.  Use reserved clients exclusively
+and sequentially during the call.  CAS locks in caller-owned transactions
+remain until the outer commit, including after a mismatch.
+
+Conditional batches and multi-key deletions acquire a
+[table write lock] before a
+fresh snapshot, protecting absent keys against ordinary and direct SQL writers.
+This serializes writes to the whole table and its descendants, and can interfere
+with autovacuum.  A mismatch releases locks acquired in the batch savepoint;
+previous writes and setup may still hold locks.  Prior caller writes can cause
+lock-upgrade deadlocks, requiring outer rollback before retry.  Errors and
+configured lock timeouts reject; no automatic retry occurs.
+
+The default JSON codec uses PostgreSQL `jsonb` equality: object member order
+is ignored, array order matters, Dates normalize to strings, and nonfinite
+numbers normalize to JSON `null`.  Big integers, circular/unencodable values,
+NUL characters, and malformed Unicode reject.  Irreversible value/JSON
+transforms are unsupported; identifier transforms remain usable.  Raw SQL
+values must round-trip through the JavaScript JSON codec for CAS expectations.
+
+TTLs retain PostgreSQL interval, session-timezone, and calendar semantics at
+microsecond precision, using one server expiry cutoff per operation.  Omitting
+a replacement TTL clears expiry; zero durations expire immediately, and
+negative Temporal durations reject. A blocked write's TTL origin may precede
+its commit.  Invalid JSON/TTL inputs reject even on mismatch.  There is no
+fixed batch-count or key-length maximum; backend field, index, protocol, and
+memory limits apply without splitting. A physical index-size error arises on an
+attempted write; a mismatch does not attempt insertion, while a failed
+attempted write rolls back the batch.
+
+Caller-owned batches with `initialized: false` repeat idempotent table setup
+and driver probing after possible outer rollback.  Setup precedes the batch
+savepoint and its errors can abort the outer transaction.  `initialized: true`
+keeps schema responsibility with the caller.  Only pooled batches and `cas()`
+start best-effort cleanup after commit; logical expiry never depends on cleanup.
+
+Atomic operations do not strengthen unlogged-table durability or override
+server WAL, `synchronous_commit`, storage, or replica settings.  Lost responses
+can leave commit status unknown.  See the
+[package's atomic scope guide]
+for the full client, codec, limit, and transaction contract.
+
 #### PostgreSQL expiry index
 
 *This optimization is available since Fedify 2.5.0.*
@@ -374,6 +487,8 @@ its `AT TIME ZONE` equivalent, and has either no predicate or
 `WHERE ttl IS NOT NULL`.
 
 [`PostgresKvStore`]: https://jsr.io/@fedify/postgres/doc/kv/~/PostgresKvStore
+[table write lock]: https://www.postgresql.org/docs/18/sql-lock.html
+[package's atomic scope guide]: https://github.com/fedify-dev/fedify/tree/main/packages/postgres#atomic-keyvalue-operations
 [partitioned index procedure]: https://www.postgresql.org/docs/current/ddl-partitioning.html#DDL-PARTITIONING-DECLARATIVE-MAINTENANCE
 
 ### [`PgliteKvStore`]
@@ -442,7 +557,31 @@ const federation = createFederation<void>({
 > directory from multiple worker processes.  Use one PGlite instance per data
 > directory and runtime isolate.
 
+Since Fedify 2.5.0, this store also implements `AtomicKvStore`.
+Each snapshot or batch uses one PGlite transaction and one expiry cutoff.
+Wrappers must share one normal PGlite owner and table.  Do not call the store
+inside the owner's transaction callback or bypass its query queue with raw
+protocol or manual transaction control.  Worker proxies and browser
+persistence are outside the documented atomic scope.
+
+CAS compares JSONB values: object member order is ignored, array order
+matters, and stored null differs from absence.  Keys must be nonempty arrays
+of well-formed Unicode strings without U+0000.  Negative TTLs, timestamp
+overflow, and TTLs on CAS deletion reject; zero TTL expires immediately.
+Intervals round to microseconds and calendar units follow the session time
+zone.  There is no fixed batch-entry cap.  Engine key insertion limits depend
+on compression; a mismatch does not prove that unattempted writes would fit.
+Statement failures roll back the batch; commit or post-commit synchronization
+failures can reject after changes have committed.  Long batches occupy the
+shared instance.  Nonempty mutation calls await the owner's `syncToFs()` after
+transaction completion, including read-only CAS mismatches.  Backend failures
+reject instead of returning `false`; any committed mutations remain applied.
+Atomic execution does not establish crash durability.  See the
+[package's atomic-operation guidance] for codecs, legacy-row recovery, and the
+owner's synchronization policy.
+
 [`PgliteKvStore`]: https://jsr.io/@fedify/pglite/doc/kv/~/PgliteKvStore
+[package's atomic-operation guidance]: https://github.com/fedify-dev/fedify/tree/main/packages/pglite#atomic-operations
 
 ### [`MysqlKvStore`]
 
@@ -501,7 +640,33 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+Since Fedify 2.5.0, `MysqlKvStore` implements `AtomicKvStore`, with atomic
+snapshots and conditional batches across keys in one primary database/table.
+It uses InnoDB transactions with explicit `REPEATABLE READ`, including for
+single-key reads and CAS.  Use `getMany()` for a snapshot and `casMany()` to
+compare every expectation before committing all replacements or deletions.
+A mismatch returns `false`; reread and re-evaluate before retrying.
+
+The adapter validates its InnoDB schema even with `initialized: true`, which
+skips DDL but requires metadata visibility.  Use the default schema, a normal
+mysql2 pool with `autocommit` enabled and default object/type decoding, and the
+same fixed-offset or UTC session `time_zone` across clients.  Caller-owned
+transactions, replica routing, `NO_BACKSLASH_ESCAPES`, custom decoding, and
+schema changes during use are unsupported.  Values use JSON conversion and
+decoded structural equality; `set(key, undefined)` rejects.  Batches have at
+most 1,000 input entries, and serialized keys at most 768 Unicode code points.
+TTLs are truncated to safe integer microseconds, approximately ±285 years;
+omitting a replacement TTL clears its previous expiry.
+
+Deadlocks and MariaDB snapshot conflicts retry with fresh comparisons, up to
+five total attempts.  Other backend failures reject, and a lost commit
+response can leave the outcome unknown.  Cleanup runs after commit; its
+failures are logged, while logical expiry always applies.  See the
+[MySQL package README]
+for schema, codec, clock, cleanup and resource restrictions.
+
 [`MysqlKvStore`]: https://jsr.io/@fedify/mysql/doc/kv/~/MysqlKvStore
+[MySQL package README]: https://github.com/fedify-dev/fedify/blob/main/packages/mysql/README.md#atomic-key-value-operations
 
 ### `DenoKvStore` (Deno only)
 
@@ -884,9 +1049,9 @@ Single-key `cas()` follows the same comparison and value rules.
 In conditional operations, `expectedValue: undefined` means the key must be
 absent, and `newValue: undefined` means deletion.  Deletion removes the entry
 from `list()` too.  `set()` and `setMany()` reject `undefined` on an
-`AtomicKvStore`; use deletion methods instead.  These stronger rules do not
-change legacy ordinary stores: for example, SQLite and MySQL currently treat
-`set(key, undefined)` as a no-op.
+`AtomicKvStore`; skip the write to preserve the former no-op, or use `delete()`
+or `deleteMany()` for unconditional removal.  For conditional removal, use
+`cas()` or `casMany()` with `newValue: undefined` and omit the TTL.
 
 Each set or conditional entry can supply its own `options.ttl`:
 
@@ -943,29 +1108,26 @@ check or an operation receipt before repeating effects.
 
 ### Current support
 
-Only `MemoryKvStore` currently implements the full `AtomicKvStore` contract.
-Existing single-key CAS support does not imply atomic multi-key support.
-The linked issues track separate adapter implementations:
+`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`, and
+`MysqlKvStore` implement `AtomicKvStore` in their documented scopes.  Existing
+single-key CAS support does not imply atomic multi-key support.  The linked
+issues track separate adapter implementations:
 
-| Implementation        | `AtomicKvStore` | Status                                                                        |
-| --------------------- | --------------- | ----------------------------------------------------------------------------- |
-| `MemoryKvStore`       | Yes             | Development and testing only; one instance.                                   |
-| `PostgresKvStore`     | No              | Planned in [#1364].                                                           |
-| `RedisKvStore`        | No              | Planned in [#1365].                                                           |
-| `PgliteKvStore`       | No              | Planned in [#1366].                                                           |
-| `SqliteKvStore`       | No              | Planned in [#1367].                                                           |
-| `MysqlKvStore`        | No              | Planned in [#1368].                                                           |
-| `DenoKvStore`         | No              | No atomic adapter child issue; deprecated since 2.5.0.                        |
-| `NetlifyBlobsKvStore` | No              | Single-key CAS only; no atomic adapter child issue.                           |
-| `WorkersKvStore`      | No              | No CAS; cannot implement this contract with Workers KV.                       |
-| `WorkersD1KvStore`    | No              | Base adapter [PR #1360] supports single-key CAS; atomic follow-up is [#1379]. |
+| Implementation        | `AtomicKvStore` | Status                                                                                            |
+| --------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
+| `MemoryKvStore`       | Yes             | Development and testing only; one instance.                                                       |
+| `PostgresKvStore`     | Yes             | One table; see [client and transaction restrictions](#postgresql-atomic-operations).              |
+| `RedisKvStore`        | No              | Planned in [#1365].                                                                               |
+| `PgliteKvStore`       | Yes             | Since 2.5.0; one normal PGlite owner and table, JSONB comparison.                                 |
+| `SqliteKvStore`       | Yes             | One configured table/database; writable handles, JSON values; see [SQLite scope](#sqlitekvstore). |
+| `MysqlKvStore`        | Yes             | InnoDB; one primary database/table, up to 1,000 entries per operation.                            |
+| `DenoKvStore`         | No              | No atomic adapter child issue; deprecated since 2.5.0.                                            |
+| `NetlifyBlobsKvStore` | No              | Single-key CAS only; no atomic adapter child issue.                                               |
+| `WorkersKvStore`      | No              | No CAS; cannot implement this contract with Workers KV.                                           |
+| `WorkersD1KvStore`    | No              | Base adapter [PR #1360] supports single-key CAS; atomic follow-up is [#1379].                     |
 
 [PR #1360]: https://github.com/fedify-dev/fedify/pull/1360
-[#1364]: https://github.com/fedify-dev/fedify/issues/1364
 [#1365]: https://github.com/fedify-dev/fedify/issues/1365
-[#1366]: https://github.com/fedify-dev/fedify/issues/1366
-[#1367]: https://github.com/fedify-dev/fedify/issues/1367
-[#1368]: https://github.com/fedify-dev/fedify/issues/1368
 [#1379]: https://github.com/fedify-dev/fedify/issues/1379
 
 
@@ -1457,6 +1619,11 @@ scope, batch limits, and durability for your adapter.  Apply the stronger
 CAS implementations can differ in deletion or TTL validation; audit them
 before claiming the full contract.
 
+`SqliteKvStore` reserves the database's writer transaction before capturing its
+expiry cutoff and rejects read-only handles.  Its per-key statements share one
+transaction, so an error rolls back the complete call, including initialization
+and expiry cleanup.
+
 Validate and encode the complete input before the first mutation.  Check
 structural duplicate keys and invalid deletion TTLs even if a conditional
 comparison would fail.  Runtime validation must reject unsupported inputs
@@ -1567,6 +1734,19 @@ Use backend concurrency controls with a documented isolation level and key
 scope.  A process-local mutex cannot coordinate other handles or processes.
 On a deadlock retry, roll back and re-evaluate the complete expected set.
 Return `false` only for a comparison mismatch; propagate backend errors.
+
+For example, `PgliteKvStore` uses the exclusive transaction callback of
+one supported PGlite owner.  Independent store wrappers share that owner, whose
+client queue excludes other normal queries for the callback's entire lifetime,
+including checks for absent keys.
+
+For PostgreSQL adapters, locking only existing rows does not protect absent
+keys.  `PostgresKvStore` uses a table write lock followed by a fresh READ
+COMMITTED snapshot; its [client restrictions](#postgresql-atomic-operations)
+also require exclusive sequential use of caller-owned transactions.  PostgreSQL
+locks and nested savepoints do not isolate overlapping calls in the same outer
+transaction.  Test supported independent clients rather than assuming one
+transaction-scoped handle provides that concurrency.
 
 Run the [shared atomic conformance tests](./test.md), using independent
 clients sharing an isolated backend for persistent adapters.  Add

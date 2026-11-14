@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 ![](./logo.svg) Fedify: an ActivityPub server framework
 =======================================================
 

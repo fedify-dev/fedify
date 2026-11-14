@@ -1,17 +1,28 @@
 {
+  // Deno provides type information for this Fresh application, while the
+  // repository's Oxlint and Oxfmt own linting and formatting, as in the
+  // repository-wide settings.
   "deno.enable": true,
-  "deno.lint": true,
-  "editor.defaultFormatter": "denoland.vscode-deno",
-  "[typescriptreact]": {
-    "editor.defaultFormatter": "denoland.vscode-deno"
-  },
-  "[typescript]": {
-    "editor.defaultFormatter": "denoland.vscode-deno"
-  },
-  "[javascriptreact]": {
-    "editor.defaultFormatter": "denoland.vscode-deno"
+  "deno.lint": false,
+  "[css]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[javascript]": {
-    "editor.defaultFormatter": "denoland.vscode-deno"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   }
 }

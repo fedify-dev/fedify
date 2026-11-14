@@ -6,8 +6,6 @@ description: >-
 argument-hint: "Provide the name of the web framework to create an example for."
 ---
 
-<!-- deno-fmt-ignore-file -->
-
 Creating an example for an integration package
 ==============================================
 
