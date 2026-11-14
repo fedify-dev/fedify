@@ -947,12 +947,36 @@ test("sendActivity() preserves an error status when its body stalls", async (t) 
           SendActivityError,
         );
         assertEquals(error.statusCode, status);
-        assertEquals(error.responseBody, "");
+        assertEquals(
+          error.responseBody,
+          "(timed out reading response body)",
+        );
         assertEquals(requests, signed ? 2 : 1);
         assertEquals(closes, 1);
       });
     }
   }
+});
+
+test("sendActivity() keeps an empty error body distinct from a timeout", async () => {
+  const error = await assertRejects(
+    () =>
+      sendActivity({
+        activity: lifecycleActivity,
+        keys: unsignedKeys,
+        inbox: new URL("https://example.com/empty-error"),
+      }, {
+        openHop: (url) =>
+          Promise.resolve({
+            url: new URL(url),
+            fetch: () => Promise.resolve(new Response(null, { status: 500 })),
+            close: () => Promise.resolve(),
+          }),
+      }),
+    SendActivityError,
+  );
+  assertEquals(error.statusCode, 500);
+  assertEquals(error.responseBody, "");
 });
 
 test("sendActivity() cancels a successful response body", async (t) => {

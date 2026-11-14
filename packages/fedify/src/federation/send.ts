@@ -515,6 +515,9 @@ async function consumeSendActivityResponse(
   } catch (_) {
     error = "";
   }
+  if (signal.aborted) {
+    error = "(timed out reading response body)";
+  }
   return {
     ok: false,
     status: response.status,
