@@ -11,6 +11,7 @@ import fep5711 from "./contexts/fep-5711.json" with { type: "json" };
 import fep6757 from "./contexts/fep-6757.json" with { type: "json" };
 import fep7aa9 from "./contexts/fep-7aa9.json" with { type: "json" };
 import fepEf61 from "./contexts/fep-ef61.json" with { type: "json" };
+import fepF799 from "./contexts/fep-f799.json" with { type: "json" };
 import gotosocial from "./contexts/gotosocial.json" with { type: "json" };
 import identityV1 from "./contexts/identity-v1.json" with { type: "json" };
 import joinLemmyContext from "./contexts/join-lemmy.json" with { type: "json" };
@@ -36,6 +37,7 @@ const preloadedContexts: Record<string, unknown> = {
   "https://w3id.org/fep/171b": fep171b,
   "https://w3id.org/fep/22cd": fep22cd,
   "https://w3id.org/fep/5711": fep5711,
+  "https://w3id.org/fep/f799": fepF799,
 
   // Controlled Identifiers v1.0 requires JSON-LD processors to treat this
   // context URL as already resolved.  We ship the official W3C context so that

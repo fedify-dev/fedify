@@ -77,6 +77,16 @@
       "require": "./dist/compat/mod.cjs",
       "default": "./dist/compat/mod.js"
     },
+    "./delivery-suspension": {
+      "types": {
+        "import": "./dist/delivery-suspension/mod.d.ts",
+        "require": "./dist/delivery-suspension/mod.d.cts",
+        "default": "./dist/delivery-suspension/mod.d.ts"
+      },
+      "import": "./dist/delivery-suspension/mod.js",
+      "require": "./dist/delivery-suspension/mod.cjs",
+      "default": "./dist/delivery-suspension/mod.js"
+    },
     "./federation": {
       "types": {
         "import": "./dist/federation/mod.d.ts",

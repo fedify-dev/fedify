@@ -5824,6 +5824,8 @@ const sampleValues: Record<string, any> = {
     0x30, 0x65, 0x59, 0x76, 0xf0, 0xb0, 0xdb, 0x78, 0x0d, 0xf5, 0xc1, 0xad,
     0x3f, 0xbd, 0xf3, 0x07,
   ]),
+  "fedify:typedString": "hello",
+  "fedify:positiveSafeInteger": 123,
   "fedify:langTag": new Intl.Locale("en-Latn-US"),
   "fedify:url": new URL("https://fedify.dev/"),
   "fedify:absoluteIri": new URL("https://creativecommons.org/licenses/by/4.0/"),

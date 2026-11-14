@@ -2192,6 +2192,7 @@ snapshot[`Deno.inspect(FeaturedCollection) [auto] 1`] = `
   followersOf: Object {},
   followingOf: Object {},
   likedOf: Object {},
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/",
   topic: Hashtag {},
   discoverable: true
 }'
@@ -2253,6 +2254,7 @@ snapshot[`Deno.inspect(FeaturedCollection) [auto] 2`] = `
   followersOf: URL "https://example.com/",
   followingOf: URL "https://example.com/",
   likedOf: URL "https://example.com/",
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/",
   topic: Hashtag {},
   discoverable: true
 }'
@@ -2317,6 +2319,7 @@ snapshot[`Deno.inspect(FeaturedCollection) [auto] 3`] = `
   followersOf: Object {},
   followingOf: Object {},
   likedOf: Object {},
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/",
   topic: Hashtag {},
   discoverable: true
 }'
@@ -2487,6 +2490,162 @@ snapshot[`Deno.inspect(Export) [auto] 3`] = `
 'Export {
   id: URL "https://example.com/",
   endpoints: [ URL "https://example.com/", URL "https://example.com/" ]
+}'
+`;
+
+snapshot[`Deno.inspect(DeliverySuspension) [auto] 1`] = `
+'DeliverySuspension {
+  id: URL "https://example.com/",
+  attachments: [ Object {}, Link {}, PropertyValue {} ],
+  attributions: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
+  audience: Object {},
+  contents: [ "hello", <en> "hello" ],
+  contexts: [ Object {}, Link {} ],
+  contextHistory: Collection {},
+  names: [ "hello", <en> "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ Object {}, Link {} ],
+  icon: Image {},
+  image: Image {},
+  replyTargets: [ Object {}, Link {} ],
+  locations: [ Object {}, Link {} ],
+  previews: [ Link {}, Object {} ],
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: Collection {},
+  shares: Collection {},
+  likes: Collection {},
+  emojiReactions: Collection {},
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", <en> "hello" ],
+  tags: [ Object {}, Link {} ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", Link {} ],
+  to: Object {},
+  bto: Object {},
+  cc: Object {},
+  bcc: Object {},
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proof: DataIntegrityProof {},
+  interactionPolicy: InteractionPolicy {},
+  approvedBy: URL "https://example.com/",
+  likeAuthorization: LikeAuthorization {},
+  replyAuthorization: ReplyAuthorization {},
+  announceAuthorization: AnnounceAuthorization {},
+  translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
+  suspensionStatus: "hello",
+  targetInbox: URL "https://creativecommons.org/licenses/by/4.0/",
+  targetOrigin: "hello",
+  announcement: URL "https://creativecommons.org/licenses/by/4.0/",
+  revision: 123
+}'
+`;
+
+snapshot[`Deno.inspect(DeliverySuspension) [auto] 2`] = `
+'DeliverySuspension {
+  id: URL "https://example.com/",
+  attachments: [ URL "https://example.com/" ],
+  attribution: URL "https://example.com/",
+  audience: URL "https://example.com/",
+  contents: [ "hello", <en> "hello" ],
+  contexts: [ URL "https://example.com/" ],
+  contextHistory: URL "https://example.com/",
+  names: [ "hello", <en> "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ URL "https://example.com/" ],
+  icon: URL "https://example.com/",
+  image: URL "https://example.com/",
+  replyTarget: URL "https://example.com/",
+  location: URL "https://example.com/",
+  preview: URL "https://example.com/",
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: URL "https://example.com/",
+  shares: URL "https://example.com/",
+  likes: URL "https://example.com/",
+  emojiReactions: URL "https://example.com/",
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", <en> "hello" ],
+  tags: [ URL "https://example.com/" ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", Link {} ],
+  to: URL "https://example.com/",
+  bto: URL "https://example.com/",
+  cc: URL "https://example.com/",
+  bcc: URL "https://example.com/",
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proof: URL "https://example.com/",
+  interactionPolicy: InteractionPolicy {},
+  approvedBy: URL "https://example.com/",
+  likeAuthorization: URL "https://example.com/",
+  replyAuthorization: URL "https://example.com/",
+  announceAuthorization: URL "https://example.com/",
+  translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
+  suspensionStatus: "hello",
+  targetInbox: URL "https://creativecommons.org/licenses/by/4.0/",
+  targetOrigin: "hello",
+  announcement: URL "https://creativecommons.org/licenses/by/4.0/",
+  revision: 123
+}'
+`;
+
+snapshot[`Deno.inspect(DeliverySuspension) [auto] 3`] = `
+'DeliverySuspension {
+  id: URL "https://example.com/",
+  attachments: [ Object {}, Object {} ],
+  attributions: [ Application {}, Application {} ],
+  audiences: [ Object {}, Object {} ],
+  contents: [ "hello", "hello" ],
+  contexts: [ Object {}, Object {} ],
+  contextHistories: [ Collection {}, Collection {} ],
+  names: [ "hello", "hello" ],
+  endTime: 2024-03-03T08:30:06.796196096Z,
+  generators: [ Object {}, Object {} ],
+  icons: [ Image {}, Image {} ],
+  images: [ Image {}, Image {} ],
+  replyTargets: [ Object {}, Object {} ],
+  locations: [ Object {}, Object {} ],
+  previews: [ Link {}, Link {} ],
+  published: 2024-03-03T08:30:06.796196096Z,
+  replies: Collection {},
+  shares: Collection {},
+  likes: Collection {},
+  emojiReactions: Collection {},
+  startTime: 2024-03-03T08:30:06.796196096Z,
+  summaries: [ "hello", "hello" ],
+  tags: [ Object {}, Object {} ],
+  updated: 2024-03-03T08:30:06.796196096Z,
+  urls: [ URL "https://example.com/", URL "https://example.com/" ],
+  tos: [ Object {}, Object {} ],
+  btos: [ Object {}, Object {} ],
+  ccs: [ Object {}, Object {} ],
+  bccs: [ Object {}, Object {} ],
+  mediaType: "hello",
+  duration: PT1H,
+  sensitive: true,
+  source: Source {},
+  proofs: [ DataIntegrityProof {}, DataIntegrityProof {} ],
+  interactionPolicy: InteractionPolicy {},
+  approvedBy: URL "https://example.com/",
+  likeAuthorization: LikeAuthorization {},
+  replyAuthorization: ReplyAuthorization {},
+  announceAuthorization: AnnounceAuthorization {},
+  translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
+  suspensionStatus: "hello",
+  targetInbox: URL "https://creativecommons.org/licenses/by/4.0/",
+  targetOrigin: "hello",
+  announcement: URL "https://creativecommons.org/licenses/by/4.0/",
+  revision: 123
 }'
 `;
 
@@ -3698,7 +3857,8 @@ snapshot[`Deno.inspect(Application) [auto] 1`] = `
   service: DidService {},
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello" ]
 }'
 `;
 
@@ -3770,7 +3930,8 @@ snapshot[`Deno.inspect(Application) [auto] 2`] = `
   service: URL "https://example.com/",
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello" ]
 }'
 `;
 
@@ -3845,7 +4006,8 @@ snapshot[`Deno.inspect(Application) [auto] 3`] = `
   services: [ DidService {}, DidService {} ],
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello", "hello" ]
 }'
 `;
 
@@ -4522,7 +4684,8 @@ snapshot[`Deno.inspect(Collection) [auto] 1`] = `
   outboxOf: Object {},
   followersOf: Object {},
   followingOf: Object {},
-  likedOf: Object {}
+  likedOf: Object {},
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -4581,7 +4744,8 @@ snapshot[`Deno.inspect(Collection) [auto] 2`] = `
   outboxOf: URL "https://example.com/",
   followersOf: URL "https://example.com/",
   followingOf: URL "https://example.com/",
-  likedOf: URL "https://example.com/"
+  likedOf: URL "https://example.com/",
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -4643,7 +4807,8 @@ snapshot[`Deno.inspect(Collection) [auto] 3`] = `
   outboxOf: Object {},
   followersOf: Object {},
   followingOf: Object {},
-  likedOf: Object {}
+  likedOf: Object {},
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -4703,6 +4868,7 @@ snapshot[`Deno.inspect(CollectionPage) [auto] 1`] = `
   followersOf: Object {},
   followingOf: Object {},
   likedOf: Object {},
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/",
   partOf: Collection {},
   next: CollectionPage {},
   prev: CollectionPage {}
@@ -4765,6 +4931,7 @@ snapshot[`Deno.inspect(CollectionPage) [auto] 2`] = `
   followersOf: URL "https://example.com/",
   followingOf: URL "https://example.com/",
   likedOf: URL "https://example.com/",
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/",
   partOf: URL "https://example.com/",
   next: URL "https://example.com/",
   prev: URL "https://example.com/"
@@ -4830,6 +4997,7 @@ snapshot[`Deno.inspect(CollectionPage) [auto] 3`] = `
   followersOf: Object {},
   followingOf: Object {},
   likedOf: Object {},
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/",
   partOf: Collection {},
   next: CollectionPage {},
   prev: CollectionPage {}
@@ -6029,7 +6197,8 @@ snapshot[`Deno.inspect(Group) [auto] 1`] = `
   service: DidService {},
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello" ]
 }'
 `;
 
@@ -6101,7 +6270,8 @@ snapshot[`Deno.inspect(Group) [auto] 2`] = `
   service: URL "https://example.com/",
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello" ]
 }'
 `;
 
@@ -6176,7 +6346,8 @@ snapshot[`Deno.inspect(Group) [auto] 3`] = `
   services: [ DidService {}, DidService {} ],
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello", "hello" ]
 }'
 `;
 
@@ -8359,7 +8530,8 @@ snapshot[`Deno.inspect(OrderedCollection) [auto] 1`] = `
   outboxOf: Object {},
   followersOf: Object {},
   followingOf: Object {},
-  likedOf: Object {}
+  likedOf: Object {},
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -8418,7 +8590,8 @@ snapshot[`Deno.inspect(OrderedCollection) [auto] 2`] = `
   outboxOf: URL "https://example.com/",
   followersOf: URL "https://example.com/",
   followingOf: URL "https://example.com/",
-  likedOf: URL "https://example.com/"
+  likedOf: URL "https://example.com/",
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -8480,7 +8653,8 @@ snapshot[`Deno.inspect(OrderedCollection) [auto] 3`] = `
   outboxOf: Object {},
   followersOf: Object {},
   followingOf: Object {},
-  likedOf: Object {}
+  likedOf: Object {},
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -8540,6 +8714,7 @@ snapshot[`Deno.inspect(OrderedCollectionPage) [auto] 1`] = `
   followersOf: Object {},
   followingOf: Object {},
   likedOf: Object {},
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/",
   partOf: Collection {},
   next: CollectionPage {},
   prev: CollectionPage {},
@@ -8603,6 +8778,7 @@ snapshot[`Deno.inspect(OrderedCollectionPage) [auto] 2`] = `
   followersOf: URL "https://example.com/",
   followingOf: URL "https://example.com/",
   likedOf: URL "https://example.com/",
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/",
   partOf: URL "https://example.com/",
   next: URL "https://example.com/",
   prev: URL "https://example.com/",
@@ -8669,6 +8845,7 @@ snapshot[`Deno.inspect(OrderedCollectionPage) [auto] 3`] = `
   followersOf: Object {},
   followingOf: Object {},
   likedOf: Object {},
+  deliveryController: URL "https://creativecommons.org/licenses/by/4.0/",
   partOf: Collection {},
   next: CollectionPage {},
   prev: CollectionPage {},
@@ -8744,7 +8921,8 @@ snapshot[`Deno.inspect(Organization) [auto] 1`] = `
   service: DidService {},
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello" ]
 }'
 `;
 
@@ -8816,7 +8994,8 @@ snapshot[`Deno.inspect(Organization) [auto] 2`] = `
   service: URL "https://example.com/",
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello" ]
 }'
 `;
 
@@ -8891,7 +9070,8 @@ snapshot[`Deno.inspect(Organization) [auto] 3`] = `
   services: [ DidService {}, DidService {} ],
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello", "hello" ]
 }'
 `;
 
@@ -9113,7 +9293,8 @@ snapshot[`Deno.inspect(Person) [auto] 1`] = `
   service: DidService {},
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello" ]
 }'
 `;
 
@@ -9185,7 +9366,8 @@ snapshot[`Deno.inspect(Person) [auto] 2`] = `
   service: URL "https://example.com/",
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello" ]
 }'
 `;
 
@@ -9260,7 +9442,8 @@ snapshot[`Deno.inspect(Person) [auto] 3`] = `
   services: [ DidService {}, DidService {} ],
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello", "hello" ]
 }'
 `;
 
@@ -10442,7 +10625,8 @@ snapshot[`Deno.inspect(Service) [auto] 1`] = `
   service: DidService {},
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello" ]
 }'
 `;
 
@@ -10514,7 +10698,8 @@ snapshot[`Deno.inspect(Service) [auto] 2`] = `
   service: URL "https://example.com/",
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello" ]
 }'
 `;
 
@@ -10589,7 +10774,8 @@ snapshot[`Deno.inspect(Service) [auto] 3`] = `
   services: [ DidService {}, DidService {} ],
   followedMessage: "hello",
   cat: true,
-  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/",
+  controlledOrigins: [ "hello", "hello" ]
 }'
 `;
 

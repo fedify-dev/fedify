@@ -1,0 +1,87 @@
+$schema: ../../vocab-tools/schema.yaml
+name: DeliverySuspension
+compactName: DeliverySuspension
+uri: "https://w3id.org/fep/f799#DeliverySuspension"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  A finite request to suspend inbox delivery, as defined by draft
+  [FEP-f799](https://w3id.org/fep/f799).  Inherited attribution, publication,
+  start and end times, summary, and URL describe the notice and its controller.
+  Constructing or parsing this vocabulary object does not authenticate its
+  publisher, establish control of a target, or suspend delivery.  Applications
+  must validate the original document and verify authority separately.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
+- fedibird: "http://fedibird.com/ns#"
+  sensitive: "as:sensitive"
+  emojiReactions:
+    "@id": "fedibird:emojiReactions"
+    "@type": "@id"
+- contextHistory:
+    "@id": "https://w3id.org/fep/171b/contextHistory"
+    "@type": "@id"
+- "https://w3id.org/fep/f799"
+
+properties:
+- singularName: suspensionStatus
+  functional: true
+  compactName: status
+  uri: "https://w3id.org/fep/f799#status"
+  extraContext: "https://w3id.org/fep/f799"
+  description: |
+    The notice's claimed state, normally `active` or `cancelled`.  This is the
+    FEP-f799 status property, distinct from unrelated profile status fields.
+    This accessor does not validate the notice's lifecycle.
+  range:
+  - "fedify:typedString"
+
+- singularName: targetInbox
+  functional: true
+  compactName: targetInbox
+  uri: "https://w3id.org/fep/f799#targetInbox"
+  extraContext: "https://w3id.org/fep/f799"
+  description: |
+    The exact inbox whose delivery is requested to pause.  A notice must name
+    either this property or `targetOrigin`.  No inbox is fetched, and this
+    URL-valued accessor does not establish control or validate target scope.
+  range:
+  - "fedify:absoluteIri"
+
+- singularName: targetOrigin
+  functional: true
+  compactName: targetOrigin
+  uri: "https://w3id.org/fep/f799#targetOrigin"
+  extraContext: "https://w3id.org/fep/f799"
+  description: |
+    The claimed HTTPS origin whose inbox delivery is requested to pause.
+    Preserves the string's spelling without URL normalization.  A notice must
+    name either this property or `targetInbox`; applications must validate
+    the origin and verify its controller independently.
+  range:
+  - "fedify:typedString"
+
+- singularName: announcement
+  functional: true
+  compactName: announcement
+  uri: "https://w3id.org/fep/f799#announcement"
+  extraContext: "https://w3id.org/fep/f799"
+  description: |
+    The claimed identifier of the original {@link Create} announcement, when
+    the notice was announced through `Create`.  No activity is fetched or
+    authenticated by this accessor.
+  range:
+  - "fedify:absoluteIri"
+
+- singularName: revision
+  functional: true
+  compactName: revision
+  uri: "https://w3id.org/fep/f799#revision"
+  extraContext: "https://w3id.org/fep/f799"
+  description: |
+    The notice's positive safe integer revision.  This value alone does not
+    establish freshness or an authenticated revision history.
+  range:
+  - "fedify:positiveSafeInteger"

@@ -329,15 +329,26 @@ Range type reference
 
 ### Fedify internal types
 
-| Range URI             | TypeScript type                                        | Notes                               |
-| --------------------- | ------------------------------------------------------ | ----------------------------------- |
-| `fedify:langTag`      | `Intl.Locale`                                          | BCP 47 language tag as plain string |
-| `fedify:url`          | `URL`                                                  | URL stored as `@value` (not `@id`)  |
-| `fedify:absoluteIri`  | `URL`                                                  | Absolute IRI stored as `@id`; also reads literals, never resolves relative values |
-| `fedify:publicKey`    | `CryptoKey`                                            | PEM SPKI-encoded public key         |
-| `fedify:multibaseKey` | `CryptoKey`                                            | Multibase-encoded key (Ed25519)     |
-| `fedify:proofPurpose` | `"assertionMethod" \| "authentication" \| ...`         | Proof purpose string                |
-| `fedify:units`        | `"cm" \| "feet" \| "inches" \| "km" \| "m" \| "miles"` | Place units                         |
+| Range URI                    | TypeScript type                                        | Notes                                                                                                           |
+| ---------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `fedify:typedString`         | `string`                                               | Explicit `xsd:string` output; accepts plain or `xsd:string` string literals, skips incompatible incoming values |
+| `fedify:positiveSafeInteger` | `number`                                               | Explicit `xsd:integer` output; accepts only positive safe numeric integers, skips incompatible incoming values  |
+| `fedify:langTag`             | `Intl.Locale`                                          | BCP 47 language tag as plain string                                                                             |
+| `fedify:url`                 | `URL`                                                  | URL stored as `@value` (not `@id`)                                                                              |
+| `fedify:absoluteIri`         | `URL`                                                  | Absolute IRI stored as `@id`; also reads literals, never resolves relative values                               |
+| `fedify:publicKey`           | `CryptoKey`                                            | PEM SPKI-encoded public key                                                                                     |
+| `fedify:multibaseKey`        | `CryptoKey`                                            | Multibase-encoded key (Ed25519)                                                                                 |
+| `fedify:proofPurpose`        | `"assertionMethod" \| "authentication" \| ...`         | Proof purpose string                                                                                            |
+| `fedify:units`               | `"cm" \| "feet" \| "inches" \| "km" \| "m" \| "miles"` | Place units                                                                                                     |
+
+Use `fedify:typedString` when a context coerces a term to `xsd:string`, so the
+serializer emits the compact term instead of a full property IRI.  Use
+`fedify:positiveSafeInteger` for protocol fields whose numeric range is
+1–9007199254740991.  These are targeted codecs; the existing `xsd:string` and
+`xsd:integer` codecs retain their behavior.  Lenient incoming decoding does not
+validate protocol shape or multiplicity; inspect the original JSON-LD
+separately when those facts matter.  Raw-property writes remain strict and
+reject unsupported values instead of skipping them.
 
 ### Vocabulary types
 

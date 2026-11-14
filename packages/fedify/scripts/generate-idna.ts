@@ -1,0 +1,145 @@
+/**
+ * Offline Unicode 12.0.0 IDNA2008 table generator.
+ * Run: node --experimental-strip-types scripts/generate-idna.ts INPUT_DIR OUTPUT_DIR [--check]
+ * Supply the named pinned source files below; this script never fetches data.
+ * OUTPUT_DIR is packages/fedify/src/delivery-suspension in the checkout.
+ */
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+
+const sources = {
+  "iana12.csv": [
+    "https://www.iana.org/assignments/idna-tables-12.0.0/idna-tables-properties.csv",
+    "160b72e33a377a84253393c572dc338879f39b93beccbb9cb9baebbf4d6dd743",
+  ],
+  "UnicodeData12.txt": [
+    "https://www.unicode.org/Public/12.0.0/ucd/UnicodeData.txt",
+    "57913fdb1c1271fa9fd51dea08d49370f33d5bfda6bbaba348f44d90029ea11d",
+  ],
+  "DerivedJoiningType12.txt": [
+    "https://www.unicode.org/Public/12.0.0/ucd/extracted/DerivedJoiningType.txt",
+    "2a92a39d6713b8cc9a6d4eb808efaf93c52a4fcc01c149fec9892113838dae8b",
+  ],
+  "Scripts12.txt": [
+    "https://www.unicode.org/Public/12.0.0/ucd/Scripts.txt",
+    "bd327cbb8bffd2e4b40b1e9842c9a7d641d1c4e91c34a41020cf174f3a1c86a1",
+  ],
+  "UnicodeLicense.txt": [
+    "https://www.unicode.org/license.txt",
+    "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
+  ],
+} as const;
+const [input, output, mode] = process.argv.slice(2);
+if (!input || !output || (mode != null && mode !== "--check")) {
+  throw new Error("Usage: generate-idna.ts INPUT_DIR OUTPUT_DIR [--check]");
+}
+function hash(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
+}
+const files: Record<string, string> = {};
+for (const [name, [, digest]] of Object.entries(sources)) {
+  const bytes = readFileSync(`${input}/${name}`);
+  if (createHash("sha256").update(bytes).digest("hex") !== digest) {
+    throw new Error(`Source hash mismatch: ${name}`);
+  }
+  files[name] = bytes.toString("utf8");
+}
+const bidiNames = [
+  "",
+  "L",
+  "R",
+  "AL",
+  "AN",
+  "EN",
+  "ES",
+  "CS",
+  "ET",
+  "ON",
+  "BN",
+  "NSM",
+];
+const joiningNames = ["", "L", "R", "D", "T"];
+const scriptNames = ["", "Greek", "Hebrew", "Han", "Hiragana", "Katakana"];
+const arrays = Object.fromEntries(
+  ["validity", "assigned", "mark", "virama", "bidi", "joining", "script"].map(
+    (key) => [key, new Uint8Array(0x110000)],
+  ),
+);
+function fill(key: string, start: number, end: number, value: number): void {
+  if (value > 0) arrays[key].fill(value, start, end + 1);
+}
+function range(value: string): [number, number] {
+  const [start, end = start] = value
+    .split(/\.\.|-/)
+    .map((part) => parseInt(part, 16));
+  if (!(start >= 0 && end >= start && end <= 0x10ffff))
+    throw new Error("Invalid source range");
+  return [start, end];
+}
+for (const line of files["iana12.csv"].split(/\r?\n/).slice(1)) {
+  const [points, property] = line.split(",");
+  const value = ["", "PVALID", "CONTEXTJ", "CONTEXTO"].indexOf(property);
+  if (value > 0) fill("validity", ...range(points), value);
+}
+let first: string[] | undefined;
+for (const line of files["UnicodeData12.txt"].trim().split(/\r?\n/)) {
+  const fields = line.split(";");
+  if (fields[1].endsWith(", First>")) {
+    if (first) throw new Error("Nested First range");
+    first = fields;
+    continue;
+  }
+  const start = parseInt((first ?? fields)[0], 16);
+  const end = parseInt(fields[0], 16);
+  if (first && !fields[1].endsWith(", Last>"))
+    throw new Error("Unclosed First range");
+  if (!first && fields[1].endsWith(", Last>"))
+    throw new Error("Unexpected Last range");
+  if (first && first.slice(2).join(";") !== fields.slice(2).join(";"))
+    throw new Error("Inconsistent First/Last properties");
+  fill("assigned", start, end, 1);
+  fill("mark", start, end, Number(fields[2].startsWith("M")));
+  fill("virama", start, end, Number(fields[3] === "9"));
+  fill("bidi", start, end, bidiNames.indexOf(fields[4]));
+  first = undefined;
+}
+if (first) throw new Error("Unclosed First range");
+for (const [file, key, names] of [
+  ["DerivedJoiningType12.txt", "joining", joiningNames],
+  ["Scripts12.txt", "script", scriptNames],
+] as const) {
+  for (const line of files[file].split(/\r?\n/)) {
+    const match = /^\s*([0-9A-F.]+)\s*;\s*(\w+)/.exec(line);
+    if (match) fill(key, ...range(match[1]), names.indexOf(match[2]));
+  }
+}
+// Every array is an ordered sequence of inclusive [first, last, property] triples.
+const tables: Record<string, number[]> = {};
+for (const [key, values] of Object.entries(arrays)) {
+  const ranges: number[] = [];
+  for (let i = 0; i < values.length;) {
+    const start = i,
+      value = values[i++];
+    while (i < values.length && values[i] === value) i++;
+    if (value > 0) ranges.push(start, i - 1, value);
+  }
+  tables[key] = ranges;
+}
+const digest = hash(JSON.stringify(tables));
+const sourceComments = Object.entries(sources)
+  .map(([name, [url, digest]]) => `// ${name}: ${url}\n// SHA-256: ${digest}`)
+  .join("\n");
+const source = `/*! @license\n${files["UnicodeLicense.txt"].trimEnd()}\n*/\n// Generated by scripts/generate-idna.ts; do not edit.\n// Unicode 12.0.0. See UNICODE-LICENSE.txt in this directory.\n${sourceComments}\nexport const IDNA_UNICODE_VERSION = "12.0.0";\nexport const IDNA_DATA_SHA256 =\n  "${digest}";\n// oxfmt-ignore\nexport const IDNA_TABLES: Readonly<Record<"validity" | "assigned" | "mark" | "virama" | "bidi" | "joining" | "script", readonly number[]>> = ${JSON.stringify(tables, null, 0)};\n`;
+for (const [name, content] of [
+  ["idna-data.ts", source],
+  ["UNICODE-LICENSE.txt", files["UnicodeLicense.txt"]],
+]) {
+  const path = `${output}/${name}`;
+  if (mode === "--check") {
+    if (readFileSync(path, "utf8") !== content)
+      throw new Error(`Generated file differs: ${path}`);
+  } else writeFileSync(path, content);
+}
+process.stdout.write(
+  `Unicode 12.0.0 IDNA tables ${mode === "--check" ? "verified" : "generated"}: ${digest}\n`,
+);

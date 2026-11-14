@@ -17023,7 +17023,6 @@
             "npm:pngjs@7",
             "npm:shiki@^1.6.4",
             "npm:smol-toml@^1.6.1",
-            "npm:srvx@~0.8.7",
             "npm:valibot@^1.4.0",
             "npm:yaml@^2.9.0"
           ]

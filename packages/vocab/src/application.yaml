@@ -385,3 +385,18 @@ properties:
     licensed under its author's preferred license.
   range:
   - "fedify:absoluteIri"
+
+
+- pluralName: controlledOrigins
+  singularName: controlledOrigin
+  compactName: controlledOrigin
+  uri: "https://w3id.org/fep/f799#controlledOrigin"
+  extraContext: "https://w3id.org/fep/f799"
+  description: |
+    The HTTPS origins this actor claims to control for delivery suspension,
+    as defined by draft [FEP-f799](https://w3id.org/fep/f799).  Strings retain
+    their spelling without URL normalization.  These claims require
+    independent verification through each origin's WebFinger metadata and
+    do not establish authority on their own.
+  range:
+  - "fedify:typedString"

@@ -118,19 +118,25 @@ test(
       assert.equal(initial.length, 1);
       assert.equal(initial[0].indisvalid, true);
       assert.match(initial[0].definition, /timezone\('UTC'/);
-      const [{ name }] = await sql`
-      SELECT c.relname AS name FROM pg_index i
-      JOIN pg_class c ON c.oid = i.indexrelid
-      WHERE i.indrelid = ${tableName}::regclass AND NOT i.indisprimary
-    `;
-      await sql`DROP INDEX ${sql(name)}`;
-      await manualIndex(sql, tableName, true);
-      statements.length = 0;
-      await new PostgresKvStore(sql, {
-        tableName: `public.${tableName}`,
-      }).initialize();
-      assert.equal((await indexes(sql, tableName)).length, 1);
-      assert(!statements.some((q) => /LOCK TABLE|CREATE INDEX/.test(q)));
+      for (const atTimeZone of [false, true]) {
+        const [{ name }] = await sql`
+          SELECT c.relname AS name FROM pg_index i
+          JOIN pg_class c ON c.oid = i.indexrelid
+          WHERE i.indrelid = ${tableName}::regclass AND NOT i.indisprimary
+        `;
+        await sql`DROP INDEX ${sql(name)}`;
+        await manualIndex(sql, tableName, atTimeZone);
+        statements.length = 0;
+        await new PostgresKvStore(sql, {
+          tableName: `public.${tableName}`,
+        }).initialize();
+        assert.equal(
+          (await indexes(sql, tableName)).length,
+          1,
+          `reuse the ${atTimeZone ? "AT TIME ZONE" : "timezone()"} index`,
+        );
+        assert(!statements.some((q) => /LOCK TABLE|CREATE INDEX/.test(q)));
+      }
     } finally {
       await store.drop();
       await sql.end();

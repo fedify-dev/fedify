@@ -172,6 +172,43 @@ test("generateClasses() rejects xsd:string and xsd:decimal unions", async () => 
   );
 });
 
+test("generateClasses() rejects typed strings mixed with other runtime string codecs", async () => {
+  for (const other of [
+    "http://www.w3.org/2001/XMLSchema#string",
+    "http://www.w3.org/2001/XMLSchema#decimal",
+  ] as const) {
+    for (const range of [
+      ["fedify:typedString", other],
+      [other, "fedify:typedString"],
+    ] as const) {
+      await rejects(
+        Array.fromAsync(
+          generateClasses({
+            "https://example.com/Fixture": {
+              name: "Fixture",
+              uri: "https://example.com/Fixture",
+              entity: false,
+              description: "A fixture.",
+              defaultContext:
+                "https://example.com/context" as TypeSchema["defaultContext"],
+              properties: [
+                {
+                  singularName: "value",
+                  functional: true,
+                  uri: "https://example.com/value",
+                  description: "A value.",
+                  range: [...range],
+                },
+              ],
+            },
+          }),
+        ),
+        /cannot mix fedify:typedString with xsd:string or xsd:decimal/,
+      );
+    }
+  }
+});
+
 if ("Deno" in globalThis) {
   const { assertSnapshot } = await import("@std/testing/snapshot");
   Deno.test("generateClasses()", async (t) => {

@@ -308,6 +308,7 @@ export function hasSingularAccessor(property: PropertySchema): boolean {
 }
 
 const XSD_STRING_URI = "http://www.w3.org/2001/XMLSchema#string";
+const FEDIFY_TYPED_STRING_URI = "fedify:typedString";
 const XSD_DECIMAL_URI = "http://www.w3.org/2001/XMLSchema#decimal";
 const FEDIFY_VOCAB_ENTITY_TYPE_URI = "fedify:vocabEntityType";
 
@@ -327,6 +328,16 @@ export function validateTypeSchemas(types: Record<string, TypeSchema>): void {
     for (const property of type.properties) {
       const hasString = property.range.includes(XSD_STRING_URI);
       const hasDecimal = property.range.includes(XSD_DECIMAL_URI);
+      if (
+        property.range.includes(FEDIFY_TYPED_STRING_URI) &&
+        (hasString || hasDecimal)
+      ) {
+        throw new TypeError(
+          `The property ${type.name}.${property.singularName} cannot mix ` +
+            `fedify:typedString with xsd:string or xsd:decimal because the ` +
+            `generated encoder cannot disambiguate them at runtime.`,
+        );
+      }
       if (hasString && hasDecimal) {
         throw new TypeError(
           `The property ${type.name}.${property.singularName} cannot have ` +

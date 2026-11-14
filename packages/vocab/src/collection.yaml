@@ -164,3 +164,17 @@ properties:
     Defines an actor for which the collection is the value of the liked property.
   range:
   - "https://www.w3.org/ns/activitystreams#Object"
+
+
+- singularName: deliveryController
+  functional: true
+  compactName: deliveryController
+  uri: "https://w3id.org/fep/f799#deliveryController"
+  extraContext: "https://w3id.org/fep/f799"
+  description: |
+    The actor claimed to control delivery suspension for this shared inbox,
+    as defined by draft [FEP-f799](https://w3id.org/fep/f799).  No actor is
+    fetched.  Applications must verify the reciprocal shared-inbox link and
+    authenticate notices before accepting a suspension.
+  range:
+  - "fedify:absoluteIri"

@@ -140,6 +140,50 @@ const scalarTypes: Record<string, ScalarType> = {
       return `parseDecimal(${v}["@value"])`;
     },
   },
+  "fedify:typedString": {
+    name: "string",
+    typeGuard(v) {
+      return `typeof ${v} === "string"`;
+    },
+    encoder(v) {
+      return `{ "@type": "http://www.w3.org/2001/XMLSchema#string", "@value": ${v} }`;
+    },
+    compactEncoder(v) {
+      return v;
+    },
+    dataCheck(v) {
+      return `${v} != null && typeof ${v} === "object" && "@value" in ${v}
+        && typeof ${v}["@value"] === "string" && !("@language" in ${v})
+        && (!("@type" in ${v}) || ${v}["@type"] === "http://www.w3.org/2001/XMLSchema#string")`;
+    },
+    decoder(v) {
+      return `${v}["@value"]`;
+    },
+    skipUnparsable: true,
+  },
+  "fedify:positiveSafeInteger": {
+    name: "number",
+    typeGuard(v) {
+      return `typeof ${v} === "number" && Number.isSafeInteger(${v}) && ${v} > 0`;
+    },
+    encoder(v) {
+      return `{ "@type": "http://www.w3.org/2001/XMLSchema#integer", "@value": ${v} }`;
+    },
+    compactEncoder(v) {
+      return v;
+    },
+    dataCheck(v) {
+      return `${v} != null && typeof ${v} === "object" && "@value" in ${v}
+        && typeof ${v}["@value"] === "number" && Number.isSafeInteger(${v}["@value"])
+        && ${v}["@value"] > 0
+        && !("@language" in ${v})
+        && (!("@type" in ${v}) || ${v}["@type"] === "http://www.w3.org/2001/XMLSchema#integer")`;
+    },
+    decoder(v) {
+      return `${v}["@value"]`;
+    },
+    skipUnparsable: true,
+  },
   "http://www.w3.org/2001/XMLSchema#string": {
     name: "string",
     typeGuard(v) {

@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/mod.ts",
     "./compat": "./src/compat/mod.ts",
+    "./delivery-suspension": "./src/delivery-suspension/mod.ts",
     "./federation": "./src/federation/mod.ts",
     "./nodeinfo": "./src/nodeinfo/mod.ts",
     "./otel": "./src/otel/mod.ts",

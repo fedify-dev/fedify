@@ -68,6 +68,27 @@ To be released.
     breaking source compatibility for custom implementations. Update custom
     mocks, decorators, and wrappers to implement this method.
     [[#1316], [#1359] by Jiwon Kwon\]
+ -  Added raw [FEP-f799] shape tools in
+    `@fedify/fedify/delivery-suspension`.  The asynchronous notice, activity,
+    actor metadata, and inbox metadata parsers preserve expanded IRI spelling,
+    literal values, and multiplicity, and return detached evidence and
+    diagnostics.  Diagnostic `path` values refer to original expanded evidence
+    after expansion succeeds; earlier failures may use input or context
+    pointers. Dropped occurrences retain their original JSON pointer in
+    `rawPath`. Unrelated embedded objects are classified before requiring
+    control-activity fields. Reference-only actor `endpoints` values stay
+    unresolved even with an `@index` annotation, which is retained in the
+    evidence. The default loader resolves preloaded
+    contexts locally; applications can explicitly supply a context loader. A
+    conservative context preflight reserves work for both expansions before
+    processing, and marker selection has a fixed collision limit. The parsers
+    reject expanded `@included` outside `@value` literals, and repeated
+    descriptions of an inspected `@id` even when they occur in different named
+    graphs. Reverse assertions about inspected IDs are rejected as well. Strict
+    HTTPS origin helpers validate origin spelling before URL normalization,
+    including IDNA2008 validation against a pinned Unicode 12.0 repertoire.
+    These tools expose unverified claims; they do not authenticate notices,
+    establish controller authority, or suspend delivery. [[#1369], [#1435]]
  -  Added sender payload projection support for the published FEP-171b context,
     preserving blind-recipient redaction.
     [[#1250], [#1396] by Jiwon Kwon\]
@@ -105,6 +126,7 @@ To be released.
     [[#1030], [#1205] by Yujin Jung\]
 
 [FEP-7aa9]: https://w3id.org/fep/7aa9
+[FEP-f799]: https://w3id.org/fep/f799
 [GHSA-4qhx-hhwf-8685]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-4qhx-hhwf-8685
 [#1030]: https://github.com/fedify-dev/fedify/issues/1030
 [#1177]: https://github.com/fedify-dev/fedify/issues/1177
@@ -122,10 +144,12 @@ To be released.
 [#1359]: https://github.com/fedify-dev/fedify/pull/1359
 [#1361]: https://github.com/fedify-dev/fedify/issues/1361
 [#1363]: https://github.com/fedify-dev/fedify/issues/1363
+[#1369]: https://github.com/fedify-dev/fedify/issues/1369
 [#1382]: https://github.com/fedify-dev/fedify/issues/1382
 [#1395]: https://github.com/fedify-dev/fedify/pull/1395
 [#1396]: https://github.com/fedify-dev/fedify/pull/1396
 [#1415]: https://github.com/fedify-dev/fedify/pull/1415
+[#1435]: https://github.com/fedify-dev/fedify/pull/1435
 
 ### @fedify/backfill
 
@@ -474,6 +498,10 @@ To be released.
     rejects a `ttl` option when deleting (`newValue` is `undefined`), where it
     previously ignored the TTL.  Omit `ttl` when deleting.
     [[#1361], [#1364], [#1429]]
+ -  Fixed `PostgresKvStore.initialize()` creating a duplicate expiry index on
+    PostgreSQL 18.7 when a valid, manually created `AT TIME ZONE` expiry index
+    already exists.
+    [[#1309], [#1435]]
 
 [index migration guide]: https://fedify.dev/manual/kv#postgresql-expiry-index
 [#1309]: https://github.com/fedify-dev/fedify/issues/1309
@@ -584,6 +612,18 @@ To be released.
     Mastodon reads when it refreshes an account, and parsing accepts both
     a single string value and an array of strings.  [[#1234], [#1353]]
 
+ -  Added the draft [FEP-f799] `DeliverySuspension` vocabulary type,
+    `Collection.deliveryController`, and `controlledOrigins` on all five
+    actor classes.  The TypeScript `suspensionStatus` accessor preserves the
+    FEP's `status` wire term without merging unrelated status properties.
+    Origin strings retain their spelling, and inbox/controller links are
+    URL-valued without fetching resources.  These additions do not enable
+    handling of suspension notices or suspend delivery.  [[#1369], [#1435]]
+
+    `getRawPropertyValues()` now encodes these modeled properties from their
+    typed values.  `withRawProperty()` and `withRawProperties()` decode writes
+    into the typed fields and reject unsupported values.
+
  -  Added vocabulary support for the [FEP-6757] draft, which marks
     ActivityPub content with explicit copyright license URIs.
     [[#1212], [#1241]]
@@ -651,6 +691,10 @@ To be released.
     `@fedify/vocab-tools`.  The writers accept the same `RawPropertyValue`
     shapes as the read functions, copy supplied JSON values, and reject
     malformed or cyclic input before decoding properties.  [[#1355], [#1420]]
+ -  Added the [FEP-f799] context to the preloaded JSON-LD contexts.  The default
+    document loader now resolves <https://w3id.org/fep/f799> locally, so
+    otherwise valid inbound documents can be parsed or verified without
+    depending on the remote context server.  [[#1369], [#1435]]
  -  Added the `VocabularyObject` interface, which every class generated by
     `@fedify/vocab-tools` implements, and the `RawPropertyValue` type with its
     `RawValueObject`, `RawNodeObject`, and `RawListObject` shapes for the
@@ -683,6 +727,12 @@ To be released.
     `https://w3id.org/identity/v1`.  Previously, such a property compacted to
     a prefixed name like `dc:license` without the extra context.
     [[#1212], [#1241]]
+ -  Added the `fedify:typedString` and `fedify:positiveSafeInteger` schema
+    ranges for vocabulary fields that need explicit `xsd:string` or
+    `xsd:integer` datatypes during JSON-LD compaction.  The integer range
+    accepts only positive safe numbers; incompatible incoming values are
+    skipped by these codecs, while raw-property writes reject them.
+    Existing scalar ranges retain their behavior.  [[#1369], [#1435]]
  -  Added `withRawProperty()` and `withRawProperties()` to generated
     vocabulary modules.  Applications can write expanded JSON-LD properties
     without defining typed accessors, including properties on objects from
