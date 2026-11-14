@@ -260,7 +260,68 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+#### Atomic operations
+
+Since Fedify 2.5.0, `RedisKvStore` implements `AtomicKvStore` on official Redis
+7.2.17, 7.4.12, and 8.10.3. Other releases reject nonempty batch calls before
+reading or writing. Supporting another Redis release requires a new audit and
+Fedify update; ordinary single-key methods keep their existing compatibility.
+Modified engines, forks, script debugging, and module command hooks are not
+supported atomic configurations, and the version guard does not authenticate
+the server.
+
+On standalone Redis, batches cover one selected database on the primary. On
+Cluster, all effective physical keys must share a slot in database zero. For a
+new namespace, the existing `keyPrefix` option can select that scope:
+
+~~~~ typescript twoslash
+import { RedisKvStore } from "@fedify/redis";
+import { Cluster } from "ioredis";
+
+const redis = new Cluster([{ host: "127.0.0.1", port: 7000 }]);
+const store = new RedisKvStore(redis, { keyPrefix: "{inventory}::" });
+const values = await store.getMany([["available"], ["reserved"]]);
+~~~~
+
+Keys are not automatically tagged or moved. Changing a prefix selects a new
+namespace and needs an application migration for existing data. The first `{`
+and following `}` select a hash tag only if the pair is nonempty; an empty pair
+hashes the whole key. A tag in the ioredis client's own `keyPrefix` can take
+precedence over a tag in the adapter's `keyPrefix`. Cross-slot calls reject,
+including different slots on the same master; they never split into separate
+operations. Missing or expired keys can cause an entire batch to reject during
+resharding.
+
+Each request is limited to 128 entries and 1 MiB of effective key, encoded
+values and expectations, and argument data, excluding the fixed script and
+protocol framing. Batch TTLs round up to whole seconds, with a minimum of one
+second and maximum of 2,147,483,647 seconds. Zero and negative TTLs therefore
+keep a value for one second. Omitting a TTL clears the previous expiry.
+Single-key TTLs keep their existing range handling. CAS compares encoded bytes;
+with the default JSON codec, object property order matters. Values must
+round-trip through their codec; `undefined` is never stored (as a CAS
+`newValue` it deletes the key), while `null` remains a value.
+
+Before changing keys, the scripts read every target and check each write
+command's permissions.
+They require `EVAL`, `GET` or `EXISTS`, and the applicable `SET`, `SETEX`, or
+`DEL` access. Redis checks `EVAL`'s read/write key access before entering the
+script, so key patterns must grant both read and write access even for
+`getMany()` snapshots. Snapshots route to the primary despite Cluster
+`scaleReads`. The existing Cluster prefix-listing `SCAN` limitation remains:
+listing does not reliably visit every node, and `getMany()` does not snapshot
+`list()`.
+
+Configured memory pressure can reject batch deletes as well as writes;
+ordinary `delete()` remains available. A successful batch is not a persistence
+or failover guarantee. ioredis can replay requests after disconnection, so even
+a CAS mismatch reply does not prove an earlier attempt never committed.
+Re-read and re-evaluate application rules after a mismatch or uncertain
+response. See the [Redis package guide]
+for codecs, supported configurations, limits, and retry behavior.
+
 [`RedisKvStore`]: https://jsr.io/@fedify/redis/doc/kv/~/RedisKvStore
+[Redis package guide]: https://github.com/fedify-dev/fedify/tree/main/packages/redis#atomic-keyvalue-operations
 
 ### [`PostgresKvStore`]
 
@@ -1156,16 +1217,17 @@ check or an operation receipt before repeating effects.
 
 ### Current support
 
-`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`,
-`MysqlKvStore`, and `WorkersD1KvStore` implement `AtomicKvStore` in their
-documented scopes.  Existing single-key CAS support does not imply atomic
-multi-key support.  The linked issues track separate adapter implementations:
+`MemoryKvStore`, `PostgresKvStore`, `RedisKvStore`, `SqliteKvStore`,
+`PgliteKvStore`, `MysqlKvStore`, and `WorkersD1KvStore` implement
+`AtomicKvStore` in their documented scopes.  Existing single-key CAS support
+does not imply atomic multi-key support.  The linked issues track separate
+adapter implementations:
 
 | Implementation        | `AtomicKvStore` | Status                                                                                            |
 | --------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
 | `MemoryKvStore`       | Yes             | Development and testing only; one instance.                                                       |
 | `PostgresKvStore`     | Yes             | One table; see [client and transaction restrictions](#postgresql-atomic-operations).              |
-| `RedisKvStore`        | No              | Planned in [#1365].                                                                               |
+| `RedisKvStore`        | Yes             | Official Redis 7.2.17, 7.4.12, or 8.10.3; standalone or one Cluster slot; 128 entries/1 MiB.      |
 | `PgliteKvStore`       | Yes             | Since 2.5.0; one normal PGlite owner and table, JSONB comparison.                                 |
 | `SqliteKvStore`       | Yes             | One configured table/database; writable handles, JSON values; see [SQLite scope](#sqlitekvstore). |
 | `MysqlKvStore`        | Yes             | InnoDB; one primary database/table, up to 1,000 entries per operation.                            |
@@ -1173,8 +1235,6 @@ multi-key support.  The linked issues track separate adapter implementations:
 | `NetlifyBlobsKvStore` | No              | Single-key CAS only; no atomic adapter child issue.                                               |
 | `WorkersKvStore`      | No              | No CAS; cannot implement this contract with Workers KV.                                           |
 | `WorkersD1KvStore`    | Yes             | One configured table in one D1 database; see its codec, TTL, size and session restrictions above. |
-
-[#1365]: https://github.com/fedify-dev/fedify/issues/1365
 
 
 Bounding how long cache entries live
@@ -1765,6 +1825,13 @@ operation.  Apply each entry's TTL with its replacement, and remove old TTLs
 when no new TTL is supplied.  Reject unsupported batches before any mutation;
 do not split calls to fit backend limits.  If a later statement fails, roll
 back all earlier writes or deletes.
+
+`RedisKvStore` uses bounded scripts and a restricted engine list because Redis
+scripts do not undo earlier writes when a later command fails. Its complete
+input encoding, execution-time key reads, command-permission checks, and script
+bounds are part of the all-or-nothing argument. An isolated `EVAL` or a
+`MULTI`/`EXEC` sequence alone does not establish this contract. Keep those Redis
+constraints when extending its implementation.
 
 #### Implement `~AtomicKvStore.casMany()` method
 
