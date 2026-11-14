@@ -51,6 +51,7 @@ import { eslint as outboxListenerDeliveryNotAwaited } from "./rules/outbox-liste
 import { eslint as outboxListenerDeliveryRequired } from "./rules/outbox-listener-delivery-required.ts";
 
 import { eslint as rawPropertyIriInvalid } from "./rules/raw-property-iri-invalid.ts";
+import { eslint as vocabCloneVerifier } from "./rules/vocab-clone-verifier.ts";
 
 const rules: Record<(typeof RULE_IDS)[keyof typeof RULE_IDS], Rule.RuleModule> =
   {
@@ -94,6 +95,7 @@ const rules: Record<(typeof RULE_IDS)[keyof typeof RULE_IDS], Rule.RuleModule> =
       mediaUploaderAuthorizationRequired,
     [RULE_IDS.denoKvStoreDeprecated]: denoKvStoreDeprecated,
     [RULE_IDS.denoKvMessageQueueDeprecated]: denoKvMessageQueueDeprecated,
+    [RULE_IDS.vocabCloneVerifier]: vocabCloneVerifier,
   };
 
 /**

@@ -100,3 +100,16 @@ export const RAW_PROPERTY_IRI_MESSAGES = {
     'Raw property IRI "{{value}}" uses a non-HTTP scheme. Prefixes are not expanded.{{hint}}',
   expandPrefix: 'Use the full IRI "{{replacement}}".',
 };
+
+/**
+ * Messages for the `vocab-clone-verifier` rule.  They say that `clone()` does
+ * not inherit the verifier, never that an object is unverified: whether the
+ * source has a default verifier is runtime state that the rule cannot see.
+ */
+export const VOCAB_CLONE_VERIFIER_MESSAGES = {
+  dropsVerifier:
+    "`clone()` does not inherit this object's default `verifyPortableObject`, so a `get*()` call through the copy may skip portable-object verification. Pass `verifyPortableObject` (for example, a `Context`) to `clone()`, or use `deepClone()` when the copy is used for dereferencing.",
+  dropsVerifierRechained:
+    "`clone()` does not inherit this object's default `verifyPortableObject`, and a later `clone()` in the chain drops it again, so a `get*()` call through the copy may skip portable-object verification. Pass `verifyPortableObject` (for example, a `Context`) to the last `clone()`, or use `deepClone()` for every copy used for dereferencing.",
+  useDeepClone: "Use `deepClone()` when dereferencing through the copy.",
+};

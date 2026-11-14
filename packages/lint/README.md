@@ -20,6 +20,8 @@ The plugin includes rules that check for:
  -  Public key and assertion method requirements
  -  Collection filtering implementation
  -  Full property IRIs for raw-property helpers (`raw-property-iri-invalid`)
+ -  Dereferencing through `clone()` copies that drop portable-object
+    verification (`vocab-clone-verifier`)
 
 [npm badge]: https://img.shields.io/npm/v/@fedify/lint?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/lint
@@ -150,6 +152,11 @@ gateway-compatible IDs.
     full `http:` or `https:` IRI, e.g., a term or a compact IRI like
     `as:content`; the `modules` option, available in ESLint and Oxlint only,
     adds other generated vocabulary modules to `@fedify/vocab`
+ -  **`vocab-clone-verifier`**: Warns when a `clone()` of a vocabulary object,
+    which does not inherit the object's default `verifyPortableObject`, is
+    dereferenced through a `get*()` accessor without a verifier; pass
+    a verifier, such as a `Context`, to `clone()`, or use `deepClone()`
+    (ESLint and Oxlint only)
 
 ### Deprecation rules
 
