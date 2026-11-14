@@ -927,6 +927,14 @@ does not.  See the
 [*`WorkersD1KvStore`*](./kv.md#workersd1kvstore-cloudflare-workers-only)
 section for details.
 
+> [!WARNING]
+> Do not use `InProcessMessageQueue` on Cloudflare Workers.  A delayed
+> enqueue depends on `setTimeout()`, which may never run after the isolate
+> exits, and `listen()` polls memory that is not guaranteed to survive or
+> be shared across requests.  Use `WorkersMessageQueue` and a `queue()`
+> handler, as shown in [Manual queue processing](#manual-queue-processing),
+> or configure another durable queue.
+
 #### Node.js compatibility
 
 Fedify depends on Node.js APIs for cryptography and DNS, so Workers need
