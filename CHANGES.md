@@ -101,7 +101,8 @@ To be released.
     `rsa-v1_5-sha256` ones.  Outgoing activities are still signed with an
     RSA-PKCS\#1-v1.5 key pair, because the draft cavage HTTP Signatures that
     Fedify falls back to support only that key type, and a request signed with
-    an Ed25519 key is not retried with them.  [[#906] by Jae-Hyuk-Jang\]
+    an Ed25519 key is not retried with them.
+    [[#906], [#1438] by Jae-Hyuk-Jang\]
  -  Added the `activity-origin-mismatch` reason to rejected
     `InboxAuthentication` decisions in `onRequestFinished` reports.  Inbox
     deliveries rejected because the activity's ID does not have the same origin
@@ -161,6 +162,7 @@ To be released.
 [#1396]: https://github.com/fedify-dev/fedify/pull/1396
 [#1415]: https://github.com/fedify-dev/fedify/pull/1415
 [#1435]: https://github.com/fedify-dev/fedify/pull/1435
+[#1438]: https://github.com/fedify-dev/fedify/pull/1438
 
 ### @fedify/backfill
 
