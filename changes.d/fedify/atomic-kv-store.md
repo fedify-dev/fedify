@@ -3,11 +3,12 @@ links:
   '#1361': https://github.com/fedify-dev/fedify/issues/1361
   '#1363': https://github.com/fedify-dev/fedify/issues/1363
   '#1395': https://github.com/fedify-dev/fedify/pull/1395
+  '#1440': https://github.com/fedify-dev/fedify/pull/1440
 ---
  -  Added `AtomicKvStore`, `isAtomicKvStore()`, and optional multi-key methods
     on `KvStore` for snapshot reads and all-or-nothing writes, deletions, and
     compare-and-swap (CAS) batches.  `MemoryKvStore` implements the atomic
-    contract for development and tests.  [[#1361], [#1363], [#1395]]
+    contract for development and tests.  [[#1361], [#1363], [#1395], [#1440]]
 
     The PostgreSQL, Redis, PGlite, SQLite, MySQL/MariaDB, and Cloudflare D1
     adapters also implement `AtomicKvStore`.  `isAtomicKvStore()` checks method

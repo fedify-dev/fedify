@@ -11,11 +11,20 @@ To be released.
  -  Added `AtomicKvStore`, `isAtomicKvStore()`, and optional multi-key methods
     on `KvStore` for snapshot reads and all-or-nothing writes, deletions, and
     compare-and-swap (CAS) batches.  `MemoryKvStore` implements the atomic
-    contract for development and tests.  It now rejects storing `undefined` and
-    TTLs on CAS deletions, removes deleted entries from listings, and reports
-    invalid TTLs through rejected promises.  Invalid batches are rejected
-    without partial writes.  Use `delete()` or a CAS with `newValue: undefined`
-    to delete values.  [[#1361], [#1363], [#1395]]
+    contract for development and tests.  [[#1361], [#1363], [#1395]]
+
+    The PostgreSQL, Redis, PGlite, SQLite, MySQL/MariaDB, and Cloudflare D1
+    adapters also implement `AtomicKvStore`.  `isAtomicKvStore()` checks method
+    presence only; it does not verify backend requirements or durability.
+    Check each adapter's supported scope and limits in the
+    [atomic operations guide].
+
+    `MemoryKvStore` now rejects attempts to store `undefined`; use `delete()`
+    or a CAS with `newValue: undefined` to delete a value.  It also rejects a
+    TTL on a CAS deletion, removes deleted entries from listings, and reports
+    invalid TTLs through rejected promises.  It rejects invalid batches without
+    partial writes.
+
  -  Added `InboxContext.authentication`, which tells inbox listeners who Fedify
     authenticated for an incoming activity independently of its declared
     `actor`: the signers of the HTTP request, the signers of the activity's
@@ -26,6 +35,7 @@ To be released.
     owner of an object the activity acts on.  The new `InboxPrincipal` and
     `InboxAuthenticationEvidence` types describe the evidence.
     [[#1290], [#1299]]
+
  -  Added the `allowActorless` option to `InboxListenerSetters.on()`, so that
     activities declaring no `actor` at all, such as the [FEP-7aa9]
     `FeatureRequest` activities Mastodon sends, can reach a listener.  Such an
@@ -37,6 +47,7 @@ To be released.
     having no actor.  Rejected deliveries are reported with the new
     `no-authenticated-principal` reason in `onRequestFinished` reports.
     [[#1289], [#1290], [#1299], [#1318], [#1328]]
+
  -  Changed the inbox to interpret each incoming activity with one set of
     JSON-LD context documents throughout signature verification and dispatch,
     and to keep that interpretation, along with the authentication evidence,
@@ -47,13 +58,16 @@ To be released.
     be kept this way, such as one a custom context loader marks as `static`,
     is processed right away instead of being queued.  Messages queued by
     older versions are processed as before.  [[#1290], [#1299]]
+
  -  Added the `MessageQueue.maxMessageSize` property.  When an incoming
     activity would make an inbox message larger than the queue can hold, it is
     now processed right away instead of being enqueued.  [[#1290], [#1299]]
+
  -  Changed inbox queue workers to deduplicate activities with the configured
     `idempotency` strategy, as direct processing already did, instead of always
     deduplicating them per origin.  Activities recorded by workers of older
     versions are still recognized.  [[#1290], [#1299]]
+
  -  Added application-facing outbound observers for sends, forwarding,
     replication, and queued retries, independently of OpenTelemetry. Optional
     callbacks report preparation, delivery handoffs, send/HTTP results, and
@@ -68,6 +82,7 @@ To be released.
     breaking source compatibility for custom implementations. Update custom
     mocks, decorators, and wrappers to implement this method.
     [[#1316], [#1359] by Jiwon Kwon\]
+
  -  Added raw [FEP-f799] shape tools in
     `@fedify/fedify/delivery-suspension`.  The asynchronous notice, activity,
     actor metadata, and inbox metadata parsers preserve expanded IRI spelling,
@@ -89,9 +104,11 @@ To be released.
     including IDNA2008 validation against a pinned Unicode 12.0 repertoire.
     These tools expose unverified claims; they do not authenticate notices,
     establish controller authority, or suspend delivery. [[#1369], [#1435]]
+
  -  Added sender payload projection support for the published FEP-171b context,
     preserving blind-recipient redaction.
     [[#1250], [#1396] by Jiwon Kwon\]
+
  -  Added the `activity-origin-mismatch` reason to rejected
     `InboxAuthentication` decisions in `onRequestFinished` reports.  Inbox
     deliveries rejected because the activity's ID does not have the same origin
@@ -99,11 +116,13 @@ To be released.
     IDs, instead of `verificationFailed`.  The
     `activitypub.verification.failure_reason` span attribute uses the same
     value.  \[[GHSA-4qhx-hhwf-8685], [#1318], [#1328]]
+
  -  Changed compound portable-object verification to check each map's proof
     policy before resolving its key or verifying its signature, avoiding work
     for maps that will be rejected.  Policy-rejected maps now appear in
     `onRequestFinished` verification reports with their policy failure and no
     signature checks.  [[#1177], [#1264]]
+
  -  Changed compound proof verification to accept `"@container": "@set"` term
     definitions in actor contexts when deciding whether embedded portable keys
     are covered by the actor's proof.  A `@set` container only forces expanded
@@ -111,10 +130,12 @@ To be released.
     and other containers remain rejected.  This keeps portable actors that
     publish container terms such as Mastodon's `attributionDomains`
     verifiable.  [[#1234], [#1353]]
+
  -  Fixed `FedifySpanExporter.forceFlush()` and `shutdown()` returning before
     pending trace writes finish.  Added a `waitUntil` exporter option to keep
     serverless invocations alive for each export attempt; use it with
     `SimpleSpanProcessor` on Cloudflare Workers.  [[#1382], [#1415]]
+
  -  Fixed log entries emitted during an individual outbound activity delivery
     or inbound activity processing carrying the enclosing HTTP request's or
     queue worker's `traceId`/`spanId` instead of the delivery or processing
@@ -125,6 +146,7 @@ To be released.
     log with the specific activity it belongs to.
     [[#1030], [#1205] by Yujin Jung\]
 
+[atomic operations guide]: https://fedify.dev/manual/kv#atomic-operations-across-keys
 [FEP-7aa9]: https://w3id.org/fep/7aa9
 [FEP-f799]: https://w3id.org/fep/f799
 [GHSA-4qhx-hhwf-8685]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-4qhx-hhwf-8685

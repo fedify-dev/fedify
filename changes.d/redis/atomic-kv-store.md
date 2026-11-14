@@ -3,6 +3,7 @@ links:
   '#1361': https://github.com/fedify-dev/fedify/issues/1361
   '#1365': https://github.com/fedify-dev/fedify/issues/1365
   '#1434': https://github.com/fedify-dev/fedify/pull/1434
+  '#1440': https://github.com/fedify-dev/fedify/pull/1440
 ---
  -  Added atomic snapshots and multi-key writes, deletes, and compare-and-swap
     through `RedisKvStore.getMany()`, `setMany()`, `deleteMany()`, and
@@ -11,7 +12,7 @@ links:
     nonempty batches until audited and added in a Fedify update.
     These restrictions preserve the audited atomicity guarantees; select a
     supported Redis release for nonempty batches.  Existing keys are not
-    relocated.  [[#1361], [#1365], [#1434]]
+    relocated.  [[#1361], [#1365], [#1434], [#1440]]
 
     Storing `undefined` or a top-level value that JSON cannot encode now
     rejects instead of writing undecodable bytes.  CAS deletions with a
