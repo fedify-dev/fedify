@@ -27,6 +27,8 @@ The plugin includes rules that check for:
  -  Public key and assertion method requirements
  -  Collection filtering implementation
  -  Deprecated Deno KV adapter usage
+ -  Dereferencing through `clone()` copies that drop portable-object
+    verification
 
 [`@fedify/lint`]: https://jsr.io/@fedify/lint
 [ESLint]: https://eslint.org/
@@ -1892,6 +1894,127 @@ Deno Lint plugin rules cannot receive options, so this rule inspects only
 the default `@fedify/vocab` module specifiers there.  Like other Deno Lint
 plugin rules, its reports are errors.  ESLint's recommended configuration
 enables it as a warning; the strict configuration enables it as an error.
+
+### `vocab-clone-verifier`
+
+*This rule is available since Fedify 2.5.0.*
+
+Warns when a `clone()` of a vocabulary object is dereferenced through
+a `get*()` accessor, such as `getObject()` or `getContextHistory()`, without
+a `verifyPortableObject` verifier.
+
+::: info
+This rule is available in ESLint and Oxlint, but not in Deno Lint: Deno turns on
+every rule of a plugin as soon as the plugin is listed and reports every plugin
+rule as an error, so a heuristic warning could block CI.  In ESLint, the
+*recommended* configuration enables it as a warning and *strict* as an error.
+In Oxlint, enable it by name.
+:::
+
+**Why it matters:**
+An object can remember a verifier that its accessors use by default when they
+dereference portable objects (see
+[*Default verifiers*](./vocab.md#default-verifiers)). Objects that Fedify
+parses for you, such as activities that inboxes receive, have one.  `clone()`
+does not inherit it: the clone uses only the options passed to `clone()`, so an
+accessor called on the clone may accept a portable object without verifying
+it.  `deepClone()` keeps each object's default (see
+[*Deep copies*](./vocab.md#deep-copies)).
+
+~~~~ typescript
+import type { Context } from "@fedify/fedify";
+import type { Note } from "@fedify/vocab";
+
+async function history(ctx: Context<void>, note: Note) {
+  // ❌ Reported: the clone does not inherit note's default verifier.
+  await note.clone().getContextHistory({ crossOrigin: "trust" });
+
+  // ✅ Pass a verifier, for example the context, to clone():
+  await note.clone({}, ctx).getContextHistory({ crossOrigin: "trust" });
+
+  // ✅ Or keep the defaults with deepClone():
+  await note.deepClone().getContextHistory({ crossOrigin: "trust" });
+
+  // ✅ Or pass a verifier to the accessor:
+  await note.clone().getContextHistory({
+    crossOrigin: "trust",
+    verifyPortableObject: ctx.verifyPortableObject,
+  });
+
+  // ✅ Not reported: the clone is only serialized.
+  await note.clone({ content: "Edited" }).toJsonLd();
+}
+~~~~
+
+The rule only reads the code; it cannot see whether an object actually has
+a default verifier at runtime, so its message says that the clone *may* skip
+verification.  It follows vocabulary objects that may have a default verifier:
+
+ -  Parameters and variables annotated with a type imported from
+    `@fedify/vocab` (also with `import type`, renamed imports such as
+    `import { Object as APObject }`, namespace imports such as `vocab.Note`,
+    and unions with `null` or `undefined`).
+ -  Objects constructed with `new Note(values, options)`,
+    `Note.fromJsonLd(json, options)`, or `lookupObject(id, options)` whose
+    options are, or may be, a verifier, such as a `Context`.
+ -  `this` and `super` in instance members of a class that extends
+    a vocabulary class.
+ -  Results of `get*()` accessors, `deepClone()`, and `clone()` with
+    a verifier, on such objects, including through `const` aliases and
+    `for await` loops.
+
+It reports a `clone()` whose options pass no verifier when the copy is then
+used to call a `get*()` accessor whose options pass no verifier either.
+Options that are not an object literal, such as a `Context` or a variable, are
+assumed to pass a verifier.  An explicit `verifyPortableObject: undefined` or
+`null` is taken as a deliberate choice and not reported, and neither is an
+accessor called with `dereference: false`.  Each `clone()` is reported once,
+even if its copy is dereferenced several times.  If the copy is cloned again
+without a verifier before it is dereferenced, the rule reports the first
+`clone()` and says that every copy has to keep the verifier.
+
+ESLint and Oxlint offer an editor suggestion that replaces `clone()` with
+`deepClone()`, but never an automatic fix: `deepClone()` copies the whole
+object graph, which can be much more expensive, drops cached JSON-LD and signed
+representations, which can change serialization and signature validity, and is
+only available since Fedify 2.5.0.  Passing a verifier to `clone()` is often the
+cheaper fix.
+
+The analysis is limited to what it can follow syntactically within a file:
+
+ -  It does not follow values through function calls, return values, object
+    properties such as `this.note`, or other modules, and does not use type
+    information.  Variables that are reassigned are not followed.
+ -  Activities that inbox listeners receive and results of
+    `~Context.lookupObject()` are not followed unless they are annotated with
+    a vocabulary type.
+ -  Calling a plural accessor, such as `getAttachments()`, counts as
+    dereferencing even if the returned iterable is never consumed.
+ -  Custom `clone()` overrides and custom `get*()` methods of subclasses are
+    treated like the generated ones.
+ -  An accessor called on a copy is reported even if the property is already
+    embedded or cached, so that nothing would be fetched.
+ -  Conditional and logical expressions, such as `a ?? b`, are not followed.
+ -  Type parameters and local types are not told apart from imported
+    vocabulary types of the same name.
+
+By default, only imports from `@fedify/vocab` are followed, including
+`jsr:`/`npm:` and versioned specifiers, and the deprecated
+`@fedify/fedify/vocab` re-export.  For other vocabulary modules generated with
+`@fedify/vocab-tools`, add their exact import specifiers to `modules`, in the
+same way as for [`raw-property-iri-invalid`](#raw-property-iri-invalid):
+
+~~~~ jsonc
+// .oxlintrc.json
+{
+  "jsPlugins": ["@fedify/lint/oxlint"],
+  "rules": {
+    "@fedify/lint/vocab-clone-verifier": ["warn", {
+      "modules": ["@example/vocab"]
+    }]
+  }
+}
+~~~~
 
 ### `deno-kv-store-deprecated`
 

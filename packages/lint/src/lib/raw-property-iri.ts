@@ -1,3 +1,11 @@
+import {
+  ast,
+  type Ast,
+  children,
+  isVocabularySource as isBuiltinVocabularySource,
+  name,
+  unwrap,
+} from "./ast.ts";
 import type { Node } from "./types.ts";
 
 /** Options for checking additional generated vocabulary modules. */
@@ -14,8 +22,6 @@ export interface RawPropertyIriDiagnostic {
   suggestionNode?: Node;
 }
 
-// A structural view keeps the analysis independent of the three AST providers.
-type Ast = { type: string; [key: string]: unknown };
 interface Binding {
   imported?: string;
   namespace?: boolean;
@@ -35,13 +41,6 @@ const functions = new Set([
   "withRawProperty",
   "withRawProperties",
 ]);
-const expressionWrappers = new Set([
-  "TSAsExpression",
-  "TSSatisfiesExpression",
-  "TSNonNullExpression",
-  "TSTypeAssertion",
-  "ParenthesizedExpression",
-]);
 const prefixes: Readonly<Record<string, string>> = {
   as: "https://www.w3.org/ns/activitystreams#",
   dcterms: "http://purl.org/dc/terms/",
@@ -55,17 +54,6 @@ const prefixes: Readonly<Record<string, string>> = {
   vcard: "http://www.w3.org/2006/vcard/ns#",
 };
 
-function ast(value: unknown): Ast | undefined {
-  return value != null &&
-    typeof value === "object" &&
-    typeof (value as Ast).type === "string"
-    ? (value as Ast)
-    : undefined;
-}
-function unwrap(node: Ast | undefined): Ast | undefined {
-  while (node && expressionWrappers.has(node.type)) node = ast(node.expression);
-  return node;
-}
 function primitivePropertyKey(node: Ast): string | undefined {
   if (node.type !== "Literal" || node.regex != null) return;
   if (typeof node.value === "bigint") return String(node.value);
@@ -89,83 +77,6 @@ function primitivePropertyKey(node: Ast): string | undefined {
   }
   if (node.value === null || typeof node.value === "boolean")
     return String(node.value);
-}
-function name(value: unknown): string | undefined {
-  const node = ast(value);
-  return node?.type === "Identifier"
-    ? (node.name as string)
-    : typeof node?.value === "string"
-      ? node.value
-      : undefined;
-}
-function children(node: Ast): Ast[] {
-  const result: Ast[] = [];
-  // Deno exposes AST fields through non-enumerable getters.  Include its
-  // standard child fields explicitly, while retaining parser-specific fields
-  // from ESTree providers.  Never follow parent pointers.
-  const keys = new Set([
-    ...Object.keys(node),
-    "declaration",
-    "openingElement",
-    "closingElement",
-    "attributes",
-    "decorators",
-    "parameter",
-    "body",
-    "expression",
-    "expressions",
-    "declarations",
-    "id",
-    "init",
-    "params",
-    "param",
-    "callee",
-    "arguments",
-    "object",
-    "property",
-    "key",
-    "value",
-    "properties",
-    "elements",
-    "left",
-    "right",
-    "argument",
-    "test",
-    "consequent",
-    "alternate",
-    "block",
-    "handler",
-    "finalizer",
-    "cases",
-    "discriminant",
-    "update",
-    "specifiers",
-    "local",
-    "imported",
-    "source",
-    "superClass",
-    "tag",
-    "quasi",
-    "quasis",
-    "children",
-    "members",
-    "initializer",
-  ]);
-  for (const key of keys) {
-    // ESTree providers attach the token and comment arrays to Program:
-    if (key === "parent" || key === "tokens" || key === "comments") continue;
-    const value = node[key];
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        const child = ast(item);
-        if (child) result.push(child);
-      }
-    } else {
-      const child = ast(value);
-      if (child) result.push(child);
-    }
-  }
-  return result;
 }
 function bind(pattern: unknown, scope: Scope, binding: Binding = {}): void {
   const node = ast(pattern);
@@ -257,8 +168,7 @@ export function checkRawPropertyIris(
 ): void {
   const isVocabularySource = (source: string | undefined): boolean =>
     source != null &&
-    (/^(?:jsr:|npm:)?@fedify\/vocab(?:@[^/]+)?$/.test(source) ||
-      /^(?:jsr:|npm:)?@fedify\/fedify(?:@[^/]+)?\/vocab$/.test(source) ||
+    (isBuiltinVocabularySource(source) ||
       options.modules?.includes(source) === true);
   const scopes = new WeakMap<Ast, Scope>();
   const calls: Ast[] = [];

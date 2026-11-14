@@ -376,6 +376,10 @@ Keep property arrays stable during copying, including inside custom `clone()`
 overrides: `deepClone()` snapshots the existing indices of large sparse arrays.
 Entries added during copying are not visited, so their nested objects may
 remain shared.  Copying preserves array length and holes.
+Unlike `deepClone()`, `clone()` does not inherit the default
+`verifyPortableObject`, so before dereferencing through a clone, pass
+a verifier (a `Context` works) to `clone()` or use `deepClone()`.  The
+`@fedify/lint` rule `vocab-clone-verifier` warns about this pattern.
 
 To read a property that has no typed accessor, such as an application's
 extension, use `getRawPropertyValues(object, propertyIri)` or
