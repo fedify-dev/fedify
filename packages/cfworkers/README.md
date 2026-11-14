@@ -137,15 +137,16 @@ durations requiring a reference date reject.  Replacing without a TTL clears
 the previous expiry.  Successful sets and CAS also purge up to 100 entries
 expired at the same cutoff; a mismatch does not run that cleanup.
 
-Snapshots accept up to 256 input keys, counting duplicates, and at most
-8 MiB of encoded keys and values.  For maximum-size values, the byte budget
-usually binds first.  Mutations accept up to 128 entries and 16 MiB of encoded
-keys, expectations and replacements combined.  Each encoded key/value row
-and each bound string is limited to 1,999,000 UTF-8 bytes.  `getMany()` and
-`deleteMany()` keys also have a 1,999,000-byte aggregate encoded-key limit, and
-the final escaped JSON key payload must fit the same limit.  Oversized
-operations reject without splitting; backend or runtime limits can also
-reject smaller calls.
+Snapshots accept up to 256 input keys, counting duplicates.  Their separate
+8 MiB byte budget counts encoded keys and values once per unique, live row;
+missing and expired keys contribute no bytes to that budget.  For maximum-size
+values, the byte budget usually binds first.  Mutations accept up to 128
+entries and 16 MiB of encoded keys, expectations and replacements combined.
+Each encoded key/value row and each bound string is limited to 1,999,000 UTF-8
+bytes.  `getMany()` and `deleteMany()` keys also have a 1,999,000-byte
+aggregate encoded-key limit, and the final escaped JSON key payload must fit
+the same limit.  Oversized operations reject without splitting; backend or
+runtime limits can also reject smaller calls.
 
 [Cloudflare D1]: https://developers.cloudflare.com/d1/
 [D1 migrations]: https://developers.cloudflare.com/d1/reference/migrations/

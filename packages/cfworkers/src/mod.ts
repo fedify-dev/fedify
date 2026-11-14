@@ -371,8 +371,10 @@ const D1_EXPIRE_BATCH_SIZE = 100;
  * Successful sets and CAS purge at most 100 rows expired at the same cutoff.
  * Mismatch leaves all user rows and their TTLs unchanged.
  *
- * Snapshots accept at most 256 input keys, including duplicates, and return at
- * most 8 MiB of encoded keys and values.  Mutations accept at most 128 entries
+ * Snapshots accept at most 256 input keys, including duplicates.  Their 8 MiB
+ * byte budget counts encoded keys and values once per unique, live row;
+ * missing and expired keys add no bytes to that budget.
+ * Mutations accept at most 128 entries
  * and 16 MiB of encoded keys, expectations and replacements combined.  Each
  * encoded key/value row, bound string, aggregate snapshot/deletion key input,
  * and final JSON key payload is limited to 1,999,000 UTF-8 bytes.  These are
