@@ -62,20 +62,10 @@ for await (
 }
 ~~~~
 
-The example uses `lookupObject()` because it applies the default FEP-fe34
-origin check before returning an object.  It compares the object's declared
-ID with the final document URL after redirects and returns `null` when their
-origins differ.
-
-Custom `documentLoader` implementations must provide the same validation.
-Fetching JSON and passing it directly to a vocabulary class's `fromJsonLd()`
-method is insufficient: the resulting object does not retain the URL from
-which the document was fetched, so `backfill()` cannot independently verify
-that its declared ID belongs to that origin.
-
-If an application already has a custom JSON-LD `DocumentLoader`, it should
-pass that loader through `lookupObject()` rather than parsing its response
-directly:
+Custom `BackfillDocumentLoader` implementations must validate an object's
+declared ID against the final response URL after redirects.  Fetching JSON
+and parsing it directly with `fromJsonLd()` loses that retrieval provenance.
+Pass a custom JSON-LD loader through `lookupObject()` instead:
 
 ~~~~ typescript
 import { type DocumentLoader, lookupObject } from "@fedify/vocab";
@@ -90,8 +80,14 @@ const documentLoader = (iri: URL, options?: { signal?: AbortSignal }) =>
   });
 ~~~~
 
-The custom JSON-LD loader must set `documentUrl` to the final response URL
-after redirects.  `lookupObject()` uses that value for the origin check.
+The JSON-LD loader must set `documentUrl` to the final response URL so
+`lookupObject()` can check its origin against the object's declared ID.
+This validates only the top-level object; backfill dereferences cross-origin
+embedded objects separately.
+Backfill additionally ignores loader results whose ID origin differs from the
+requested IRI's origin, including otherwise valid cross-origin redirects.
+This does not replace the loader's validation: `BackfillDocumentLoader` does
+not expose the final response URL.
 
 The seed object itself is not yielded.  If it appears in the discovered
 collection, it is skipped by ID.

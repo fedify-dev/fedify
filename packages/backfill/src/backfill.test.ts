@@ -20,6 +20,70 @@ async function collect(
 }
 
 describe("backfill", () => {
+  test("loader results cannot claim another origin", async () => {
+    const attacker = (name: string) =>
+      new URL(`https://attacker.example/${name}`);
+    const victim = (name: string) => new URL(`https://victim.example/${name}`);
+
+    for (const relationship of ["context", "page", "parent", "replies"]) {
+      const requests: string[] = [];
+      const response = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: relationship === "page" ? "CollectionPage" : "Collection",
+        id: victim(relationship).href,
+        items: [{
+          type: "Note",
+          id: victim("post").href,
+          content: "spoofed by attacker",
+        }],
+      };
+      const forgedCollection = relationship === "page"
+        ? await CollectionPage.fromJsonLd(response)
+        : await Collection.fromJsonLd(response);
+      const seed = new Note({
+        id: attacker("seed"),
+        contexts: relationship === "context" || relationship === "page"
+          ? [attacker("context")]
+          : [],
+        replyTarget: relationship === "parent" ? attacker("parent") : null,
+        replies: relationship === "replies" ? attacker("replies") : null,
+      });
+      const items = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            if (
+              relationship === "page" && iri.href === attacker("context").href
+            ) {
+              return Promise.resolve(
+                new Collection({
+                  id: attacker("context"),
+                  first: attacker("page"),
+                }),
+              );
+            }
+            return Promise.resolve(
+              relationship === "parent"
+                ? new Note({ id: victim("parent"), content: "spoofed parent" })
+                : forgedCollection,
+            );
+          },
+        },
+        seed,
+        { strategies: ["context-auto", "reply-tree"] },
+      );
+
+      deepStrictEqual(items, [], relationship);
+      deepStrictEqual(
+        requests,
+        relationship === "page"
+          ? [attacker("context").href, attacker("page").href]
+          : [attacker(relationship).href],
+        relationship,
+      );
+    }
+  });
+
   test("package exports backfill", () => {
     strictEqual(typeof backfill, "function");
     strictEqual(typeof MaxRequestsExceeded, "function");
