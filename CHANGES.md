@@ -109,11 +109,12 @@ To be released.
     timed-out lookup returns `undefined`.
     An optional `signal` can cancel the lookup, even with `timeout: null`.
     [[GHSA-64hq-2hgr-q4pm]]
- -  On Node.js, NodeInfo hostname resolution now starts at most one operating
-    system DNS lookup at a time.  A lookup queued behind a slow resolver call
-    can time out or be cancelled before starting, so repeated abandoned
-    NodeInfo requests no longer fill the shared libuv thread pool.  An
-    already-running operating system lookup cannot be cancelled.
+ -  On Node.js, NodeInfo hostname resolution now starts at most two operating
+    system DNS lookups at a time.  Other hosts can still resolve when one
+    resolver call stalls.  A queued lookup can time out or be cancelled before
+    starting, so repeated abandoned NodeInfo requests cannot fill the shared
+    libuv thread pool.  An already-running operating system lookup cannot be
+    cancelled.
     [[GHSA-64hq-2hgr-q4pm]]
 
 [mastodon/mastodon\#41640]: https://github.com/mastodon/mastodon/issues/41640

@@ -1,6 +1,7 @@
 import { test } from "@fedify/fixture";
 import { UrlError } from "@fedify/vocab-runtime";
 import {
+  detectRuntime,
   openDirectFetch,
   openPublicFetch,
   type PublicFetchSession,
@@ -13,6 +14,7 @@ import {
   assertStrictEquals,
 } from "@std/assert";
 import fetchMock from "fetch-mock";
+import dns from "node:dns/promises";
 import { createServer } from "node:http";
 import {
   getNodeInfo,
@@ -1153,6 +1155,74 @@ test("getNodeInfo() logs DNS failures as such", async (t) => {
         await reset();
       }
     });
+  }
+});
+
+test("getNodeInfo() bounds and cancels default Node.js DNS lookups", {
+  ignore: detectRuntime() !== "node",
+}, async () => {
+  const originalLookup = dns.lookup;
+  const pending: ReturnType<
+    typeof deferred<
+      readonly {
+        address: string;
+        family: number;
+      }[]
+    >
+  >[] = [];
+  const hostnames: string[] = [];
+  const twoStarted = deferred<void>();
+  const records: LogRecord[] = [];
+  dns.lookup = ((hostname: string) => {
+    hostnames.push(hostname);
+    const lookup = deferred<readonly { address: string; family: number }[]>();
+    pending.push(lookup);
+    if (hostnames.length === 2) twoStarted.resolve();
+    return lookup.promise;
+  }) as unknown as typeof dns.lookup;
+  try {
+    await configure({
+      sinks: { buffer: (record) => records.push(record) },
+      loggers: [
+        { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+        { category: ["logtape", "meta"], sinks: [] },
+      ],
+      reset: true,
+    });
+    const first = getNodeInfo("https://first.example/nodeinfo", {
+      direct: true,
+      timeout: 50,
+    });
+    const second = getNodeInfo("https://second.example/nodeinfo", {
+      direct: true,
+      timeout: 50,
+    });
+    await settleWithin(twoStarted.promise, 1000);
+    const queued = getNodeInfo("https://third.example/nodeinfo", {
+      direct: true,
+      timeout: 20,
+    });
+    assertEquals(await settleWithin(queued, 1000), undefined);
+    assertEquals(await settleWithin(first, 1000), undefined);
+    assertEquals(await settleWithin(second, 1000), undefined);
+    assertEquals(hostnames, ["first.example", "second.example"]);
+    for (const lookup of pending) {
+      lookup.resolve([{ address: "93.184.215.14", family: 4 }]);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertEquals(hostnames, ["first.example", "second.example"]);
+    assertEquals(
+      records.some((record) =>
+        String(record.rawMessage).includes("DNS lookup failed")
+      ),
+      false,
+    );
+  } finally {
+    dns.lookup = originalLookup;
+    for (const lookup of pending) {
+      lookup.resolve([{ address: "93.184.215.14", family: 4 }]);
+    }
+    await reset();
   }
 });
 

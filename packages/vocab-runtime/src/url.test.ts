@@ -26,6 +26,91 @@ function deferred<T>(): {
 
 const publicAddress = [{ address: "93.184.215.14", family: 4 }];
 
+test("bounded DNS lookup starts two hosts while a third waits", async () => {
+  const first = deferred<readonly { address: string; family: number }[]>();
+  const second = deferred<readonly { address: string; family: number }[]>();
+  const calls: string[] = [];
+  const lookup = createBoundedLookup((hostname) => {
+    calls.push(hostname);
+    return hostname === "first.example"
+      ? first.promise
+      : hostname === "second.example"
+      ? second.promise
+      : Promise.resolve(publicAddress);
+  }, 2);
+
+  const runningFirst = lookup("first.example");
+  const runningSecond = lookup("second.example");
+  const queued = lookup("third.example");
+  await Promise.resolve();
+  deepStrictEqual(calls, ["first.example", "second.example"]);
+
+  first.resolve(publicAddress);
+  deepStrictEqual(await runningFirst, publicAddress);
+  deepStrictEqual(await queued, publicAddress);
+  deepStrictEqual(calls, ["first.example", "second.example", "third.example"]);
+  second.resolve(publicAddress);
+  deepStrictEqual(await runningSecond, publicAddress);
+});
+
+test("bounded DNS lookup lets a healthy host finish beside a stalled host", async () => {
+  const stalled = deferred<readonly { address: string; family: number }[]>();
+  const calls: string[] = [];
+  const lookup = createBoundedLookup((hostname) => {
+    calls.push(hostname);
+    return hostname === "stalled.example"
+      ? stalled.promise
+      : Promise.resolve(publicAddress);
+  }, 2);
+
+  const running = lookup("stalled.example");
+  deepStrictEqual(await lookup("healthy.example"), publicAddress);
+  deepStrictEqual(calls, ["stalled.example", "healthy.example"]);
+  stalled.resolve(publicAddress);
+  deepStrictEqual(await running, publicAddress);
+});
+
+test("bounded DNS lookup keeps an aborted active slot until DNS settles", async () => {
+  const first = deferred<readonly { address: string; family: number }[]>();
+  const second = deferred<readonly { address: string; family: number }[]>();
+  const calls: string[] = [];
+  const lookup = createBoundedLookup((hostname) => {
+    calls.push(hostname);
+    return hostname === "first.example"
+      ? first.promise
+      : hostname === "second.example"
+      ? second.promise
+      : Promise.resolve(publicAddress);
+  }, 2);
+
+  const controller = new AbortController();
+  const runningFirst = lookup("first.example", controller.signal);
+  const runningSecond = lookup("second.example");
+  const queued = lookup("third.example");
+  await Promise.resolve();
+  const reason = new Error("Timed out");
+  controller.abort(reason);
+  await rejects(runningFirst, (error) => error === reason);
+  deepStrictEqual(calls, ["first.example", "second.example"]);
+
+  first.resolve(publicAddress);
+  deepStrictEqual(await queued, publicAddress);
+  deepStrictEqual(calls, ["first.example", "second.example", "third.example"]);
+  second.resolve(publicAddress);
+  deepStrictEqual(await runningSecond, publicAddress);
+});
+
+test("bounded DNS lookup validates its concurrency limit", () => {
+  throws(
+    () => createBoundedLookup(() => Promise.resolve(publicAddress), 0),
+    RangeError,
+  );
+  throws(
+    () => createBoundedLookup(() => Promise.resolve(publicAddress), 1.5),
+    RangeError,
+  );
+});
+
 test("bounded DNS lookup aborts queued callers without starting work", async () => {
   const first = deferred<readonly { address: string; family: number }[]>();
   const calls: string[] = [];

@@ -90,20 +90,24 @@ export function lookupAllAddresses(
 }
 
 /**
- * Serializes lookups started by the returned function.  A pending caller can
- * abort before its lookup starts.  Once `dns.lookup()` has started, it cannot
- * be cancelled, so its slot remains occupied until the underlying lookup
- * settles, even if its caller aborts.  This bounds the number of outstanding
- * getaddrinfo calls made by users of this function.
+ * Limits concurrent lookups started by the returned function.  A pending
+ * caller can abort before its lookup starts.  Once `dns.lookup()` has started,
+ * it cannot be cancelled, so its slot remains occupied until the underlying
+ * lookup settles, even if its caller aborts.  This bounds the number of
+ * outstanding getaddrinfo calls made by users of this function.
  * @internal
  */
 export function createBoundedLookup(
   lookup: LookupAllAddresses,
+  maxConcurrent = 1,
 ): (
   hostname: string,
   signal?: AbortSignal,
 ) => Promise<readonly ResolvedAddress[]> {
-  let active = false;
+  if (!Number.isInteger(maxConcurrent) || maxConcurrent < 1) {
+    throw new RangeError("maxConcurrent must be a positive integer");
+  }
+  let active = 0;
   const waiting = new Set<{
     signal?: AbortSignal;
     resolve: () => void;
@@ -112,7 +116,7 @@ export function createBoundedLookup(
   }>();
 
   function release(): void {
-    active = false;
+    active--;
     while (waiting.size > 0) {
       const next = waiting.values().next().value!;
       waiting.delete(next);
@@ -121,7 +125,7 @@ export function createBoundedLookup(
         next.reject(next.signal.reason);
         continue;
       }
-      active = true;
+      active++;
       next.resolve();
       break;
     }
@@ -129,8 +133,8 @@ export function createBoundedLookup(
 
   function acquire(signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
-    if (!active) {
-      active = true;
+    if (active < maxConcurrent) {
+      active++;
       return Promise.resolve();
     }
     return new Promise<void>((resolve, reject) => {
@@ -181,7 +185,9 @@ export function createBoundedLookup(
 /**
  * A process-wide bounded variant of {@link lookupAllAddresses} for explicit
  * NodeInfo lookups.  It preserves the operating system's name resolution while
- * limiting those lookups to one in-flight `dns.lookup()` call.
+ * limiting those lookups to two in-flight `dns.lookup()` calls.  This leaves
+ * capacity in Node.js's default four-thread libuv pool for other work while
+ * allowing a healthy lookup to finish when another resolver call stalls.
  * @internal
  */
 export const lookupAllAddressesBounded: (
@@ -189,6 +195,7 @@ export const lookupAllAddressesBounded: (
   signal?: AbortSignal,
 ) => Promise<readonly ResolvedAddress[]> = createBoundedLookup(
   lookupAllAddresses,
+  2,
 );
 
 /**
