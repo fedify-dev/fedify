@@ -3,10 +3,11 @@ links:
   '#1361': https://github.com/fedify-dev/fedify/issues/1361
   '#1368': https://github.com/fedify-dev/fedify/issues/1368
   '#1433': https://github.com/fedify-dev/fedify/pull/1433
+  '#1440': https://github.com/fedify-dev/fedify/pull/1440
 ---
  -  Added `AtomicKvStore` support to `MysqlKvStore`: `getMany()`, `setMany()`,
     `deleteMany()`, and `casMany()` read or change related keys together on
-    MySQL and MariaDB InnoDB tables.  [[#1361], [#1368], [#1433]]
+    MySQL and MariaDB InnoDB tables.  [[#1361], [#1368], [#1433], [#1440]]
 
     Single-key operations use the same transactions and JSON codec, so reads
     include transaction setup and commit round trips.  `set(key, undefined)`

@@ -542,8 +542,9 @@ batches, plus the applicable `DEL`, `SET`, or `SETEX` permissions. Snapshot
 reads route to primaries, but Redis Cluster `list()` retains its existing `SCAN`
 coverage limitation. Redis persistence/failover and ioredis replays remain
 separate from per-call atomicity; a later CAS mismatch does not prove a prior
-attempt never committed. Deno KV and
-Netlify Blobs have no atomic adapter child issue.  `WorkersKvStore` lacks CAS.
+attempt never committed. `DenoKvStore`, `NetlifyBlobsKvStore`, and
+`WorkersKvStore` do not implement `AtomicKvStore`.  `WorkersKvStore` also lacks
+single-key CAS.
 D1 operations cover one configured table in one database, with JSON
 serialization and millisecond TTLs.  Check the [atomic support matrix] and
 installed declarations before selecting a production adapter.

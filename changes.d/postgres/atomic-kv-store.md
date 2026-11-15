@@ -3,6 +3,7 @@ links:
   '#1361': https://github.com/fedify-dev/fedify/issues/1361
   '#1364': https://github.com/fedify-dev/fedify/issues/1364
   '#1429': https://github.com/fedify-dev/fedify/pull/1429
+  '#1440': https://github.com/fedify-dev/fedify/pull/1440
 ---
  -  Added atomic multi-key snapshots, writes, deletions, and conditional updates
     to `PostgresKvStore` through the `AtomicKvStore` interface.  Conditional
@@ -14,4 +15,4 @@ links:
     mutations instead of returning `false`.  `PostgresKvStore.cas()` now
     rejects a `ttl` option when deleting (`newValue` is `undefined`), where it
     previously ignored the TTL.  Omit `ttl` when deleting.
-    [[#1361], [#1364], [#1429]]
+    [[#1361], [#1364], [#1429], [#1440]]

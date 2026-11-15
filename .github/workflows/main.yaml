@@ -512,7 +512,7 @@ jobs:
 
   build-cli:
     if: github.event_name == 'push'
-    needs: [bootstrap, test-deno, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, release-test-jsr, determine-version]
+    needs: [bootstrap, test-deno, test-node, test-bun, test-mariadb-kv, test-redis-atomic, test-cfworkers, test-temporal-polyfill, lint, release-test, release-test-jsr, determine-version]
     runs-on: namespace-profile-linux-amd64-32gb
     steps:
     - uses: actions/checkout@v6
@@ -532,7 +532,7 @@ jobs:
 
   build-packages:
     if: github.event_name == 'push'
-    needs: [bootstrap, test-deno, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, release-test-jsr, determine-version]
+    needs: [bootstrap, test-deno, test-node, test-bun, test-mariadb-kv, test-redis-atomic, test-cfworkers, test-temporal-polyfill, lint, release-test, release-test-jsr, determine-version]
     runs-on: ubuntu-latest
     env:
       MISE_DISABLE_TOOLS: deno
@@ -558,7 +558,7 @@ jobs:
 
   publish-jsr:
     if: github.event_name == 'push'
-    needs: [bootstrap, test-deno, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, release-test-jsr, determine-version]
+    needs: [bootstrap, test-deno, test-node, test-bun, test-mariadb-kv, test-redis-atomic, test-cfworkers, test-temporal-polyfill, lint, release-test, release-test-jsr, determine-version]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
