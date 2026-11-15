@@ -20,6 +20,75 @@ async function collect(
 }
 
 describe("backfill", () => {
+  test("loader results with opaque origins require an exact IRI match", async () => {
+    const cases = [
+      ["did:web:attacker.example", "did:web:victim.example", false],
+      ["did:web:example.com", "did:web:example.com", true],
+      ["urn:example:attacker", "urn:example:victim", false],
+      ["urn:example:same", "urn:example:same", true],
+      ["ap://attacker.example/post", "ap://victim.example/post", false],
+      ["ap://example.com/post", "ap://example.com/post", true],
+      ["ap+ef61://attacker/post", "ap+ef61://victim/post", false],
+      ["ap+ef61://same/post", "ap+ef61://same/post", true],
+      ["https://example.com/parent", "did:web:example.com", false],
+      ["did:web:example.com", "https://example.com/parent", false],
+      ["https://example.com/old", "https://example.com/new", true],
+    ] as const;
+
+    for (const [requested, returned, accepted] of cases) {
+      const requests: string[] = [];
+      const items = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            return Promise.resolve(new Note({ id: new URL(returned) }));
+          },
+        },
+        new Note({ replyTarget: new URL(requested) }),
+        {
+          strategies: ["reply-tree"],
+          maxDepth: 1,
+        },
+      );
+      deepStrictEqual(requests, [requested]);
+      deepStrictEqual(
+        items.map((item) => item.id?.href),
+        accepted ? [returned] : [],
+        `${requested} -> ${returned}`,
+      );
+    }
+  });
+
+  test("JavaScript loaders may return synchronous values", async () => {
+    const contextId = new URL("https://example.com/context");
+    const item = new Note({ id: new URL("https://example.com/post") });
+    for (
+      const [result, accepted] of [
+        [new Collection({ id: contextId, items: [item] }), true],
+        [null, false],
+        [
+          new Collection({
+            id: new URL("https://other.example/context"),
+            items: [item],
+          }),
+          false,
+        ],
+      ] as const
+    ) {
+      // JavaScript callers can return plain values despite the Promise type.
+      const documentLoader = (() =>
+        result) as unknown as BackfillContext["documentLoader"];
+      const items = await collect(
+        { documentLoader },
+        new Note({ contexts: [contextId] }),
+      );
+      deepStrictEqual(
+        items.map((entry) => entry.id),
+        accepted ? [item.id] : [],
+      );
+    }
+  });
+
   test("loader results cannot claim another origin", async () => {
     const attacker = (name: string) =>
       new URL(`https://attacker.example/${name}`);

@@ -684,10 +684,16 @@ async function loadObject(
   budget.requestCount++;
   let document: Promise<APObject | null> | undefined;
   try {
-    document = context.documentLoader(iri, { signal: budget.signal }).then(
-      (object) =>
-        object?.id != null && object.id.origin !== iri.origin ? null : object,
-    );
+    document = Promise.resolve(
+      context.documentLoader(iri, { signal: budget.signal }),
+    ).then((object) => {
+      if (object?.id == null) return object;
+      // Opaque origins serialize to "null"; equality does not establish trust.
+      const sameOrigin = object.id.origin === "null" || iri.origin === "null"
+        ? object.id.href === iri.href
+        : object.id.origin === iri.origin;
+      return sameOrigin ? object : null;
+    });
     budget.documents.set(cacheKey, document);
     return await document;
   } catch (error) {
