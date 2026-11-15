@@ -161,11 +161,14 @@ export interface Rfc9421SignRequestOptions {
 /**
  * Signs a request using the given private key.
  * @param request The request to sign.
- * @param privateKey The private key to use for signing.
+ * @param privateKey The private key to use for signing.  An RSASSA-PKCS1-v1_5
+ *                   key can sign with either specification, while an Ed25519
+ *                   key can sign only with RFC 9421 (since Fedify 2.5.0).
  * @param keyId The key ID to use for the signature.  It will be used by the
  *              verifier.
  * @returns The signed request.
- * @throws {TypeError} If the private key is invalid or unsupported.
+ * @throws {TypeError} If the private key is invalid or unsupported by
+ *                     the specification.
  */
 export async function signRequest(
   request: Request,
@@ -606,6 +609,22 @@ export function selectRequestSignature(
   return new Request(copy, { headers });
 }
 
+/**
+ * Determines the RFC 9421 algorithm identifier to sign with the given private
+ * key.
+ * @param privateKey The private key to sign with, which
+ *                   {@link validateCryptoKey} has admitted: an
+ *                   RSASSA-PKCS1-v1_5 key with SHA-256 or an Ed25519 key.
+ * @returns The RFC 9421 algorithm identifier.
+ */
+function getRfc9421SigningAlgorithm(
+  privateKey: CryptoKey,
+): "rsa-v1_5-sha256" | "ed25519" {
+  return privateKey.algorithm.name === "Ed25519"
+    ? "ed25519"
+    : "rsa-v1_5-sha256";
+}
+
 async function signRequestRfc9421(
   request: Request,
   privateKey: CryptoKey,
@@ -615,10 +634,7 @@ async function signRequestRfc9421(
   bodyBuffer?: ArrayBuffer | null,
   rfc9421Options?: Rfc9421SignRequestOptions,
 ): Promise<Request> {
-  if (privateKey.algorithm.name !== "RSASSA-PKCS1-v1_5") {
-    throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
-  }
-
+  const alg = getRfc9421SigningAlgorithm(privateKey);
   const url = new URL(request.url);
   const body: ArrayBuffer | null =
     bodyBuffer !== undefined
@@ -668,7 +684,7 @@ async function signRequestRfc9421(
       ? ((currentTime.epochMilliseconds / 1000) | 0) + 3600
       : undefined;
   const signatureParams = formatRfc9421SignatureParameters({
-    algorithm: "rsa-v1_5-sha256",
+    algorithm: alg,
     keyId,
     created,
     expires,
@@ -694,7 +710,7 @@ async function signRequestRfc9421(
 
   // Sign the signature base
   const signatureBytes = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
+    rfc9421AlgorithmMap[alg],
     privateKey,
     new TextEncoder().encode(signatureBase),
   );
@@ -728,7 +744,7 @@ async function signRequestRfc9421(
   );
 
   if (span.isRecording()) {
-    span.setAttribute("http_signatures.algorithm", "rsa-v1_5-sha256");
+    span.setAttribute("http_signatures.algorithm", alg);
     span.setAttribute("http_signatures.signature", encodeHex(signatureBytes));
     span.setAttribute("http_signatures.created", created.toString());
   }
@@ -2400,8 +2416,11 @@ async function doubleKnockCore(
     for (let redirected = 0; ; redirected++) {
       visited.add(request.url);
       const origin = new URL(request.url).origin;
+      // Only RSASSA-PKCS1-v1_5 keys can sign with draft-cavage, so other keys
+      // always start with RFC 9421, whatever spec the origin remembers:
       const firstTrySpec: HttpMessageSignaturesSpec =
-        specDeterminer == null
+        specDeterminer == null ||
+        identity.privateKey.algorithm.name !== "RSASSA-PKCS1-v1_5"
           ? "rfc9421"
           : await observeDoubleKnockOperation(observation, "spec-lookup", () =>
               specDeterminer.determineSpec(origin),
@@ -2449,7 +2468,7 @@ async function doubleKnockCore(
             parseAcceptSignature(acceptSigHeader),
           );
           const localKeyId = identity.keyId.href;
-          const localAlg = "rsa-v1_5-sha256";
+          const localAlg = getRfc9421SigningAlgorithm(identity.privateKey);
           // RFC 9421 §5: "The target message of an Accept-Signature field MUST
           // include all labeled signatures indicated in the Accept-Signature
           // field."  We therefore accumulate every compatible entry's signature
@@ -2523,7 +2542,11 @@ async function doubleKnockCore(
           // Otherwise use the legacy fallback, or follow the redirect below.
         }
 
-        if (!isRedirectResponse(response)) {
+        // The draft-cavage fallback can sign only with RSASSA-PKCS1-v1_5 keys:
+        if (
+          !isRedirectResponse(response) &&
+          identity.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5"
+        ) {
           observation?.response(response, "intermediate");
           // verification failed; retry with the other spec of HTTP Signatures
           // (double-knocking; see https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions)
