@@ -50,11 +50,11 @@ export async function withNodeInfoTimeout<T>(
   const seconds = timeoutSeconds ?? DEFAULT_NODEINFO_TIMEOUT_SECONDS;
   const milliseconds = Math.ceil(seconds * 1000);
   if (
-    !Number.isFinite(seconds) || seconds < 0 ||
+    !Number.isFinite(seconds) || seconds <= 0 ||
     milliseconds > MAX_TIMER_DELAY
   ) {
     throw new RangeError(
-      "The NodeInfo timeout must be a nonnegative, finite number of seconds within the timer range.",
+      "The NodeInfo timeout must be a positive, finite number of seconds within the timer range.",
     );
   }
   const controller = new AbortController();
@@ -204,7 +204,7 @@ export const nodeInfoCommand = Command(
               option(
                 "-T",
                 "--timeout",
-                float({ min: 0, metavar: "SECONDS" }),
+                float({ min: Number.MIN_VALUE, metavar: "SECONDS" }),
                 {
                   description:
                     message`Set the NodeInfo lookup timeout in seconds (default: 10).`,
@@ -214,6 +214,7 @@ export const nodeInfoCommand = Command(
             {
               context: configContext,
               key: (config) => config.nodeinfo?.timeout,
+              default: DEFAULT_NODEINFO_TIMEOUT_SECONDS,
             },
           ),
         }),

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import process from "node:process";
 import { test } from "node:test";
 import { clearActiveConfig, setActiveConfig } from "@optique/config";
+import { runWithConfig } from "@optique/config/run";
 import { parse } from "@optique/core/parser";
 import { Chalk } from "chalk";
 import fetchMock from "fetch-mock";
@@ -35,9 +36,24 @@ test("nodeinfo parses a timeout in seconds", () => {
       "-1",
     ]);
     assert.equal(invalid.success, false);
+    const zero = parse(nodeInfoCommand, [
+      "nodeinfo",
+      "example.com",
+      "--timeout",
+      "0",
+    ]);
+    assert.equal(zero.success, false);
   } finally {
     clearActiveConfig(configContext.id);
   }
+});
+
+test("nodeinfo uses its default timeout through runWithConfig", async () => {
+  const command = await runWithConfig(nodeInfoCommand, configContext, {
+    load: () => ({}),
+    args: ["nodeinfo", "example.com"],
+  });
+  assert.equal(command.timeout, 10);
 });
 
 test("nodeinfo reads its timeout from configuration", () => {
@@ -53,7 +69,7 @@ test("nodeinfo reads its timeout from configuration", () => {
 
 test("nodeinfo distinguishes timeout from missing and invalid documents", async () => {
   const missing = await withNodeInfoTimeout(
-    0,
+    0.01,
     () => Promise.resolve(undefined),
   );
   assert.equal(missing.timedOut, false);
@@ -85,6 +101,19 @@ test("nodeinfo distinguishes timeout from missing and invalid documents", async 
     describeNodeInfoFailure(stalled.timedOut, true, 0.01),
     "NodeInfo request timed out after 0.01 seconds.",
   );
+});
+
+test("nodeinfo rejects a zero-second timeout before lookup", async () => {
+  let called = false;
+  await assert.rejects(
+    () =>
+      withNodeInfoTimeout(0, () => {
+        called = true;
+        return Promise.resolve(undefined);
+      }),
+    { name: "RangeError", message: /positive/ },
+  );
+  assert.equal(called, false);
 });
 
 const HTML_WITH_SMALL_ICON = `
