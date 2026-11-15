@@ -4553,6 +4553,49 @@ test("doubleKnock(): an Ed25519 key returns a 401 left after the challenge retry
   fetchMock.hardReset();
 });
 
+test("doubleKnock(): an Ed25519 key starts with RFC 9421 even if draft-cavage is remembered", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
+  let firstSpec: string | null = null;
+
+  fetchMock.post("https://example.com/inbox-ed25519-remembered", (cl) => {
+    requestCount++;
+    firstSpec ??= cl.request!.headers.has("Signature-Input")
+      ? "rfc9421"
+      : "draft-cavage";
+    return new Response("", { status: 202 });
+  });
+
+  let rememberedSpec: HttpMessageSignaturesSpec | null = null;
+  const specDeterminer = {
+    determineSpec(_origin: string): HttpMessageSignaturesSpec {
+      return "draft-cavage-http-signatures-12";
+    },
+    rememberSpec(_origin: string, spec: HttpMessageSignaturesSpec): void {
+      rememberedSpec = spec;
+    },
+  };
+
+  const request = new Request("https://example.com/inbox-ed25519-remembered", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
+
+  const response = await doubleKnock(
+    request,
+    { keyId: ed25519PublicKey.id!, privateKey: ed25519PrivateKey },
+    { specDeterminer },
+  );
+
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 1);
+  assertEquals(firstSpec, "rfc9421");
+  assertEquals(rememberedSpec, "rfc9421");
+
+  fetchMock.hardReset();
+});
+
 test("doubleKnock(): validates redirects after Accept-Signature challenge retry", async () => {
   fetchMock.spyGlobal();
   let requestCount = 0;

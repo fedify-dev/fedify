@@ -2416,8 +2416,11 @@ async function doubleKnockCore(
     for (let redirected = 0; ; redirected++) {
       visited.add(request.url);
       const origin = new URL(request.url).origin;
+      // Only RSASSA-PKCS1-v1_5 keys can sign with draft-cavage, so other keys
+      // always start with RFC 9421, whatever spec the origin remembers:
       const firstTrySpec: HttpMessageSignaturesSpec =
-        specDeterminer == null
+        specDeterminer == null ||
+        identity.privateKey.algorithm.name !== "RSASSA-PKCS1-v1_5"
           ? "rfc9421"
           : await observeDoubleKnockOperation(observation, "spec-lookup", () =>
               specDeterminer.determineSpec(origin),
