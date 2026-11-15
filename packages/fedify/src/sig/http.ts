@@ -612,22 +612,17 @@ export function selectRequestSignature(
 /**
  * Determines the RFC 9421 algorithm identifier to sign with the given private
  * key.
- * @param privateKey The private key to sign with.
- * @returns The RFC 9421 algorithm identifier, or `null` if the key's algorithm
- *          is not supported for signing.
+ * @param privateKey The private key to sign with, which
+ *                   {@link validateCryptoKey} has admitted: an
+ *                   RSASSA-PKCS1-v1_5 key with SHA-256 or an Ed25519 key.
+ * @returns The RFC 9421 algorithm identifier.
  */
 function getRfc9421SigningAlgorithm(
   privateKey: CryptoKey,
-): "rsa-v1_5-sha256" | "ed25519" | null {
-  switch (privateKey.algorithm.name) {
-    case "RSASSA-PKCS1-v1_5":
-      // validateCryptoKey() admits only SHA-256 for RSASSA-PKCS1-v1_5 keys:
-      return "rsa-v1_5-sha256";
-    case "Ed25519":
-      return "ed25519";
-    default:
-      return null;
-  }
+): "rsa-v1_5-sha256" | "ed25519" {
+  return privateKey.algorithm.name === "Ed25519"
+    ? "ed25519"
+    : "rsa-v1_5-sha256";
 }
 
 async function signRequestRfc9421(
@@ -640,10 +635,6 @@ async function signRequestRfc9421(
   rfc9421Options?: Rfc9421SignRequestOptions,
 ): Promise<Request> {
   const alg = getRfc9421SigningAlgorithm(privateKey);
-  if (alg == null) {
-    throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
-  }
-
   const url = new URL(request.url);
   const body: ArrayBuffer | null =
     bodyBuffer !== undefined
@@ -2469,12 +2460,12 @@ async function doubleKnockCore(
         // RFC 9421 §5: If the response includes an Accept-Signature header,
         // attempt a challenge-driven retry before falling back to spec-swap.
         const acceptSigHeader = response.headers.get("Accept-Signature");
-        const localAlg = getRfc9421SigningAlgorithm(identity.privateKey);
-        if (acceptSigHeader != null && localAlg != null) {
+        if (acceptSigHeader != null) {
           const entries = validateAcceptSignature(
             parseAcceptSignature(acceptSigHeader),
           );
           const localKeyId = identity.keyId.href;
+          const localAlg = getRfc9421SigningAlgorithm(identity.privateKey);
           // RFC 9421 §5: "The target message of an Accept-Signature field MUST
           // include all labeled signatures indicated in the Accept-Signature
           // field."  We therefore accumulate every compatible entry's signature
