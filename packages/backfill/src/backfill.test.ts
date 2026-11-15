@@ -89,69 +89,118 @@ describe("backfill", () => {
     }
   });
 
-  test("loader results cannot claim another origin", async () => {
-    const attacker = (name: string) =>
-      new URL(`https://attacker.example/${name}`);
-    const victim = (name: string) => new URL(`https://victim.example/${name}`);
-
-    for (const relationship of ["context", "page", "parent", "replies"]) {
-      const requests: string[] = [];
-      const response = {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        type: relationship === "page" ? "CollectionPage" : "Collection",
-        id: victim(relationship).href,
-        items: [{
+  for (const identified of [true, false]) {
+    for (
+      const scenario of [
+        "item",
+        "embedded Create",
+        "referenced Create",
+        "first page",
+        "next page",
+        "inReplyTo",
+        "replies",
+        "shared cache",
+      ]
+    ) {
+      test(`accepted ${identified ? "identified" : "anonymous"} document dereferences forged ${scenario}`, async () => {
+        const contextUrl = "https://attacker.example/context";
+        const createUrl = "https://attacker.example/create";
+        const victimUrl = "https://victim.example/post";
+        const victimPage = "https://victim.example/page";
+        const victimReplies = "https://victim.example/replies";
+        const forgedNote = {
           type: "Note",
-          id: victim("post").href,
+          id: victimUrl,
           content: "spoofed by attacker",
-        }],
-      };
-      const forgedCollection = relationship === "page"
-        ? await CollectionPage.fromJsonLd(response)
-        : await Collection.fromJsonLd(response);
-      const seed = new Note({
-        id: attacker("seed"),
-        contexts: relationship === "context" || relationship === "page"
-          ? [attacker("context")]
-          : [],
-        replyTarget: relationship === "parent" ? attacker("parent") : null,
-        replies: relationship === "replies" ? attacker("replies") : null,
-      });
-      const items = await collect(
-        {
-          documentLoader: (iri) => {
-            requests.push(iri.href);
-            if (
-              relationship === "page" && iri.href === attacker("context").href
-            ) {
-              return Promise.resolve(
-                new Collection({
-                  id: attacker("context"),
-                  first: attacker("page"),
-                }),
-              );
+        };
+        const create = {
+          type: "Create",
+          id: createUrl,
+          object: forgedNote,
+        };
+        const page = {
+          type: "CollectionPage",
+          id: victimPage,
+          items: [forgedNote],
+        };
+        const outerId = identified ? { id: contextUrl } : {};
+        const document = {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: scenario === "next page" ? "CollectionPage" : "Collection",
+          ...outerId,
+          ...(scenario === "first page"
+            ? { first: page }
+            : scenario === "next page"
+            ? { next: page }
+            : {
+              items: [
+                scenario === "embedded Create"
+                  ? create
+                  : scenario === "referenced Create"
+                  ? createUrl
+                  : forgedNote,
+              ],
+            }),
+        };
+        const outer = scenario === "next page"
+          ? await CollectionPage.fromJsonLd(document)
+          : await Collection.fromJsonLd(document);
+        const seed = await Note.fromJsonLd({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Note",
+          ...(identified ? { id: "https://attacker.example/seed" } : {}),
+          ...(scenario === "inReplyTo"
+            ? { inReplyTo: forgedNote }
+            : scenario === "replies"
+            ? {
+              replies: {
+                type: "Collection",
+                id: victimReplies,
+                items: [forgedNote],
+              },
             }
-            return Promise.resolve(
-              relationship === "parent"
-                ? new Note({ id: victim("parent"), content: "spoofed parent" })
-                : forgedCollection,
-            );
+            : { context: contextUrl }),
+          ...(scenario === "shared cache" ? { replies: contextUrl } : {}),
+        });
+        const parsedCreate = await Create.fromJsonLd({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          ...create,
+        });
+        const requests: string[] = [];
+        const items = await collect(
+          {
+            documentLoader: (iri) => {
+              requests.push(iri.href);
+              return Promise.resolve(
+                iri.href === contextUrl
+                  ? outer
+                  : iri.href === createUrl
+                  ? parsedCreate
+                  : null,
+              );
+            },
           },
-        },
-        seed,
-        { strategies: ["context-auto", "reply-tree"] },
-      );
+          seed,
+          { strategies: ["context-auto", "reply-tree"] },
+        );
 
-      deepStrictEqual(items, [], relationship);
-      deepStrictEqual(
-        requests,
-        relationship === "page"
-          ? [attacker("context").href, attacker("page").href]
-          : [attacker(relationship).href],
-        relationship,
-      );
+        deepStrictEqual(items, []);
+        const target = scenario.endsWith("page")
+          ? victimPage
+          : scenario === "replies"
+          ? victimReplies
+          : victimUrl;
+        ok(requests.includes(target), `must dereference ${target}`);
+        if (scenario === "referenced Create") {
+          ok(requests.includes(createUrl));
+        }
+        if (scenario === "shared cache") {
+          strictEqual(requests.filter((iri) => iri === contextUrl).length, 1);
+          strictEqual(requests.filter((iri) => iri === victimUrl).length, 1);
+        }
+      });
     }
-  });
+  }
 
   test("package exports backfill", () => {
     strictEqual(typeof backfill, "function");
