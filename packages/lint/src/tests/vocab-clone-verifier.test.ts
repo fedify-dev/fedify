@@ -192,6 +192,27 @@ const cases: [string, string, string?][] = [
     reported,
   ],
   [
+    "for-await binding over an aliased accessor result",
+    `${imports}async function f(create: Create) {
+      const objects = create.getObjects();
+      const items = objects;
+      for await (const object of items) {
+        await object.clone().getAttribution();
+      }
+    }`,
+    reported,
+  ],
+  [
+    "for-await binding over a reassigned alias",
+    `${imports}async function f(create: Create, other: AsyncIterable<never>) {
+      let objects = create.getObjects();
+      objects = other;
+      for await (const object of objects) {
+        await object.clone().getAttribution();
+      }
+    }`,
+  ],
+  [
     "unconsumed plural accessor",
     `${imports}async function f(note: Note) {
       for await (const _ of note.clone().getAttachments()) break;

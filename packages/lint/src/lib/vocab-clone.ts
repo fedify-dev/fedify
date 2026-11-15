@@ -765,7 +765,7 @@ export function checkVocabClones(
     if (binding.kind === "variable") {
       if (binding.init) state = evaluate(binding.init);
       if (state.kind === "unknown" && binding.iterated) {
-        const iterated = unwrapValue(binding.iterated);
+        const iterated = resolveAlias(binding.iterated);
         if (iterated?.type === "CallExpression" && isAccessorCall(iterated)) {
           state = evaluate(iterated);
         }
@@ -785,6 +785,30 @@ export function checkVocabClones(
     inProgress.delete(binding);
     bindingStates.set(binding, state);
     return state;
+  }
+
+  /**
+   * Follows identifiers through the initializers of variables that are never
+   * reassigned, so `const objects = create.getObjects()` iterated later still
+   * resolves to the accessor call.
+   */
+  function resolveAlias(expression: Ast): Ast | undefined {
+    let node = unwrapValue(expression);
+    const seen = new Set<Binding>();
+    while (node?.type === "Identifier") {
+      const binding = lookup(scopes.get(node), node.name as string);
+      if (
+        binding?.kind !== "variable" ||
+        binding.opaque ||
+        binding.init == null ||
+        seen.has(binding)
+      ) {
+        break;
+      }
+      seen.add(binding);
+      node = unwrapValue(binding.init);
+    }
+    return node;
   }
 
   function isAccessorCall(call: Ast): boolean {
