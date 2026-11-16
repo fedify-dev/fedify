@@ -165,8 +165,11 @@ To be released.
     values in `Question.closed`, such as `2024-02-31T10:00.5Z`, now raise a
     `RangeError` instead of being silently dropped.
     [[#1339], [#1347] by ChanHaeng Lee\]
- -  Limited WebFinger lookups used by actor handle and object resolution to
-    10 seconds per lookup.  \[[GHSA-9pmv-w936-hj3f]]
+ -  Limited WebFinger lookups used by object resolution to 10 seconds each,
+    and actor handle resolution to one 10-second deadline across alias checks.
+    Actor handle resolution now checks at most 100 subject/alias candidates and
+    skips duplicates.
+    [[GHSA-9pmv-w936-hj3f]]
  -  Replaced <https://w3id.org/identity/v1> with
     <https://w3id.org/security/v1> in the default JSON-LD contexts of activity
     types.  The former no longer resolves, and <https://w3id.org/security/v1>

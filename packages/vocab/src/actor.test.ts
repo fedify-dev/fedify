@@ -1,4 +1,5 @@
 import { test } from "@fedify/fixture";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import * as fc from "fast-check";
 import fetchMock from "fetch-mock";
 import {
@@ -12,6 +13,7 @@ import {
   type Actor,
   getActorClassByTypeName,
   getActorHandle,
+  getActorHandleInternal,
   getActorTypeName,
   isActor,
   normalizeActorHandle,
@@ -193,47 +195,124 @@ test({
   },
 });
 
-test("getActorHandle() bounds repeated cross-origin alias checks", async () => {
+test("getActorHandle() shares its deadline with the initial lookup", async () => {
   const actorId = new URL("https://1.1.1.1/@john");
   const actor = new Person({ id: actorId, preferredUsername: "john" });
-  const pending: Promise<Response>[] = [];
-  fetchMock.mockGlobal();
-  fetchMock.catch(500);
-  try {
-    fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
-      body: {
-        subject: actorId.href,
-        aliases: ["acct:john@8.8.8.8", "acct:john@8.8.8.8"],
-      },
-      headers: { "Content-Type": "application/jrd+json" },
-    });
-    fetchMock.get("begin:https://8.8.8.8/.well-known/webfinger?", () => {
-      const response = new Promise<Response>((resolve) => {
-        setTimeout(() => resolve(new Response(null, { status: 404 })), 6000);
+  let signal: AbortSignal | undefined;
+  const result = await getActorHandleInternal(actor, {}, {
+    timeoutMs: 50,
+    lookupWebFinger: (_resource, options) => {
+      signal = options?.signal;
+      return new Promise((resolve) => {
+        const fallback = setTimeout(() => resolve(null), 200);
+        signal?.addEventListener("abort", () => {
+          clearTimeout(fallback);
+          resolve(null);
+        }, { once: true });
       });
-      pending.push(response);
-      return response;
-    });
+    },
+  });
+  deepStrictEqual(result, "@john@1.1.1.1");
+  ok(signal?.aborted);
+  ok(signal.reason instanceof DOMException);
+  deepStrictEqual(signal.reason.name, "TimeoutError");
+});
 
-    let watchdog: ReturnType<typeof setTimeout> | undefined;
-    try {
-      const result = await Promise.race([
-        getActorHandle(actor),
-        new Promise<never>((_, reject) => {
-          watchdog = setTimeout(
-            () => reject(new Error("Handle lookup exceeded its deadline.")),
-            11_000,
-          );
-        }),
-      ]);
-      deepStrictEqual(result, "@john@1.1.1.1");
-      ok(pending.length >= 2);
-    } finally {
-      clearTimeout(watchdog);
-      await Promise.all(pending);
+test("getActorHandle() deduplicates and caps alias checks", async () => {
+  const actorId = new URL("https://1.1.1.1/@john");
+  const actor = new Person({ id: actorId, preferredUsername: "john" });
+  let checks = 0;
+  const duplicate = "acct:john@8.8.8.8";
+  const lookupWebFinger = (resource: URL | string) => {
+    if (resource instanceof URL) {
+      return Promise.resolve({
+        subject: actorId.href,
+        aliases: [duplicate, duplicate, "acct:jane@1.1.1.1"],
+      });
     }
+    checks++;
+    return Promise.resolve(null);
+  };
+  deepStrictEqual(
+    await getActorHandleInternal(actor, {}, { lookupWebFinger }),
+    "@jane@1.1.1.1",
+  );
+  deepStrictEqual(checks, 1);
+
+  checks = 0;
+  deepStrictEqual(
+    await getActorHandleInternal(actor, {}, {
+      lookupWebFinger: (resource) => {
+        if (resource instanceof URL) {
+          return Promise.resolve({
+            subject: actorId.href,
+            aliases: [
+              ...Array.from({ length: 100 }, (_, i) => `acct:${i}@8.8.8.8`),
+              "acct:jane@1.1.1.1",
+            ],
+          });
+        }
+        checks++;
+        return Promise.resolve(null);
+      },
+    }),
+    "@john@1.1.1.1",
+  );
+  deepStrictEqual(checks, 99);
+});
+
+test("getActorHandle() enforces its deadline between alias checks", async () => {
+  const actorId = new URL("https://1.1.1.1/@john");
+  const actor = new Person({ id: actorId, preferredUsername: "john" });
+  const records: LogRecord[] = [];
+  await configure({
+    sinks: { buffer: (record) => records.push(record) },
+    loggers: [
+      { category: "fedify", sinks: ["buffer"], lowestLevel: "warning" },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+  let now = 0;
+  let checks = 0;
+  let signal: AbortSignal | undefined;
+  try {
+    deepStrictEqual(
+      await getActorHandleInternal(actor, {}, {
+        timeoutMs: 50,
+        now: () => now,
+        lookupWebFinger: (resource, options) => {
+          signal = options?.signal;
+          if (resource instanceof URL) {
+            return Promise.resolve({
+              subject: actorId.href,
+              aliases: ["acct:one@8.8.8.8", "acct:two@8.8.8.8"],
+            });
+          }
+          checks++;
+          now = 51;
+          return Promise.resolve(null);
+        },
+      }),
+      "@john@1.1.1.1",
+    );
+    deepStrictEqual(checks, 1);
+    ok(signal?.aborted);
+    deepStrictEqual((signal.reason as DOMException).name, "TimeoutError");
+    deepStrictEqual(
+      records.map((record) => [
+        record.level,
+        record.rawMessage,
+        record.properties.actorId,
+      ]),
+      [[
+        "warning",
+        "Actor handle lookup timed out for {actorId} after {timeoutMs} ms.",
+        actorId.href,
+      ]],
+    );
   } finally {
-    fetchMock.hardReset();
+    await reset();
   }
 });
 
