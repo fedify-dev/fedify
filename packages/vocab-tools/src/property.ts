@@ -125,11 +125,11 @@ async function* generateProperty(
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(

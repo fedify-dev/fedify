@@ -10411,11 +10411,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -10866,11 +10866,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -11485,11 +11485,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -12071,11 +12071,11 @@ get contents(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -12515,11 +12515,11 @@ get contents(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -13130,11 +13130,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -13568,11 +13568,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -14152,11 +14152,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -14736,11 +14736,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -15308,11 +15308,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -15880,11 +15880,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -16463,11 +16463,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -16868,11 +16868,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -17279,11 +17279,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -17690,11 +17690,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -18135,11 +18135,11 @@ get summaries(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -18610,11 +18610,11 @@ get urls(): ((URL | Link))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -19167,11 +19167,11 @@ get urls(): ((URL | Link))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -19724,11 +19724,11 @@ get urls(): ((URL | Link))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -20281,11 +20281,11 @@ get urls(): ((URL | Link))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -20902,11 +20902,11 @@ get urls(): ((URL | Link))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -21496,11 +21496,11 @@ get urls(): ((URL | Link))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -21901,11 +21901,11 @@ get urls(): ((URL | Link))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -22306,11 +22306,11 @@ get urls(): ((URL | Link))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -31088,11 +31088,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -31517,11 +31517,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -34735,11 +34735,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -35354,11 +35354,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -35913,11 +35913,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -36478,11 +36478,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -37037,11 +37037,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -37598,11 +37598,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -43200,11 +43200,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -43605,11 +43605,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -49535,11 +49535,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -49940,11 +49940,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -52232,11 +52232,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -52637,11 +52637,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -54929,11 +54929,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -55333,11 +55333,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -58539,11 +58539,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -61091,11 +61091,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -61494,11 +61494,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -65927,11 +65927,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -66332,11 +66332,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -66737,11 +66737,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -67142,11 +67142,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -67581,11 +67581,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -67985,11 +67985,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -68389,11 +68389,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -68793,11 +68793,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -69197,11 +69197,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -69601,11 +69601,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -70005,11 +70005,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -70409,11 +70409,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -73873,11 +73873,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -76646,11 +76646,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -77049,11 +77049,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -82782,11 +82782,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -84872,11 +84872,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -86806,11 +86806,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -101689,11 +101689,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -102242,11 +102242,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -102849,11 +102849,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -103280,11 +103280,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -103708,11 +103708,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -104116,11 +104116,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -104527,11 +104527,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -104936,11 +104936,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -105343,11 +105343,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -105750,11 +105750,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -106154,11 +106154,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -106663,11 +106663,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -107126,11 +107126,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -107747,11 +107747,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -114786,11 +114786,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -115215,11 +115215,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -120426,11 +120426,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -120831,11 +120831,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -121234,11 +121234,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -134082,11 +134082,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -134635,11 +134635,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -135242,11 +135242,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -135673,11 +135673,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -136101,11 +136101,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -136509,11 +136509,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -136920,11 +136920,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -137329,11 +137329,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -137736,11 +137736,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -138143,11 +138143,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -138547,11 +138547,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -139056,11 +139056,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -139519,11 +139519,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -140140,11 +140140,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -147381,11 +147381,11 @@ get names(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -156072,11 +156072,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -156501,11 +156501,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -158352,11 +158352,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -164835,11 +164835,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -165388,11 +165388,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -165995,11 +165995,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -166426,11 +166426,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -166854,11 +166854,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -167262,11 +167262,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -167673,11 +167673,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -168082,11 +168082,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -168489,11 +168489,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -168896,11 +168896,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -169300,11 +169300,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -169809,11 +169809,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -170272,11 +170272,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -170893,11 +170893,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -181942,11 +181942,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -182495,11 +182495,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -183102,11 +183102,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -183533,11 +183533,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -183961,11 +183961,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -184369,11 +184369,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -184780,11 +184780,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -185189,11 +185189,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -185596,11 +185596,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -186003,11 +186003,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -186407,11 +186407,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -186916,11 +186916,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -187379,11 +187379,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -188000,11 +188000,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -195749,11 +195749,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -198174,11 +198174,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -198599,11 +198599,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -199054,11 +199054,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -199483,11 +199483,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -203293,11 +203293,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -203700,11 +203700,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -204255,11 +204255,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -211613,11 +211613,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -212166,11 +212166,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -212773,11 +212773,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -213204,11 +213204,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -213632,11 +213632,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -214040,11 +214040,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -214451,11 +214451,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -214860,11 +214860,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -215267,11 +215267,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -215674,11 +215674,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -216078,11 +216078,11 @@ get gateways(): (URL)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -216587,11 +216587,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -217050,11 +217050,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -217671,11 +217671,11 @@ get attributionDomains(): (string)[] {
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
-              onAcceptedResponse: (response) => {
-              if (accepted != null) {
-              accepted.response = response;
-              }
-              }
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(

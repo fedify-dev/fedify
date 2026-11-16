@@ -572,7 +572,10 @@ async function* getReplyTargets(
     | MaxRequestsExceeded
     | IntervalConfigurationError
     | undefined;
-  const loadedObjects = new WeakMap<RemoteDocument, APObject>();
+  const loadedObjects =
+    budget.discovery == null
+      ? undefined
+      : new WeakMap<RemoteDocument, APObject>();
   try {
     for await (const target of object.getReplyTargets({
       // Skip vocabulary-level failures per target rather than closing the
@@ -589,7 +592,7 @@ async function* getReplyTargets(
             skipIds,
             {
               onLoaded:
-                budget.discovery == null
+                loadedObjects == null
                   ? undefined
                   : (object, document) => {
                       loadedObjects.set(document, object);
@@ -616,7 +619,7 @@ async function* getReplyTargets(
       // Capture the source only after acceptance, and retain it across cached
       // passes through ancestor discovery and reply-tree.
       onAcceptedDocument:
-        budget.discovery == null
+        loadedObjects == null
           ? undefined
           : (target, response) => {
               const source = loadedObjects.get(response);
