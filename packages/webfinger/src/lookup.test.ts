@@ -954,12 +954,20 @@ test("lookupWebFinger() caller signal cannot extend its deadline", async () => {
 
 test("lookupWebFinger() deadline covers response headers", async () => {
   let closed = false;
+  let fetchSignal: AbortSignal | null | undefined;
+  let fetchAborted = false;
   const result = lookupWebFingerInternal("acct:alice@example.com", {}, {
     timeoutMs: 20,
     openHop: () =>
       Promise.resolve({
         url: new URL("https://example.com"),
-        fetch: () => new Promise(() => {}),
+        fetch: (_input, init) => {
+          fetchSignal = init?.signal;
+          fetchSignal?.addEventListener("abort", () => {
+            fetchAborted = true;
+          }, { once: true });
+          return new Promise(() => {});
+        },
         close: () => {
           closed = true;
           return Promise.resolve();
@@ -967,6 +975,9 @@ test("lookupWebFinger() deadline covers response headers", async () => {
       }),
   });
   deepStrictEqual(await settleWithin(result, 1000), null);
+  ok(fetchSignal?.aborted);
+  ok(fetchAborted);
+  deepStrictEqual(fetchSignal.reason.name, "TimeoutError");
   await Promise.resolve();
   ok(closed);
 });
@@ -976,6 +987,10 @@ test("lookupWebFinger() discards completed JSON when body stalls", async () => {
     subject: "acct:alice@example.com",
     links: [],
   };
+  let cancelled!: () => void;
+  const cancellation = new Promise<void>((resolve) => {
+    cancelled = resolve;
+  });
   const result = lookupWebFingerInternal("acct:alice@example.com", {}, {
     timeoutMs: 20,
     openHop: () =>
@@ -990,6 +1005,9 @@ test("lookupWebFinger() discards completed JSON when body stalls", async () => {
                     new TextEncoder().encode(JSON.stringify(descriptor)),
                   );
                 },
+                cancel() {
+                  cancelled();
+                },
               }),
             ),
           ),
@@ -997,6 +1015,7 @@ test("lookupWebFinger() discards completed JSON when body stalls", async () => {
       }),
   });
   deepStrictEqual(await settleWithin(result, 1000), null);
+  await settleWithin(cancellation, 1000);
 });
 
 test("lookupWebFinger() accepts a response before its deadline", async () => {
