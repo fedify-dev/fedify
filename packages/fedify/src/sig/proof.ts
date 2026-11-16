@@ -58,6 +58,7 @@ import {
 } from "./key.ts";
 import { getNormalizationContextLoader } from "./ld.ts";
 import { getPortableDid, isPortableId } from "./portable-key-id.ts";
+import { getDefaultPortableObjectVerifier } from "../utils/portable-verifier.ts";
 
 /**
  * Known Object Integrity Proof `cryptosuite` values, used to keep
@@ -263,7 +264,10 @@ async function createProofInternal(
   if (privateKey.algorithm.name !== "Ed25519") {
     throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
   }
-  const objectWithoutProofs = object.clone({ proofs: [] });
+  // Only serialized below, so it needs no portable object verifier:
+  const objectWithoutProofs = object.clone({ proofs: [] }, {
+    verifyPortableObject: undefined,
+  });
   let compactMsg = await objectWithoutProofs.toJsonLd({
     format: "compact",
     contextLoader,
@@ -427,6 +431,9 @@ export async function signObject<T extends Object>(
         }
         const signed = object.clone({
           proofs: [...existingProofs, proof],
+        }, {
+          // A clone does not inherit the default verifier, so keep it:
+          verifyPortableObject: getDefaultPortableObjectVerifier(object),
         }) as T;
         if (securedDocument != null) {
           // Retain the secured JSON document so that embedding this object in

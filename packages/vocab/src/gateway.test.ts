@@ -14,6 +14,7 @@ import {
   type RemoteDocument,
   withGatewayHints,
 } from "@fedify/vocab-runtime";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert/strict";
 import { lookupObject, traverseCollection } from "./lookup.ts";
@@ -22,6 +23,7 @@ import {
   Collection,
   CollectionPage,
   Create,
+  CryptographicKey,
   Image,
   Note,
   OrderedCollection,
@@ -2188,6 +2190,108 @@ function getDefaultVerifier(
   })
     ._verifyPortableObject;
 }
+
+test("clone() warns when it drops the default portable object verifier", async () => {
+  const records: LogRecord[] = [];
+  await reset();
+  try {
+    await configure({
+      sinks: { buffer: (record: LogRecord) => records.push(record) },
+      loggers: [
+        { category: ["fedify", "vocab", "portable"], sinks: ["buffer"] },
+        { category: ["logtape", "meta"], sinks: [] },
+      ],
+    });
+    const takeWarnings = () => records.splice(0).map((r) => r.properties);
+    const documentLoader = createLoader({ [compatibleNoteId]: note() });
+    const options = { documentLoader, contextLoader: mockDocumentLoader };
+    const verifier = createRecordingVerifier();
+    const activity = new Create({
+      id: new URL(gatewayUrl("https://gw.example", "/activities/1")),
+      object: new URL(compatibleNoteId),
+    }, { contextLoader: mockDocumentLoader, verifyPortableObject: verifier });
+
+    // Omitting the option drops the verifier with exactly one warning, even
+    // through the subclass chain (Create -> Activity -> Object):
+    const dropped = activity.clone();
+    deepStrictEqual(takeWarnings(), [{
+      typeName: "Create",
+      objectId: gatewayUrl("https://gw.example", "/activities/1"),
+    }]);
+    await rejects(() => dropped.getObject(options), TypeError);
+    activity.clone({ content: "Again" });
+    deepStrictEqual(takeWarnings().length, 1);
+
+    // An explicit undefined drops it deliberately without a warning:
+    const optedOut = activity.clone({}, { verifyPortableObject: undefined });
+    deepStrictEqual(takeWarnings(), []);
+    await rejects(() => optedOut.getObject(options), TypeError);
+
+    // An explicit verifier is used by the clone's accessors:
+    const given = createRecordingVerifier();
+    const kept = activity.clone({}, { verifyPortableObject: given });
+    deepStrictEqual(takeWarnings(), []);
+    assertInstanceOf(await kept.getObject(options), Note);
+    deepStrictEqual(given.calls.length, 1);
+    deepStrictEqual(verifier.calls.length, 0);
+
+    // Inherited and non-enumerable options count as given:
+    const inherited = Object.create({ verifyPortableObject: given });
+    activity.clone({}, inherited);
+    const nonEnumerable = Object.defineProperty({}, "verifyPortableObject", {
+      value: undefined,
+      enumerable: false,
+    });
+    activity.clone({}, nonEnumerable);
+    deepStrictEqual(takeWarnings(), []);
+
+    // A root class warns once as well, with a placeholder for a missing id:
+    new CryptographicKey({}, { verifyPortableObject: verifier }).clone();
+    deepStrictEqual(takeWarnings(), [{
+      typeName: "CryptographicKey",
+      objectId: "(no id)",
+    }]);
+
+    // Objects without a default verifier never warn:
+    new Create({}).clone();
+    deepStrictEqual(takeWarnings(), []);
+
+    // A parsed object carries the default, too:
+    const parsed = await createCompatibleActivity(
+      compatibleNoteId,
+      undefined,
+      { verifyPortableObject: verifier },
+    );
+    parsed.clone();
+    deepStrictEqual(takeWarnings().length, 1);
+
+    // An instance with an internal $warning spreads the options, which must
+    // keep inherited and non-enumerable verifyPortableObject options:
+    const warned = new Create({
+      object: new URL(compatibleNoteId),
+    }, {
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: verifier,
+      $warning: { category: ["fedify", "vocab", "test"], message: "Test" },
+    } as unknown as { verifyPortableObject: PortableObjectVerifier });
+    warned.clone();
+    deepStrictEqual(takeWarnings().length, 1);
+    const given2 = createRecordingVerifier();
+    const warnedClone = warned.clone(
+      {},
+      Object.create({
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: given2,
+      }),
+    );
+    warned.clone({}, nonEnumerable);
+    deepStrictEqual(takeWarnings(), []);
+    assertInstanceOf(await warnedClone.getObject(options), Note);
+    deepStrictEqual(given2.calls.length, 1);
+  } finally {
+    await reset();
+  }
+});
 
 test("accessors pass the verifier of a call on to the objects they fetch", async (t) => {
   const actorId = `ap://${did}/actor`;

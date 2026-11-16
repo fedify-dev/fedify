@@ -136,6 +136,12 @@ async function* generateClass(
         return this.#tracerProvider;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/fedify and @fedify/testing,
+     * which read this through \`Reflect.get()\` to pass an object's default
+     * verifier on to its clones.  Keep this accessor name and its semantics
+     * stable.
+     */
     protected get _verifyPortableObject(): PortableObjectVerifier | undefined {
       return this.#verifyPortableObject;
     }

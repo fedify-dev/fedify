@@ -47,6 +47,7 @@ import type {
   PortableActorKeyResolution,
   PortableGatewayKeyResolution,
 } from "./portable-key.ts";
+import { getDefaultPortableObjectVerifier } from "../utils/portable-verifier.ts";
 
 /** Classifies decoding failures without hiding unexpected loader errors. */
 function classifyKeyJsonLdError(
@@ -1300,7 +1301,9 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     // fetched from is then the only id it has, and the ownership check below
     // needs an id to look for in the owner's document.
     key = object.id == null
-      ? (object as CryptographicKey).clone({ id: cacheKey }) as T
+      ? (object as CryptographicKey).clone({ id: cacheKey }, {
+        verifyPortableObject: getDefaultPortableObjectVerifier(object),
+      }) as T
       : object;
   } else if (isActor(object)) {
     // A host may only speak for actor ids on its own origin.  Without this
@@ -1423,8 +1426,12 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
       // own, so that one fetch settled the question.  Record the answer on the
       // key, so that callers—and the key cache—never have to take it up again.
       key = key instanceof CryptographicKey
-        ? key.clone({ owner: ownerDocument.id! }) as T
-        : (key as Multikey).clone({ controller: ownerDocument.id! }) as T;
+        ? key.clone({ owner: ownerDocument.id! }, {
+          verifyPortableObject: getDefaultPortableObjectVerifier(key),
+        }) as T
+        : (key as Multikey).clone({ controller: ownerDocument.id! }, {
+          verifyPortableObject: getDefaultPortableObjectVerifier(key),
+        }) as T;
     } else if (
       claimedOwnerId != null &&
       claimedOwnerId.href !== ownerDocument?.id?.href

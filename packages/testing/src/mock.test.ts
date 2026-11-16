@@ -41,6 +41,7 @@ import {
   createRequestContext,
 } from "./mock.ts";
 import { getDocumentLoader, UrlError } from "@fedify/vocab-runtime";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { metrics, trace } from "@opentelemetry/api";
 
 test("MockFederation preserves telemetry providers with private-address loaders", () => {
@@ -2812,4 +2813,63 @@ test("MockFederation explicit loaders take precedence over private-address defau
     assertStrictEquals(context.documentLoader, documentLoader);
     assertStrictEquals(context.contextLoader, contextLoader);
   }
+});
+
+test("receiveActivity keeps the default portable object verifier", async () => {
+  const did = "did:key:z6Mkabc";
+  const compatibleNoteId =
+    `https://gw.example/.well-known/apgateway/${did}/objects/1`;
+  const mockFederation = createFederation<null>({
+    contextData: null,
+    documentLoader: (url) =>
+      url === compatibleNoteId
+        ? Promise.resolve({
+          contextUrl: null,
+          documentUrl: url,
+          document: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `ap://${did}/objects/1`,
+            type: "Note",
+            content: "Portable note",
+          },
+        })
+        : mockDocumentLoader(url),
+    contextLoader: mockDocumentLoader,
+  });
+  let object: unknown;
+  mockFederation
+    .setInboxListeners("/users/{identifier}/inbox")
+    .on(Create, async (_ctx, activity) => {
+      object = await activity.getObject();
+    });
+  let calls = 0;
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+    object: new URL(compatibleNoteId),
+  }, {
+    contextLoader: mockDocumentLoader,
+    // deno-lint-ignore require-await
+    verifyPortableObject: async () => {
+      calls++;
+      return { verified: true };
+    },
+  });
+  const records: LogRecord[] = [];
+  await reset();
+  try {
+    await configure({
+      sinks: { buffer: (record: LogRecord) => records.push(record) },
+      loggers: [
+        { category: ["fedify", "vocab", "portable"], sinks: ["buffer"] },
+        { category: ["logtape", "meta"], sinks: [] },
+      ],
+    });
+    await mockFederation.receiveActivity(activity);
+  } finally {
+    await reset();
+  }
+  assertEquals(records, []);
+  assertInstanceOf(object, Note);
+  assertEquals(calls, 1);
 });

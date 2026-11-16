@@ -30,6 +30,7 @@ import {
   isPortableUri,
   isSamePublicKey as isSameKeyMaterial,
 } from "./portable-key-id.ts";
+import { getDefaultPortableObjectVerifier } from "../utils/portable-verifier.ts";
 export { exportJwk, generateCryptoKeyPair, importJwk } from "./key.ts";
 
 const logger = getLogger(["fedify", "sig", "owner"]);
@@ -338,7 +339,11 @@ export async function getKeyOwner(
     // key at all.
     if (object.id != null && object.id.href !== keyId.href) return null;
     return await verifyKeyOwnership(
-      object.id == null ? object.clone({ id: keyId }) : object,
+      object.id == null
+        ? object.clone({ id: keyId }, {
+          verifyPortableObject: getDefaultPortableObjectVerifier(object),
+        })
+        : object,
       fetchOptions,
     );
   }
