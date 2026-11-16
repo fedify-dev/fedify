@@ -7,12 +7,10 @@ import {
   Object as APObject,
   OrderedCollection,
   OrderedCollectionPage,
+  type RemoteDocument,
 } from "@fedify/vocab";
 import { fromCompatibleEf61Id, parseIri } from "@fedify/vocab-runtime";
-import {
-  copyPortableProvenance,
-  isUnverifiedPortableClaim,
-} from "@fedify/vocab-runtime/internal/portable-dereference";
+import { copyPortableProvenance } from "@fedify/vocab-runtime/internal/portable-dereference";
 
 import type {
   BackfillContext,
@@ -574,21 +572,13 @@ async function* getReplyTargets(
     | MaxRequestsExceeded
     | IntervalConfigurationError
     | undefined;
-  const loadedObjects = new Map<string, APObject>();
-  const observesGeneratedCache =
-    object.getReplyTargets === APObject.prototype.getReplyTargets;
-  let replyTargetIdsBeforeLoad: readonly URL[] | undefined;
+  const loadedObjects = new WeakMap<RemoteDocument, APObject>();
   try {
     for await (const target of object.getReplyTargets({
       // Skip vocabulary-level failures per target rather than closing the
       // iterator before its remaining reply targets can be explored.
       suppressError: true,
       documentLoader: async (url) => {
-        loadedObjects.clear();
-        replyTargetIdsBeforeLoad =
-          budget.discovery == null || !observesGeneratedCache
-            ? undefined
-            : object.replyTargetIds;
         if (traversalError != null) throw traversalError;
         try {
           return await loadCollectionItemDocument(
@@ -602,7 +592,7 @@ async function* getReplyTargets(
                 budget.discovery == null
                   ? undefined
                   : (object, document) => {
-                      loadedObjects.set(JSON.stringify(document), object);
+                      loadedObjects.set(document, object);
                     },
               // Let suppressError skip unavailable references without caching
               // successful placeholders that would prevent later retries.
@@ -623,34 +613,21 @@ async function* getReplyTargets(
           throw error;
         }
       },
+      // Capture the source only after acceptance, and retain it across cached
+      // passes through ancestor discovery and reply-tree.
+      onAcceptedDocument:
+        budget.discovery == null
+          ? undefined
+          : (target, response) => {
+              const source = loadedObjects.get(response);
+              if (source != null && target instanceof APObject) {
+                budget.discovery?.sources.set(target, source);
+              }
+            },
       crossOrigin: "trust",
     })) {
       budget.signal?.throwIfAborted();
       if (traversalError != null) throw traversalError;
-      // Record provenance only after the vocabulary accessor accepts a target.
-      // Keep it across strategy passes, including targets cached by reply-tree.
-      // Match documents rather than IDs to support anonymous targets.
-      if (loadedObjects.size > 0 && target instanceof APObject) {
-        // A successful fetch changes cached URL identities, unless the target
-        // is an unverified portable claim. Otherwise, discard the stale source.
-        // Custom accessors keep their existing behavior pending exact association:
-        // https://github.com/fedify-dev/fedify/issues/1423
-        const previousIds = replyTargetIdsBeforeLoad;
-        const currentIds = observesGeneratedCache ? object.replyTargetIds : [];
-        const fetched =
-          !observesGeneratedCache ||
-          isUnverifiedPortableClaim(target) ||
-          (previousIds != null &&
-            (currentIds.length !== previousIds.length ||
-              currentIds.some((id, i) => id !== previousIds[i])));
-        if (fetched) {
-          const source = loadedObjects.get(
-            JSON.stringify(await target.toJsonLd()),
-          );
-          if (source != null) budget.discovery?.sources.set(target, source);
-        }
-      }
-      loadedObjects.clear();
       yield target;
     }
     budget.signal?.throwIfAborted();
@@ -883,7 +860,7 @@ async function loadCollectionItemDocument(
     onLoaded,
     skipUnavailable = true,
   }: {
-    onLoaded?: (object: APObject, document: unknown) => void;
+    onLoaded?: (object: APObject, response: RemoteDocument) => void;
     skipUnavailable?: boolean;
   } = {},
 ) {
@@ -909,12 +886,13 @@ async function loadCollectionItemDocument(
     return skippedCollectionItemDocument(url);
   }
   const document = await object.toJsonLd();
-  onLoaded?.(object, document);
-  return {
+  const response: RemoteDocument = {
     contextUrl: null,
     documentUrl: url,
     document,
   };
+  onLoaded?.(object, response);
+  return response;
 }
 
 function skippedCollectionItemDocument(url: string) {
