@@ -16,7 +16,7 @@ import {
   withGatewayHints,
 } from "@fedify/vocab-runtime";
 import fetchMock from "fetch-mock";
-import { deepStrictEqual, ok, rejects } from "node:assert/strict";
+import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
 import { lookupObject, traverseCollection } from "./lookup.ts";
 import { assertInstanceOf } from "./utils.ts";
 import {
@@ -97,6 +97,83 @@ function createActivity(object: string = objectId): Promise<Create> {
     { contextLoader: mockDocumentLoader },
   );
 }
+
+test("onAcceptedDocument reports only the exact winning gateway response", async () => {
+  const wrongIdentity = note(`ap://${did}/other`);
+  const rejected = note();
+  const winner = note();
+  const loader = createLoader({
+    [`https://wrong.example${gatewayPath}`]: wrongIdentity,
+    [`https://rejected.example${gatewayPath}`]: rejected,
+    [`https://winner.example${gatewayPath}`]: winner,
+  });
+  const responses: RemoteDocument[] = [];
+  const accepted: [unknown, RemoteDocument][] = [];
+  const verifiedDocuments: unknown[] = [];
+  const activity = await createActivity();
+  const targets = await Array.fromAsync(
+    activity.getObjects({
+      documentLoader: async (url) => {
+        const response = await loader(url);
+        responses.push(response);
+        return response;
+      },
+      contextLoader: mockDocumentLoader,
+      gateways: [
+        "https://wrong.example",
+        "https://rejected.example",
+        "https://winner.example",
+      ],
+      verifyPortableObject: (document) => {
+        verifiedDocuments.push(document);
+        return Promise.resolve({ verified: document === winner });
+      },
+      onAcceptedDocument: (target, response) => {
+        accepted.push([target, response]);
+      },
+    }),
+  );
+  strictEqual(targets.length, 1);
+  strictEqual(accepted.length, 1);
+  strictEqual(accepted[0][0], targets[0]);
+  strictEqual(accepted[0][1], responses[2]);
+  strictEqual(accepted[0][1].document, winner);
+  deepStrictEqual(verifiedDocuments, [rejected, winner]);
+  deepStrictEqual(loader.fetched, [
+    `https://wrong.example${gatewayPath}`,
+    `https://rejected.example${gatewayPath}`,
+    `https://winner.example${gatewayPath}`,
+  ]);
+});
+
+test("onAcceptedDocument exceptions do not advance gateways and retries fetch again", async () => {
+  const first = `https://first.example${gatewayPath}`;
+  const second = `https://second.example${gatewayPath}`;
+  const loader = createLoader({ [first]: note(), [second]: note() });
+  const activity = await createActivity();
+  const failure = new Error("Callback failed");
+  let calls = 0;
+  const options = {
+    suppressError: true,
+    documentLoader: loader,
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://first.example", "https://second.example"],
+    verifyPortableObject: createVerifier(),
+    onAcceptedDocument: () => {
+      calls++;
+      if (calls === 1) throw failure;
+    },
+  };
+  await rejects(
+    Array.fromAsync(activity.getObjects(options)),
+    (error) => error === failure,
+  );
+  deepStrictEqual(loader.fetched, [first]);
+  const targets = await Array.fromAsync(activity.getObjects(options));
+  strictEqual(targets.length, 1);
+  strictEqual(calls, 2);
+  deepStrictEqual(loader.fetched, [first, first]);
+});
 
 test("getObject() dereferences a portable IRI through explicit gateways", async () => {
   const document = note();
