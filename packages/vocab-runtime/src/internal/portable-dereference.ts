@@ -735,6 +735,11 @@ export interface DereferencePortableIriOptions<T> {
    * otherwise acceptable, in which case the next gateway is tried.
    */
   observer?: DereferenceObserver<T>;
+  /**
+   * Return exact response with the given callback.
+   * @since 2.5.0
+   */
+  onAcceptedResponse?: (response: RemoteDocument) => void;
 }
 
 /**
@@ -1038,6 +1043,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
         if (gateway != null) {
           span?.setAttribute("activitypub.gateway", gateway.href);
         }
+        options.onAcceptedResponse?.(remoteDocument);
         return object;
       } catch (error) {
         signal?.throwIfAborted();
