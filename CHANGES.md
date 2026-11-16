@@ -195,11 +195,12 @@ To be released.
  -  Fixed ancestor discovery losing a loaded object's loader and verifier
     defaults when its parsed target serializes differently from the loader
     document.  Rejected loads cannot transfer their defaults to embedded
-    targets with matching serialization.  [[#1423] by Jiwon Kwon\]
+    targets with matching serialization.  [[#1423], [#1445] by Jiwon Kwon\]
 
 [#1252]: https://github.com/fedify-dev/fedify/issues/1252
 [#1416]: https://github.com/fedify-dev/fedify/pull/1416
 [#1423]: https://github.com/fedify-dev/fedify/issues/1423
+[#1445]: https://github.com/fedify-dev/fedify/pull/1445
 
 ### @fedify/cfworkers
 
@@ -633,7 +634,7 @@ To be released.
     synchronous callback receives each newly fetched, accepted target and its
     exact `RemoteDocument` before caching or yielding.  Embedded targets and
     cache hits do not trigger it.  The `AcceptedDocumentCallback<T>` type is
-    also exported.  [[#1423] by Jiwon Kwon\]
+    also exported.  [[#1423], [#1445] by Jiwon Kwon\]
 
  -  Added the `attributionDomains` property to `Application`, `Group`,
     `Organization`, `Person`, and `Service`, so applications can publish the
@@ -727,7 +728,7 @@ To be released.
     malformed or cyclic input before decoding properties.  [[#1355], [#1420]]
  -  Added the `AcceptedDocumentCallback<T>` type for callbacks that receive a
     fetched vocabulary target and the exact loader response accepted for it.
-    [[#1423] by Jiwon Kwon\]
+    [[#1423], [#1445] by Jiwon Kwon\]
  -  Added the [FEP-f799] context to the preloaded JSON-LD contexts.  The default
     document loader now resolves <https://w3id.org/fep/f799> locally, so
     otherwise valid inbound documents can be parsed or verified without
@@ -750,7 +751,7 @@ To be released.
     validating as before.  [[#1234], [#1353]]
  -  Added an `onAcceptedDocument` option to generated plural dereferencing
     accessors so applications can associate fetched targets with their exact
-    accepted loader responses.  [[#1423] by Jiwon Kwon\]
+    accepted loader responses.  [[#1423], [#1445] by Jiwon Kwon\]
  -  Added non-functional `redundantProperties` support with ordered fallback
     to the first non-empty value set, preserving lists and graphs without
     merging synonyms.  Added `redundantPropertiesWrite: canonical` to write
