@@ -94,7 +94,7 @@ To be released.
  -  Limited each outgoing activity delivery attempt to 30 seconds, including
     redirects and HTTP signature retries, so a slow remote inbox cannot hold a
     delivery worker indefinitely.  Timed-out attempts follow the configured
-    retry schedule.  [GHSA-fq5h-gjhp-g75x]
+    retry schedule.  \[[GHSA-fq5h-gjhp-g75x]]
 
 [mastodon/mastodon\#41640]: https://github.com/mastodon/mastodon/issues/41640
 [GHSA-9pmv-w936-hj3f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9pmv-w936-hj3f
