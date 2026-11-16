@@ -587,7 +587,10 @@ async function* generateProperty(
            */
           inheritPortableObjectVerifier?: boolean;
           /**
-           * Callback for accepted document
+           * Called synchronously before caching or yielding each newly
+           * fetched, accepted target.  Not called for embedded or cached
+           * targets.  See {@link AcceptedDocumentCallback} for the full
+           * callback contract.
            * @since 2.5.0
            */
           onAcceptedDocument?: AcceptedDocumentCallback<${getTypeNames(property.range, types)}>;

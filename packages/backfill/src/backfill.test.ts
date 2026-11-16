@@ -732,7 +732,9 @@ describe("ancestor collection discovery", () => {
       ) {
         ok(options.documentLoader != null);
         const document = await options.documentLoader(parentId.href);
-        yield await Note.fromJsonLd(document.document);
+        const target = await Note.fromJsonLd(document.document);
+        options.onAcceptedDocument?.(target, document);
+        yield target;
       }
     }
     const context = loader([[parentId.href, parent]]);
