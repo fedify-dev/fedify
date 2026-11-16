@@ -225,6 +225,17 @@ async function bufferErrorResponse(
 }
 
 /**
+ * Reports a exact loader response accepted for a fetched target.
+ * @typeParam T The accepted target's type.
+ * @param response Loader response accepted for a fetched target.
+ * @since 2.5.0
+ */
+export type AcceptedDocumentCallback<T> = (
+  target: T,
+  response: RemoteDocument,
+) => void;
+
+/**
  * Gets a {@link RemoteDocument} from the given response.
  * @param url The URL of the document to load.
  * @param response The response to get the document from.

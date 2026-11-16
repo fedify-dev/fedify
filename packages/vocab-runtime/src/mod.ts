@@ -15,6 +15,7 @@ export {
   type GetDocumentLoaderOptions,
   getRemoteDocument,
   type RemoteDocument,
+  type AcceptedDocumentCallback,
   resolveDocumentLoaderTimeout,
   withDocumentLoaderTimeout,
 } from "./docloader.ts";
