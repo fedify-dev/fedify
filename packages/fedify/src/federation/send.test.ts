@@ -958,6 +958,139 @@ test("sendActivity() preserves an error status when its body stalls", async (t) 
   }
 });
 
+test("sendActivity() does not read a body after its deadline", async () => {
+  let reads = 0;
+  let closes = 0;
+  const error = await assertRejects(
+    () =>
+      sendActivity({
+        activity: lifecycleActivity,
+        keys: unsignedKeys,
+        inbox: new URL("https://example.com/late-error"),
+      }, {
+        timeoutMs: 10,
+        openHop: (url) =>
+          Promise.resolve({
+            url: new URL(url),
+            async fetch() {
+              // A transport can return a response even after ignoring abort.
+              await new Promise((resolve) => setTimeout(resolve, 30));
+              return new Response(
+                new ReadableStream({
+                  pull() {
+                    reads++;
+                    throw new Error("The expired response must not be read");
+                  },
+                }, { highWaterMark: 0 }),
+                { status: 500 },
+              );
+            },
+            close() {
+              closes++;
+              return Promise.resolve();
+            },
+          }),
+      }),
+    SendActivityError,
+  );
+  assertEquals(error.statusCode, 500);
+  assertEquals(error.responseBody, "(timed out reading response body)");
+  assertEquals(reads, 0);
+  assertEquals(closes, 1);
+});
+
+test("sendActivity() bounds signature spec lookup", async () => {
+  let resolveLookup!: (spec: "rfc9421") => void;
+  const lookup = new Promise<"rfc9421">((resolve) => resolveLookup = resolve);
+  let lookupReleased = false;
+  let lookups = 0;
+  let closes = 0;
+  const release = setTimeout(() => {
+    lookupReleased = true;
+    resolveLookup("rfc9421");
+  }, 100);
+  try {
+    const error = await assertRejects(
+      () =>
+        sendActivity({
+          activity: lifecycleActivity,
+          keys: signedKeys,
+          inbox: new URL("https://example.com/stalled-spec-lookup"),
+          specDeterminer: {
+            determineSpec() {
+              lookups++;
+              return lookup;
+            },
+            rememberSpec: () => {},
+          },
+        }, {
+          timeoutMs: 20,
+          openHop: (url) =>
+            Promise.resolve({
+              url: new URL(url),
+              fetch: () => Promise.resolve(new Response(null, { status: 202 })),
+              close() {
+                closes++;
+                return Promise.resolve();
+              },
+            }),
+        }),
+      FetchError,
+    );
+    assertInstanceOf(error.cause, DOMException);
+    assertEquals(error.cause.name, "TimeoutError");
+    assertEquals(lookups, 1);
+    assertFalse(lookupReleased);
+    assertEquals(closes, 1);
+  } finally {
+    clearTimeout(release);
+    resolveLookup("rfc9421");
+  }
+});
+
+test("sendActivity() does not wait for signature spec storage", async () => {
+  let resolveStorage!: () => void;
+  const storage = new Promise<void>((resolve) => resolveStorage = resolve);
+  let storageReleased = false;
+  let writes = 0;
+  let closes = 0;
+  const release = setTimeout(() => {
+    storageReleased = true;
+    resolveStorage();
+  }, 100);
+  try {
+    await sendActivity({
+      activity: lifecycleActivity,
+      keys: signedKeys,
+      inbox: new URL("https://example.com/stalled-spec-storage"),
+      specDeterminer: {
+        determineSpec: () => "rfc9421",
+        rememberSpec() {
+          writes++;
+          return storage;
+        },
+      },
+    }, {
+      timeoutMs: 20,
+      openHop: (url) =>
+        Promise.resolve({
+          url: new URL(url),
+          fetch: () => Promise.resolve(new Response(null, { status: 202 })),
+          close() {
+            closes++;
+            return Promise.resolve();
+          },
+        }),
+    });
+    assertEquals(writes, 1);
+    assertFalse(storageReleased);
+    assertEquals(closes, 1);
+  } finally {
+    clearTimeout(release);
+    resolveStorage();
+  }
+});
+
 test("sendActivity() keeps an empty error body distinct from a timeout", async () => {
   const error = await assertRejects(
     () =>

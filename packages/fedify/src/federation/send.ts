@@ -265,6 +265,7 @@ async function readLimitedResponseBody(
   let truncated = false;
   try {
     while (true) {
+      signal.throwIfAborted();
       const { done, value } = await raceWithAbort(reader.read(), signal);
       if (done) break;
       if (totalBytes + value.length > maxBytes) {
@@ -400,6 +401,35 @@ async function sendActivityInternal(
   // circuit-breaker accounting for both direct and redirected destinations.
   // https://github.com/fedify-dev/fedify/issues/1055
   let outcome: SendActivityOutcome;
+  const boundedSpecDeterminer: HttpMessageSignaturesSpecDeterminer | undefined =
+    specDeterminer == null ? undefined : {
+      determineSpec(origin) {
+        signal.throwIfAborted();
+        return raceWithAbort(
+          Promise.resolve(specDeterminer.determineSpec(origin)),
+          signal,
+        );
+      },
+      rememberSpec(origin, spec) {
+        if (signal.aborted) return;
+        try {
+          // Remembering the signature spec must not hold the response session
+          // open after the delivery deadline.
+          void Promise.resolve(specDeterminer.rememberSpec(origin, spec)).catch(
+            (error) =>
+              logger.debug(
+                "Failed to remember the signature spec for {origin}: {error}",
+                { origin, error },
+              ),
+          );
+        } catch (error) {
+          logger.debug(
+            "Failed to remember the signature spec for {origin}: {error}",
+            { origin, error },
+          );
+        }
+      },
+    };
   const timer = setTimeout(
     () =>
       controller.abort(
@@ -418,7 +448,7 @@ async function sendActivityInternal(
       : await doubleKnockScoped(
         request,
         rsaKey,
-        { tracerProvider, specDeterminer, signal },
+        { tracerProvider, specDeterminer: boundedSpecDeterminer, signal },
         openHop,
         (response) => consumeSendActivityResponse(response, inbox, signal),
       );
