@@ -1,6 +1,6 @@
 {
   "name": "@fedify/next",
-  "version": "2.4.6",
+  "version": "2.4.7",
   "description": "Integrate Fedify with Next.js",
   "keywords": [
     "Fedify",
@@ -51,10 +51,9 @@
     "next": "catalog:"
   },
   "devDependencies": {
-    "@fedify/fixture": "workspace:^",
+    "@fedify/fixture": "workspace:*",
     "tsdown": "catalog:",
-    "typescript": "catalog:",
-    "@fedify/fixture": "workspace:*"
+    "typescript": "catalog:"
   },
   "scripts": {
     "build:self": "tsdown",

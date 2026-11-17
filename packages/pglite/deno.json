@@ -1,6 +1,6 @@
 {
   "name": "@fedify/pglite",
-  "version": "2.4.6",
+  "version": "2.4.7",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",

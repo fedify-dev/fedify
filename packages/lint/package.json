@@ -1,6 +1,6 @@
 {
   "name": "@fedify/lint",
-  "version": "2.4.6",
+  "version": "2.4.7",
   "description": "Fedify linting rules and plugins",
   "keywords": [
     "Fedify",
