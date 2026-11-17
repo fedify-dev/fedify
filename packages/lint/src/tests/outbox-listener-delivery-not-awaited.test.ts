@@ -422,6 +422,57 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const replace of [
+  "const replace = () => { run = () => ctx.sendActivity(sender, inbox, activity); }; replace();",
+  "const replace = () => { run = async () => { await ctx.sendActivity(sender, inbox, activity); }; }; replace();",
+  "const replace = () => { const inner = () => { run = () => ctx.sendActivity(sender, inbox, activity); }; inner(); }; replace();",
+  "const replace = (value = (run = finish)) => value; replace();",
+  "const replace = ({ value = (run = finish) } = {}) => value; replace();",
+  "const replace = (value = (run = () => ctx.sendActivity(sender, inbox, activity))) => value; replace();",
+]) {
+  test(
+    `${ruleName}: used helper writes invalidate enclosing array inference: ${replace}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let run = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(run());
+    ${replace}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const declaration of ["let deliver;", "var deliver;"]) {
+  test(
+    `${ruleName}: local literal assignments in used helpers retain inference: ${declaration}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const outer = () => {
+      ${declaration}
+      deliver = () => ctx.sendActivity(sender, inbox, activity);
+      deliver();
+    };
+    outer();
+  });
+`,
+      rule,
+      ruleName,
+      expectedError: "Delivery is not awaited",
+    }),
+  );
+}
+
 for (const definition of [
   "{ var deliver = () => ctx.sendActivity(sender, inbox, activity); CONSUMER }",
   "for (var deliver = () => ctx.sendActivity(sender, inbox, activity); condition;) { CONSUMER }",

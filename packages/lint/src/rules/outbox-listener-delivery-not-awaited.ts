@@ -874,7 +874,35 @@ function checkListener(
   );
   const unknownWrites = new Set<string>();
   for (const scope of scopes) {
-    for (const statement of scope.statements) {
+    const localFunctionNames = new Set<string>();
+    if (scope.fn != null) {
+      for (const name of helperNames) {
+        if (shadowsName(scope.fn, name)) localFunctionNames.add(name);
+      }
+      // var bindings belong to the whole function, including nested blocks.
+      for (const statement of scope.statements) {
+        visitAll(
+          statement,
+          (node) => {
+            if (
+              node.type !== "VariableDeclarator" ||
+              get(parentOf(node), "kind") !== "var"
+            )
+              return;
+            for (const name of helperNames) {
+              if (bindsName(asNode(get(node, "id")), name))
+                localFunctionNames.add(name);
+            }
+          },
+          false,
+        );
+      }
+    }
+    const expressions = [
+      ...scope.statements,
+      ...(scope.fn == null ? [] : (get(scope.fn, "params") as Node[])),
+    ];
+    for (const statement of expressions) {
       // Reachability emits the iterable expression, not the loop statement.
       // Its left-hand target writes an existing binding on each iteration.
       const parent = parentOf(statement);
@@ -931,7 +959,17 @@ function checkListener(
           if (
             get(node, "operator") === "=" &&
             value != null &&
-            isFunctionLikeNode(unwrap(value))
+            isFunctionLikeNode(unwrap(value)) &&
+            // Nested scope maps do not update the enclosing caller's map.
+            // Exempt a literal write only when its target is local.
+            (scope.fn == null ||
+              (target?.type === "Identifier" &&
+                (localFunctionNames.has(target.name) ||
+                  shadowsName(
+                    assignmentRegion(node, target.name) ?? node,
+                    target.name,
+                    true,
+                  ))))
           )
             return;
           for (const name of helperNames) {
