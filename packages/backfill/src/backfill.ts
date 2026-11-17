@@ -684,10 +684,19 @@ async function loadObject(
   budget.requestCount++;
   let document: Promise<APObject | null> | undefined;
   try {
-    document = context.documentLoader(iri, { signal: budget.signal }).then(
-      (object) =>
-        object?.id != null && object.id.origin !== iri.origin ? null : object,
-    );
+    document = Promise.resolve(
+      context.documentLoader(iri, { signal: budget.signal }),
+    ).then((object) => {
+      if (object?.id == null) return object;
+      // Opaque IRIs such as did: all have the origin "null", so compare their
+      // whole hrefs here, as haveSameIriOrigin() does on later branches.  Branches
+      // with FEP-ef61 support also need to accept an ap:// ID returned for a
+      // gateway request (/.well-known/apgateway/...), which this check rejects.
+      const sameOrigin = object.id.origin === "null" || iri.origin === "null"
+        ? object.id.href === iri.href
+        : object.id.origin === iri.origin;
+      return sameOrigin ? object : null;
+    });
     budget.documents.set(cacheKey, document);
     return await document;
   } catch (error) {

@@ -20,6 +20,188 @@ async function collect(
 }
 
 describe("backfill", () => {
+  test("loader results with opaque origins require an exact IRI match", async () => {
+    const cases = [
+      ["did:web:attacker.example", "did:web:victim.example", false],
+      ["did:web:example.com", "did:web:example.com", true],
+      ["urn:example:attacker", "urn:example:victim", false],
+      ["urn:example:same", "urn:example:same", true],
+      ["ap://attacker.example/post", "ap://victim.example/post", false],
+      ["ap://example.com/post", "ap://example.com/post", true],
+      ["ap+ef61://attacker/post", "ap+ef61://victim/post", false],
+      ["ap+ef61://same/post", "ap+ef61://same/post", true],
+      ["https://example.com/parent", "did:web:example.com", false],
+      ["did:web:example.com", "https://example.com/parent", false],
+      ["https://example.com/old", "https://example.com/new", true],
+    ] as const;
+
+    for (const [requested, returned, accepted] of cases) {
+      const requests: string[] = [];
+      const items = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            return Promise.resolve(new Note({ id: new URL(returned) }));
+          },
+        },
+        new Note({ replyTarget: new URL(requested) }),
+        {
+          strategies: ["reply-tree"],
+          maxDepth: 1,
+        },
+      );
+      deepStrictEqual(requests, [requested]);
+      deepStrictEqual(
+        items.map((item) => item.id?.href),
+        accepted ? [returned] : [],
+        `${requested} -> ${returned}`,
+      );
+    }
+  });
+
+  test("JavaScript loaders may return synchronous values", async () => {
+    const contextId = new URL("https://example.com/context");
+    const item = new Note({ id: new URL("https://example.com/post") });
+    for (
+      const [result, accepted] of [
+        [new Collection({ id: contextId, items: [item] }), true],
+        [null, false],
+        [
+          new Collection({
+            id: new URL("https://other.example/context"),
+            items: [item],
+          }),
+          false,
+        ],
+      ] as const
+    ) {
+      // JavaScript callers can return plain values despite the Promise type.
+      const documentLoader = (() =>
+        result) as unknown as BackfillContext["documentLoader"];
+      const items = await collect(
+        { documentLoader },
+        new Note({ contexts: [contextId] }),
+      );
+      deepStrictEqual(
+        items.map((entry) => entry.id),
+        accepted ? [item.id] : [],
+      );
+    }
+  });
+
+  for (const identified of [true, false]) {
+    for (
+      const scenario of [
+        "item",
+        "embedded Create",
+        "referenced Create",
+        "first page",
+        "next page",
+        "inReplyTo",
+        "replies",
+        "shared cache",
+      ]
+    ) {
+      test(`accepted ${identified ? "identified" : "anonymous"} document dereferences forged ${scenario}`, async () => {
+        const contextUrl = "https://attacker.example/context";
+        const createUrl = "https://attacker.example/create";
+        const victimUrl = "https://victim.example/post";
+        const victimPage = "https://victim.example/page";
+        const victimReplies = "https://victim.example/replies";
+        const forgedNote = {
+          type: "Note",
+          id: victimUrl,
+          content: "spoofed by attacker",
+        };
+        const create = {
+          type: "Create",
+          id: createUrl,
+          object: forgedNote,
+        };
+        const page = {
+          type: "CollectionPage",
+          id: victimPage,
+          items: [forgedNote],
+        };
+        const outerId = identified ? { id: contextUrl } : {};
+        const document = {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: scenario === "next page" ? "CollectionPage" : "Collection",
+          ...outerId,
+          ...(scenario === "first page"
+            ? { first: page }
+            : scenario === "next page"
+            ? { next: page }
+            : {
+              items: [
+                scenario === "embedded Create"
+                  ? create
+                  : scenario === "referenced Create"
+                  ? createUrl
+                  : forgedNote,
+              ],
+            }),
+        };
+        const outer = scenario === "next page"
+          ? await CollectionPage.fromJsonLd(document)
+          : await Collection.fromJsonLd(document);
+        const seed = await Note.fromJsonLd({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Note",
+          ...(identified ? { id: "https://attacker.example/seed" } : {}),
+          ...(scenario === "inReplyTo"
+            ? { inReplyTo: forgedNote }
+            : scenario === "replies"
+            ? {
+              replies: {
+                type: "Collection",
+                id: victimReplies,
+                items: [forgedNote],
+              },
+            }
+            : { context: contextUrl }),
+          ...(scenario === "shared cache" ? { replies: contextUrl } : {}),
+        });
+        const parsedCreate = await Create.fromJsonLd({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          ...create,
+        });
+        const requests: string[] = [];
+        const items = await collect(
+          {
+            documentLoader: (iri) => {
+              requests.push(iri.href);
+              return Promise.resolve(
+                iri.href === contextUrl
+                  ? outer
+                  : iri.href === createUrl
+                  ? parsedCreate
+                  : null,
+              );
+            },
+          },
+          seed,
+          { strategies: ["context-auto", "reply-tree"] },
+        );
+
+        deepStrictEqual(items, []);
+        const target = scenario.endsWith("page")
+          ? victimPage
+          : scenario === "replies"
+          ? victimReplies
+          : victimUrl;
+        ok(requests.includes(target), `must dereference ${target}`);
+        if (scenario === "referenced Create") {
+          ok(requests.includes(createUrl));
+        }
+        if (scenario === "shared cache") {
+          strictEqual(requests.filter((iri) => iri === contextUrl).length, 1);
+          strictEqual(requests.filter((iri) => iri === victimUrl).length, 1);
+        }
+      });
+    }
+  }
+
   test("package exports backfill", () => {
     strictEqual(typeof backfill, "function");
     strictEqual(typeof MaxRequestsExceeded, "function");

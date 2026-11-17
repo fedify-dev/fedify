@@ -71,22 +71,24 @@ for await (
 }
 ~~~~
 
-The example deliberately uses `lookupObject()`, which validates an object's
-declared ID against the final document URL after redirects.  A custom
-`documentLoader` must provide the same validation.  If an application has a
-custom JSON-LD `DocumentLoader`, pass it to `lookupObject()` rather than
-fetching JSON and parsing it directly with `fromJsonLd()`.  The JSON-LD loader
-must set `documentUrl` to the final response URL.
+Custom `BackfillDocumentLoader` implementations must validate the returned
+object's declared ID against the final response URL after redirects.  Pass a
+custom JSON-LD `DocumentLoader` to `lookupObject()` instead of fetching JSON
+and parsing it directly with `fromJsonLd()`.  The JSON-LD loader must set
+`documentUrl` to the final response URL so `lookupObject()` can perform this
+validation. `lookupObject()` checks only the top-level object's origin. Backfill
+dereferences cross-origin embedded objects through the vocabulary accessors,
+which apply this check only to objects decoded with `fromJsonLd()` or
+`lookupObject()`. Objects passed to a constructor are trusted as they are, so a
+loader must not build remote data with constructors.
 
-Backfill also ignores a `documentLoader` result whose ID has a different
-origin from the requested IRI.  Because `BackfillDocumentLoader` does not
-expose the final response URL, this means an object reached through a
-cross-origin redirect is ignored.
+Backfill also ignores loader results whose ID origin differs from the
+requested IRI's origin, including otherwise valid cross-origin redirects.
+This does not replace the loader's validation: `BackfillDocumentLoader` does
+not expose the final response URL.
 
-Backfilled objects remain unverified remote data.  Origin validation prevents
-one origin from impersonating another, but it does not authenticate the
-object with an HTTP signature or integrity proof.  Authenticate objects before
-persisting or otherwise trusting them.
+Backfilled objects remain unverified remote data.  Applications should
+authenticate them before persisting or otherwise trusting them.
 
 The seed object itself is not yielded.  If the same object appears in a
 discovered collection, it is skipped by ID.
