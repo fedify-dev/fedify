@@ -11,12 +11,15 @@ import type {
 import {
   Activity,
   CryptographicKey,
+  type DataIntegrityProof,
   getTypeId,
   lookupObject,
   Multikey,
   Tombstone,
   traverseCollection,
 } from "@fedify/vocab";
+import type { CryptoKeyLike, CryptoKeyPairLike } from "@fedify/vocab-runtime";
+import { asCryptoKey } from "@fedify/vocab-runtime/internal";
 import type {
   AuthenticatedDocumentLoaderFactory,
   DocumentLoader,
@@ -52,6 +55,10 @@ import {
 } from "@opentelemetry/semantic-conventions";
 import metadata from "../../deno.json" with { type: "json" };
 import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
+import {
+  prepareActivityJsonLd,
+  signActivityJsonLd,
+} from "../compat/delivery-jsonld.ts";
 import { getDefaultActivityTransformers } from "../compat/transformers.ts";
 import type { ActivityTransformer } from "../compat/types.ts";
 import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
@@ -75,8 +82,8 @@ import {
   compactJsonLd,
   detachSignature,
   getNormalizationContextLoader,
-  hasSignature,
   hasSignatureLike,
+  hasVerifiableSignature,
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
   isInvalidUrlTypeError,
@@ -929,12 +936,42 @@ export class FederationImpl<TContextData>
     return this.tracerProvider.getTracer(metadata.name, metadata.version);
   }
 
+  /**
+   * Starts listening on a queue, converting a synchronous throw into
+   * a rejected promise.
+   *
+   * `MessageQueue.listen()` is documented to never reject, but some
+   * implementations (e.g., `WorkersMessageQueue`) throw synchronously.  Without
+   * this normalization, one such throw aborts {@link _startQueueInternal} while
+   * it is still collecting listener promises, so listeners started earlier are
+   * never awaited and later queues are never started.
+   */
+  #listenQueue(
+    queue: MessageQueue,
+    ctxData: TContextData,
+    signal: AbortSignal | undefined,
+  ): Promise<void> {
+    try {
+      return queue.listen(
+        (msg) => this.processQueuedTask(ctxData, msg),
+        { signal },
+      );
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
   async _startQueueInternal(
     ctxData: TContextData,
     signal?: AbortSignal,
     queue?: keyof FederationQueueOptions,
   ): Promise<void> {
-    if (this.inboxQueue == null && this.outboxQueue == null) return;
+    if (
+      this.inboxQueue == null && this.outboxQueue == null &&
+      this.fanoutQueue == null
+    ) {
+      return;
+    }
     const logger = getLogger(["fedify", "federation", "queue"]);
     const promises: Promise<void>[] = [];
     if (
@@ -943,12 +980,7 @@ export class FederationImpl<TContextData>
     ) {
       logger.debug("Starting an inbox task worker.");
       this.inboxQueueStarted = true;
-      promises.push(
-        this.inboxQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
+      promises.push(this.#listenQueue(this.inboxQueue, ctxData, signal));
     }
     if (
       this.outboxQueue != null &&
@@ -958,12 +990,7 @@ export class FederationImpl<TContextData>
     ) {
       logger.debug("Starting an outbox task worker.");
       this.outboxQueueStarted = true;
-      promises.push(
-        this.outboxQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
+      promises.push(this.#listenQueue(this.outboxQueue, ctxData, signal));
     }
     if (
       this.fanoutQueue != null &&
@@ -974,14 +1001,27 @@ export class FederationImpl<TContextData>
     ) {
       logger.debug("Starting a fanout task worker.");
       this.fanoutQueueStarted = true;
-      promises.push(
-        this.fanoutQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
+      promises.push(this.#listenQueue(this.fanoutQueue, ctxData, signal));
     }
     await Promise.all(promises);
+  }
+
+  /**
+   * Starts the queue workers automatically, reporting a failure instead of
+   * leaving the returned promise unobserved.
+   *
+   * Automatic startup is best-effort: call sites cannot await it, so a failing
+   * listener (e.g., `WorkersMessageQueue`, whose `listen()` throws) must not
+   * become an unhandled rejection.  {@link startQueue} keeps rejecting for
+   * callers that start workers deliberately.
+   */
+  _startQueueAutomatically(ctxData: TContextData): void {
+    this._startQueueInternal(ctxData).catch((error) => {
+      getLogger(["fedify", "federation", "queue"]).warn(
+        "Failed to start queue workers automatically: {error}",
+        { error },
+      );
+    });
   }
 
   processQueuedTask(
@@ -1209,6 +1249,9 @@ export class FederationImpl<TContextData>
       orderingKey: message.orderingKey,
       normalizeExistingProofs: message.normalizeExistingProofs,
       context,
+      activityJsonLd: hasTopLevelProof(message.activity)
+        ? message.activity
+        : undefined,
     });
   }
 
@@ -1854,7 +1897,7 @@ export class FederationImpl<TContextData>
         let parseInput: unknown = undefined;
         let parseContextLoader = context.contextLoader;
         try {
-          const hasSignatureField = hasSignature(message.activity);
+          const hasSignatureField = hasVerifiableSignature(message.activity);
           const shouldParseFromNormalizedSignedPayload =
             message.ldSignatureVerified === true ||
             message.normalizedActivity != null ||
@@ -2187,7 +2230,7 @@ export class FederationImpl<TContextData>
   }
 
   async sendActivity(
-    keys: SenderKeyPair[],
+    keys: SenderKeyPair<CryptoKeyLike>[],
     inboxes: Record<
       string,
       { actorIds: Iterable<string>; sharedInbox: boolean }
@@ -2213,7 +2256,7 @@ export class FederationImpl<TContextData>
     const activityId = activity.id.href;
     let hasProof = false;
     let proofCreated = false;
-    let rsaKey: { keyId: URL; privateKey: CryptoKey } | null = null;
+    let rsaKey: { keyId: URL; privateKey: CryptoKeyLike } | null = null;
     for (const { keyId, privateKey } of keys) {
       validateCryptoKey(privateKey, "private");
       if (rsaKey == null && privateKey.algorithm.name === "RSASSA-PKCS1-v1_5") {
@@ -2226,29 +2269,50 @@ export class FederationImpl<TContextData>
       hasProof = true;
       break;
     }
-    if (!hasProof) {
-      for (const { keyId, privateKey } of keys) {
-        if (privateKey.algorithm.name === "Ed25519") {
-          activity = await signObject(activity, privateKey, keyId, {
-            contextLoader,
-            tracerProvider: this.tracerProvider,
-          });
-          hasProof = true;
-          proofCreated = true;
+    const prepared = !hasProof && options.activityJsonLd == null
+      ? await prepareActivityJsonLd(activity, contextLoader)
+      : undefined;
+    let jsonLd: unknown;
+    if (prepared != null) {
+      const signingKeys = keys.filter(({ privateKey }) =>
+        privateKey.algorithm.name === "Ed25519"
+      );
+      const signed = await signActivityJsonLd(activity, prepared, signingKeys, {
+        tracerProvider: this.tracerProvider,
+      });
+      activity = signed.activity;
+      jsonLd = signed.jsonLd;
+      proofCreated = signingKeys.length > 0;
+    } else {
+      if (!hasProof) {
+        for (const { keyId, privateKey } of keys) {
+          if (privateKey.algorithm.name === "Ed25519") {
+            activity = await signObject(activity, privateKey, keyId, {
+              contextLoader,
+              tracerProvider: this.tracerProvider,
+            });
+            proofCreated = true;
+          }
         }
       }
+      jsonLd = options.activityJsonLd != null
+        ? detachSignature(options.activityJsonLd)
+        : await activity.toJsonLd({
+          format: "compact",
+          contextLoader,
+        });
     }
-    let jsonLd = await activity.toJsonLd({
-      format: "compact",
-      contextLoader,
-    });
     // Existing proofs are preserved by default because they may have been
     // created over the compact JSON-LD bytes exactly as supplied.  Fedify can
     // safely normalize unsigned activities, proofs it just created, or
     // locally pre-signed activities when callers opt in.
-    if (proofCreated || !hasProof || options.normalizeExistingProofs) {
+    if (
+      prepared == null &&
+      (proofCreated || !hasProof || options.normalizeExistingProofs)
+    ) {
       jsonLd = await normalizeOutgoingActivityJsonLd(jsonLd, contextLoader);
     }
+    hasProof ||= proofCreated;
     if (rsaKey == null) {
       logger.warn(
         "No supported key found to create a Linked Data signature for " +
@@ -2307,9 +2371,9 @@ export class FederationImpl<TContextData>
         );
       }
       const promises: Promise<void>[] = [];
-      for (const inbox in inboxes) {
-        promises.push(
-          sendActivity({
+      try {
+        for (const inbox in inboxes) {
+          const promise = sendActivity({
             allowPrivateAddress: this.allowPrivateAddress,
             keys,
             activity: jsonLd,
@@ -2331,10 +2395,22 @@ export class FederationImpl<TContextData>
             ),
             meterProvider: this.meterProvider,
             tracerProvider: this.tracerProvider,
-          }),
-        );
+          });
+          // Mark the delivery as handled so an early rejection does not
+          // surface as an unhandled rejection while a later recipient is
+          // still being prepared.  Promise.all() and Promise.allSettled()
+          // still observe the original rejection.
+          promise.catch(() => {});
+          promises.push(promise);
+        }
+        await Promise.all(promises);
+      } finally {
+        // Drain the deliveries that were already started before propagating
+        // the original error, so that a failing recipient cannot cancel its
+        // siblings when the runtime tears down the request context (e.g.,
+        // Cloudflare Workers).
+        await Promise.allSettled(promises);
       }
-      await Promise.all(promises);
       return;
     }
     logger.debug(
@@ -2346,7 +2422,7 @@ export class FederationImpl<TContextData>
       const privateKeyJwk = await exportJwk(privateKey);
       keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
     }
-    if (!this.manuallyStartQueue) this._startQueueInternal(ctx.data);
+    if (!this.manuallyStartQueue) this._startQueueAutomatically(ctx.data);
     const carrier: Record<string, string> = {};
     propagation.inject(context.active(), carrier);
     const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
@@ -2711,7 +2787,9 @@ export class FederationImpl<TContextData>
             });
           }
         }
-        if (!this.manuallyStartQueue) this._startQueueInternal(contextData);
+        if (!this.manuallyStartQueue) {
+          this._startQueueAutomatically(contextData);
+        }
         const inboxContextFactory = context.toInboxContext.bind(context) as
           & typeof context.toInboxContext
           & {
@@ -3324,7 +3402,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         },
       );
     }
-    let keyPairs: (CryptoKeyPair & { keyId: URL })[];
+    let keyPairs: (CryptoKeyPairLike & { keyId: URL })[];
     try {
       keyPairs = await this.getKeyPairsFromIdentifier(identifier);
     } catch (_) {
@@ -3337,6 +3415,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     for (const keyPair of keyPairs) {
       const newPair: ActorKeyPair = {
         ...keyPair,
+        privateKey: asCryptoKey(keyPair.privateKey),
+        publicKey: asCryptoKey(keyPair.publicKey),
         cryptographicKey: new CryptographicKey({
           id: keyPair.keyId,
           owner,
@@ -3356,7 +3436,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   protected async getKeyPairsFromIdentifier(
     identifier: string,
-  ): Promise<(CryptoKeyPair & { keyId: URL })[]> {
+  ): Promise<(CryptoKeyPairLike & { keyId: URL })[]> {
     const logger = getLogger(["fedify", "federation", "actor"]);
     if (this.federation.actorCallbacks?.keyPairsDispatcher == null) {
       throw new Error("No actor key pairs dispatcher registered.");
@@ -3399,7 +3479,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   protected async getRsaKeyPairFromIdentifier(
     identifier: string,
-  ): Promise<CryptoKeyPair & { keyId: URL } | null> {
+  ): Promise<CryptoKeyPairLike & { keyId: URL } | null> {
     const keyPairs = await this.getKeyPairsFromIdentifier(identifier);
     for (const keyPair of keyPairs) {
       const { privateKey } = keyPair;
@@ -3424,10 +3504,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       | { identifier: string }
       | { username: string },
   ): Promise<DocumentLoader>;
-  getDocumentLoader(identity: SenderKeyPair): DocumentLoader;
+  getDocumentLoader(identity: SenderKeyPair<CryptoKeyLike>): DocumentLoader;
   getDocumentLoader(
     identity:
-      | SenderKeyPair
+      | SenderKeyPair<CryptoKeyLike>
       | { identifier: string }
       | { username: string },
   ): DocumentLoader | Promise<DocumentLoader> {
@@ -3455,11 +3535,17 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         return keyPair.then((pair) =>
           pair == null
             ? this.documentLoader
-            : this.federation.authenticatedDocumentLoaderFactory(pair)
+            : this.federation.authenticatedDocumentLoaderFactory({
+              keyId: pair.keyId,
+              privateKey: asCryptoKey(pair.privateKey),
+            })
         );
       });
     }
-    return this.federation.authenticatedDocumentLoaderFactory(identity);
+    return this.federation.authenticatedDocumentLoaderFactory({
+      keyId: identity.keyId,
+      privateKey: asCryptoKey(identity.privateKey),
+    });
   }
 
   lookupObject(
@@ -3507,11 +3593,15 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       ? getNodeInfo(url, {
         parse: "none",
         direct: options.direct,
+        timeout: options.timeout,
+        signal: options.signal,
         userAgent: options?.userAgent ?? this.federation.userAgent,
       })
       : getNodeInfo(url, {
         parse: options.parse,
         direct: options.direct,
+        timeout: options.timeout,
+        signal: options.signal,
         userAgent: options?.userAgent ?? this.federation.userAgent,
       });
   }
@@ -3534,16 +3624,35 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     });
   }
 
-  sendActivity(
+  async sendActivity(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
   ): Promise<void> {
+    // Capture the proof-covered serialization before the span attributes below
+    // read lazy accessors that invalidate the object's cached JSON-LD.  A
+    // proofless activity has nothing to preserve, so skip the serialization.
+    let activityJsonLd: unknown = undefined;
+    let hasProof = activity.proofIds.length > 0;
+    if (!hasProof) {
+      for await (
+        const _ of activity.getProofs({ contextLoader: this.contextLoader })
+      ) {
+        hasProof = true;
+        break;
+      }
+    }
+    if (hasProof) {
+      activityJsonLd = await activity.toJsonLd({
+        contextLoader: this.contextLoader,
+      });
+      if (!hasTopLevelProof(activityJsonLd)) activityJsonLd = undefined;
+    }
     const tracer = this.tracerProvider.getTracer(
       metadata.name,
       metadata.version,
@@ -3575,6 +3684,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
             activity,
             options,
             span,
+            activityJsonLd,
           );
         } catch (e) {
           span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
@@ -3588,17 +3698,18 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   protected async sendActivityInternal(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     activity: Activity,
     options: SendActivityOptionsForCollection,
     span: Span,
+    activityJsonLd?: unknown,
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
-    let keys: SenderKeyPair[];
+    let keys: SenderKeyPair<CryptoKeyLike>[];
     let identifier: string | null = null;
     let actorKeyPairs: ActorKeyPair[] | null = null;
     if ("identifier" in sender || "username" in sender) {
@@ -3680,16 +3791,40 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     } else {
       expandedRecipients = [recipients];
     }
-    const opts: SendActivityInternalOptions<TContextData> = {
-      context: this,
-      orderingKey: options.orderingKey,
-      collectionSync,
-      immediate: options.immediate,
-      normalizeExistingProofs: options.normalizeExistingProofs,
-    };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
+    }
+    let contextMatches = false;
+    if (activityJsonLd != null) {
+      const capturedJsonLd = activityJsonLd;
+      const transformedJsonLd = await activity.toJsonLd({
+        format: "compact",
+        contextLoader: this.contextLoader,
+      });
+      const contentChanged = getContentFields(transformedJsonLd) !==
+        getContentFields(capturedJsonLd);
+      contextMatches = getContextFields(transformedJsonLd) ===
+        getContextFields(capturedJsonLd);
+      const proofsChanged = getProofFields(transformedJsonLd) !==
+        getProofFields(capturedJsonLd);
+      if (contentChanged || (!contextMatches && proofsChanged)) {
+        // Drop proofs that covered the captured content or context, but keep
+        // proofs the transformer supplied for the current serialization.
+        activity = activity.clone({
+          proofs: await getUncapturedProofs(
+            activity,
+            capturedJsonLd,
+            this.contextLoader,
+          ),
+        });
+        activityJsonLd = undefined;
+      } else if (proofsChanged) {
+        // The transformer only changed the proofs.  Their content still
+        // matches, so keep the transformed proofs and serialize the
+        // transformed activity instead of the captured snapshot.
+        activityJsonLd = undefined;
+      }
     }
     span?.setAttribute("activitypub.activity.id", activity?.id?.href ?? "");
     if (activity.actorId == null) {
@@ -3707,18 +3842,64 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     let proofCreated = false;
     if (actorKeyPairs != null) {
       const contextLoader = this.contextLoader;
-      for (const kp of actorKeyPairs) {
-        if (
-          kp.privateKey.algorithm.name !== "Ed25519" ||
-          kp.multikey.id == null
-        ) continue;
-        activity = await signObject(activity, kp.privateKey, kp.multikey.id, {
-          contextLoader,
-          tracerProvider: this.tracerProvider,
-        });
-        proofCreated = true;
+      const willSign = actorKeyPairs.some((kp) =>
+        kp.privateKey.algorithm.name === "Ed25519" &&
+        kp.multikey.id != null
+      );
+      if (willSign) {
+        // A new proof covers the current serialization.  Existing proofs can
+        // stay only if they already cover the same context.
+        if (activityJsonLd != null && !contextMatches) {
+          activity = activity.clone({ proofs: [] });
+        }
+      }
+      const prepared = willSign
+        ? await prepareActivityJsonLd(activity, contextLoader)
+        : undefined;
+      if (prepared != null) {
+        // Every key signs the same normalized JSON before it enters fanout.
+        const signingKeys = actorKeyPairs.flatMap((kp) =>
+          kp.privateKey.algorithm.name === "Ed25519" && kp.multikey.id != null
+            ? [{ privateKey: kp.privateKey, keyId: kp.multikey.id }]
+            : []
+        );
+        const signed = await signActivityJsonLd(
+          activity,
+          prepared,
+          signingKeys,
+          {
+            tracerProvider: this.tracerProvider,
+          },
+        );
+        activity = signed.activity;
+        activityJsonLd = signed.jsonLd;
+        proofCreated = signingKeys.length > 0;
+      } else {
+        let proofAdded = false;
+        for (const kp of actorKeyPairs) {
+          if (
+            kp.privateKey.algorithm.name !== "Ed25519" ||
+            kp.multikey.id == null
+          ) continue;
+          activity = await signObject(activity, kp.privateKey, kp.multikey.id, {
+            contextLoader,
+            tracerProvider: this.tracerProvider,
+          });
+          proofAdded = true;
+        }
+        // The captured JSON-LD predates a new proof, if one was added.
+        if (proofAdded) activityJsonLd = undefined;
+        proofCreated = proofAdded;
       }
     }
+    const opts: SendActivityInternalOptions<TContextData> = {
+      context: this,
+      orderingKey: options.orderingKey,
+      collectionSync,
+      immediate: options.immediate,
+      activityJsonLd,
+      normalizeExistingProofs: options.normalizeExistingProofs,
+    };
     const inboxes = extractInboxes({
       recipients: expandedRecipients,
       preferSharedInbox: options.preferSharedInbox,
@@ -3766,10 +3947,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           [k, { actorIds, sharedInbox }],
         ) => [k, { actorIds: [...actorIds], sharedInbox }]),
       ),
-      activity: await activity.toJsonLd({
-        format: "compact",
-        contextLoader: this.contextLoader,
-      }),
+      activity: activityJsonLd != null
+        ? detachSignature(activityJsonLd)
+        : await activity.toJsonLd({
+          format: "compact",
+          contextLoader: this.contextLoader,
+        }),
       activityId: activity.id?.href,
       activityType: getTypeId(activity).href,
       collectionSync: opts.collectionSync,
@@ -3778,7 +3961,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       traceContext: carrier,
     };
     if (!this.federation.manuallyStartQueue) {
-      this.federation._startQueueInternal(this.data);
+      this.federation._startQueueAutomatically(this.data);
     }
     await this.federation.fanoutQueue.enqueue(
       message,
@@ -4271,8 +4454,8 @@ function forwardActivity<TContextData>(
   ctx: ForwardActivityContext<TContextData>,
   loggerCategory: "inbox" | "outbox",
   forwarder:
-    | SenderKeyPair
-    | SenderKeyPair[]
+    | SenderKeyPair<CryptoKeyLike>
+    | SenderKeyPair<CryptoKeyLike>[]
     | { identifier: string }
     | { username: string },
   recipients: Recipient | Recipient[] | "followers",
@@ -4318,15 +4501,15 @@ async function forwardActivityInternal<TContextData>(
   ctx: ForwardActivityContext<TContextData>,
   loggerCategory: "inbox" | "outbox",
   forwarder:
-    | SenderKeyPair
-    | SenderKeyPair[]
+    | SenderKeyPair<CryptoKeyLike>
+    | SenderKeyPair<CryptoKeyLike>[]
     | { identifier: string }
     | { username: string },
   recipients: Recipient | Recipient[] | "followers",
   options?: ForwardActivityOptions,
 ): Promise<boolean> {
   const logger = getLogger(["fedify", "federation", loggerCategory]);
-  let keys: SenderKeyPair[];
+  let keys: SenderKeyPair<CryptoKeyLike>[];
   let identifier: string | null = null;
   if (
     "identifier" in forwarder || "username" in forwarder
@@ -4370,7 +4553,9 @@ async function forwardActivityInternal<TContextData>(
   } else {
     keys = [forwarder];
   }
-  if (!hasSignatureLike(ctx.activity)) {
+  if (
+    !hasVerifiableSignature(ctx.activity) && !hasSignatureLike(ctx.activity)
+  ) {
     const hasProof = hasProofLike(ctx.activity);
     if (!hasProof) {
       if (options?.skipIfUnsigned) return false;
@@ -4430,9 +4615,9 @@ async function forwardActivityInternal<TContextData>(
       );
     }
     const promises: Promise<void>[] = [];
-    for (const inbox in inboxes) {
-      promises.push(
-        sendActivity({
+    try {
+      for (const inbox in inboxes) {
+        const promise = sendActivity({
           allowPrivateAddress: ctx.federation.allowPrivateAddress,
           keys,
           activity: ctx.activity,
@@ -4447,10 +4632,15 @@ async function forwardActivityInternal<TContextData>(
             ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
             ctx.federation.firstKnock,
           ),
-        }),
-      );
+        });
+        promise.catch(() => {});
+        promises.push(promise);
+      }
+      await Promise.all(promises);
+    } finally {
+      // Finish every delivery already started before propagating an error.
+      await Promise.allSettled(promises);
     }
-    await Promise.all(promises);
     return true;
   }
   logger.debug(
@@ -4458,7 +4648,7 @@ async function forwardActivityInternal<TContextData>(
     { activityId: ctx.activityId, activity: ctx.activity },
   );
   if (!ctx.federation.manuallyStartQueue) {
-    ctx.federation._startQueueInternal(ctx.data);
+    ctx.federation._startQueueAutomatically(ctx.data);
   }
   const keyJwkPairs: SenderKeyJwkPair[] = [];
   for (const { keyId, privateKey } of keys) {
@@ -4594,8 +4784,8 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
 
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],
@@ -4610,8 +4800,8 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
   ): Promise<void>;
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -4652,8 +4842,8 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
 
   override sendActivity(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -4705,8 +4895,8 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
 
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],
@@ -4721,8 +4911,8 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
   ): Promise<void>;
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -4760,6 +4950,11 @@ interface SendActivityInternalOptions<TContextData> {
   readonly orderingKey?: string;
   readonly normalizeExistingProofs?: boolean;
   readonly context: Context<TContextData>;
+  /**
+   * The JSON-LD document as it was queued, used to preserve proof-covered
+   * bytes when replaying a fanout message created before an upgrade.
+   */
+  readonly activityJsonLd?: unknown;
 }
 
 export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
@@ -4796,6 +4991,110 @@ export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
 
 function notFound(_request: Request): Response {
   return new Response("Not Found", { status: 404 });
+}
+
+function hasTopLevelProof(value: unknown): boolean {
+  return typeof value === "object" && value != null && !Array.isArray(value) &&
+    globalThis.Object.prototype.hasOwnProperty.call(value, "proof");
+}
+
+function getContentFields(value: unknown): string {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return JSON.stringify(sortJsonKeys(value));
+  }
+  const record = { ...(value as Record<string, unknown>) };
+  delete record["@context"];
+  delete record.proof;
+  delete record.signature;
+  return JSON.stringify(sortJsonKeys(record));
+}
+
+function getContextFields(value: unknown): string {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return JSON.stringify(sortJsonKeys(value));
+  }
+  const context = (value as Record<string, unknown>)["@context"];
+  return JSON.stringify(sortJsonKeys(context ?? null));
+}
+
+function getProofEntries(value: unknown): unknown[] {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return [];
+  }
+  const proof = (value as Record<string, unknown>).proof;
+  if (proof == null) return [];
+  return Array.isArray(proof) ? proof : [proof];
+}
+
+function normalizeProofEntry(proof: unknown): unknown {
+  const stripped = stripContexts(proof);
+  if (
+    typeof stripped !== "object" || stripped == null || Array.isArray(stripped)
+  ) {
+    return stripped;
+  }
+  const record = { ...(stripped as Record<string, unknown>) };
+  if (typeof record.created === "string") {
+    try {
+      record.created = Temporal.Instant.from(record.created).toString();
+    } catch {
+      // Keep unrecognized timestamps as they are.
+    }
+  }
+  return record;
+}
+
+function getProofEntryFields(proof: unknown): string {
+  return JSON.stringify(sortJsonKeys(normalizeProofEntry(proof)));
+}
+
+function getProofFields(value: unknown): string {
+  return JSON.stringify(
+    getProofEntries(value).map(getProofEntryFields).sort(),
+  );
+}
+
+async function getUncapturedProofs(
+  activity: Activity,
+  capturedJsonLd: unknown,
+  contextLoader: DocumentLoader,
+): Promise<DataIntegrityProof[]> {
+  const capturedProofs = new Set(
+    getProofEntries(capturedJsonLd).map(getProofEntryFields),
+  );
+  const retainedProofs: DataIntegrityProof[] = [];
+  for await (const proof of activity.getProofs({ contextLoader })) {
+    const proofJsonLd = await proof.toJsonLd({
+      format: "compact",
+      contextLoader,
+    });
+    if (!capturedProofs.has(getProofEntryFields(proofJsonLd))) {
+      retainedProofs.push(proof);
+    }
+  }
+  return retainedProofs;
+}
+
+function stripContexts(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripContexts);
+  if (typeof value !== "object" || value == null) return value;
+  const record = { ...(value as Record<string, unknown>) };
+  delete record["@context"];
+  delete record.signature;
+  for (const key of globalThis.Object.keys(record)) {
+    record[key] = stripContexts(record[key]);
+  }
+  return record;
+}
+
+function sortJsonKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortJsonKeys);
+  if (typeof value !== "object" || value == null) return value;
+  return globalThis.Object.fromEntries(
+    globalThis.Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+      .map(([key, item]) => [key, sortJsonKeys(item)]),
+  );
 }
 
 function notAcceptable(_request: Request): Response {

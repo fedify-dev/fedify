@@ -247,6 +247,7 @@ function getLogSafeJsonLdMetadata(jsonLd: unknown): Record<string, unknown> {
 export async function normalizeAttachmentArrays(
   jsonLd: unknown,
   contextLoader?: DocumentLoader,
+  preserveSecured = false,
 ): Promise<unknown> {
   const normalized = wrapScalarAttachments(jsonLd);
   if (normalized === jsonLd) return jsonLd;
@@ -257,10 +258,27 @@ export async function normalizeAttachmentArrays(
     );
     return jsonLd;
   }
-  if (hasKnownSafeContext(jsonLd)) return normalized;
-  const loader = contextLoader ?? preloadedOnlyDocumentLoader;
+  const sourceLoader = contextLoader ?? preloadedOnlyDocumentLoader;
+  const pending = new Map<string, ReturnType<DocumentLoader>>();
+  const loader: DocumentLoader = (url, options) => {
+    let result = pending.get(url);
+    if (result == null) {
+      result = sourceLoader(url, options);
+      pending.set(url, result);
+    }
+    return result;
+  };
   try {
-    const [before, after] = await Promise.all([
+    if (preserveSecured) {
+      // RDF equivalence does not preserve JCS bytes.  For served documents and
+      // new deliveries, leave the entire document alone if any node is signed.
+      // Expanded predicates recognize aliases without mistaking JSON literals
+      // for embedded signed objects.
+      const expanded = await jsonld.expand(jsonLd, { documentLoader: loader });
+      if (hasSecurityPredicate(expanded)) return jsonLd;
+    }
+    if (!preserveSecured && hasKnownSafeContext(jsonLd)) return normalized;
+    const [before, after] = await Promise.allSettled([
       jsonld.canonize(jsonLd, {
         format: "application/n-quads",
         documentLoader: loader,
@@ -270,7 +288,9 @@ export async function normalizeAttachmentArrays(
         documentLoader: loader,
       }),
     ]);
-    if (before === after) return normalized;
+    if (before.status === "rejected") throw before.reason;
+    if (after.status === "rejected") throw after.reason;
+    if (before.value === after.value) return normalized;
     logger.warn(
       "Wrapping scalar attachment values in arrays would change the " +
         "canonical form of the JSON-LD document; leaving it unchanged.  " +
@@ -290,6 +310,21 @@ export async function normalizeAttachmentArrays(
   return jsonLd;
 }
 
+function hasSecurityPredicate(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasSecurityPredicate);
+  if (typeof value !== "object" || value == null) return false;
+  const record = value as Record<string, unknown>;
+  if (Object.hasOwn(record, "@value")) return false;
+  for (const [key, child] of Object.entries(record)) {
+    if (
+      key === "https://w3id.org/security#proof" ||
+      key === "https://w3id.org/security#signature"
+    ) return true;
+    if (hasSecurityPredicate(child)) return true;
+  }
+  return false;
+}
+
 /**
  * Applies Fedify's internal JSON-LD wire-format interoperability workarounds
  * to locally generated outgoing activities before they are signed, enqueued,
@@ -298,7 +333,22 @@ export async function normalizeAttachmentArrays(
 export async function normalizeOutgoingActivityJsonLd(
   jsonLd: unknown,
   contextLoader?: DocumentLoader,
+  preserveSecured = false,
 ): Promise<unknown> {
+  if (preserveSecured) {
+    try {
+      const expanded = await jsonld.expand(jsonLd, {
+        documentLoader: contextLoader ?? preloadedOnlyDocumentLoader,
+      });
+      if (hasSecurityPredicate(expanded)) return jsonLd;
+    } catch {
+      return jsonLd;
+    }
+  }
   jsonLd = await normalizePublicAudience(jsonLd, contextLoader);
-  return await normalizeAttachmentArrays(jsonLd, contextLoader);
+  return await normalizeAttachmentArrays(
+    jsonLd,
+    contextLoader,
+    preserveSecured,
+  );
 }

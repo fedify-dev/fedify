@@ -13,8 +13,8 @@ export default replaceHost(
   ),
 );
 
-// This config makes proxy process only requests with the
-// "Accept" header matching the federation accept regex.
+// Run the proxy for federation media types and NodeInfo paths, including
+// NodeInfo documents fetched with "Accept: application/json" or "*/*".
 // More details: https://nextjs.org/docs/app/api-reference/file-conventions/proxy#matcher.
 export const config = {
   matcher: [
@@ -40,5 +40,6 @@ export const config = {
     },
     { source: "/.well-known/nodeinfo" },
     { source: "/.well-known/x-nodeinfo2" },
+    { source: "/nodeinfo/:path*" },
   ],
 };

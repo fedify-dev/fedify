@@ -101,6 +101,10 @@ export async function* generateEncoder(
   if (isCompactableType(typeUri, types)) {
     yield `
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     `;
     if (type.extends == null) {
       yield "const result: Record<string, unknown> = {};";
@@ -110,6 +114,8 @@ export async function* generateEncoder(
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       `;
       const selfProperties = type.properties.map((p) => p.uri);
@@ -174,6 +180,18 @@ export async function* generateEncoder(
       }
       `;
     }
+    const nodeTerms = new Set<string>();
+    for (const property of getAllProperties(typeUri, types)) {
+      if (!property.range.some((range) => range in types)) continue;
+      if (property.compactName != null) nodeTerms.add(property.compactName);
+      if (property.functional && property.redundantProperties != null) {
+        for (const redundant of property.redundantProperties) {
+          if (redundant.compactName != null) {
+            nodeTerms.add(redundant.compactName);
+          }
+        }
+      }
+    }
     yield `
       ${
       type.typeless
@@ -182,7 +200,11 @@ export async function* generateEncoder(
     }
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ${JSON.stringify(type.defaultContext)};
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ${JSON.stringify([...nodeTerms])},
+        options.contextLoader,
+      );
     }
     `;
   }

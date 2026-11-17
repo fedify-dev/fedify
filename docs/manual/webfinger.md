@@ -346,10 +346,13 @@ const result = await lookupWebFinger("acct:alice@example.com", {
   // Maximum redirects to follow (default: 5)
   maxRedirection: 3,
 
-  // AbortSignal for cancellation
+  // Cancel sooner than the default 10-second lookup deadline
   signal: AbortSignal.timeout(5000),
 });
 ~~~~
+
+Each lookup has a 10-second deadline across DNS resolution, redirects, and
+response reading.  A supplied signal can end it sooner but cannot extend it.
 
 Since Fedify 2.0.28, responses are limited to 16 MiB of decoded bytes,
 including after decompression.  Oversized descriptors return `null`.
@@ -373,7 +376,7 @@ The available options are:
     is used.
 
 `signal`
-:   An `AbortSignal` for cancelling the request.
+:   An `AbortSignal` for cancelling the lookup before its 10-second deadline.
 
 > [!TIP]
 > Use `@fedify/webfinger` when you need a lightweight WebFinger client without

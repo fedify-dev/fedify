@@ -61,6 +61,7 @@ try {
       "vocab-runtime",
       "vocab-tools",
       "webfinger",
+      "uri-template",
     ]
   ) {
     const tarball = join(root, `${name}.tgz`);

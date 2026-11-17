@@ -13,6 +13,7 @@ import type {
   Recipient,
 } from "@fedify/vocab";
 import { getTypeId, Tombstone } from "@fedify/vocab";
+import type { CryptoKeyLike, CryptoKeyPairLike } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import type { Tracer } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
@@ -162,7 +163,10 @@ export class FederationBuilderImpl<TContextData>
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   outboxListenerErrorHandler?: OutboxListenerErrorHandler<TContextData>;
   outboxAuthorizePredicate?: AuthorizePredicate<TContextData>;
-  sharedInboxKeyDispatcher?: SharedInboxKeyDispatcher<TContextData>;
+  sharedInboxKeyDispatcher?: SharedInboxKeyDispatcher<
+    TContextData,
+    CryptoKeyLike
+  >;
   unverifiedActivityHandler?: UnverifiedActivityHandler<TContextData>;
   outboxPermanentFailureHandler?: OutboxPermanentFailureHandler<TContextData>;
   idempotencyStrategy?:
@@ -507,7 +511,7 @@ export class FederationBuilderImpl<TContextData>
     this.actorCallbacks = callbacks;
     const setters: ActorCallbackSetters<TContextData> = {
       setKeyPairsDispatcher: (
-        dispatcher: ActorKeyPairsDispatcher<TContextData>,
+        dispatcher: ActorKeyPairsDispatcher<TContextData, CryptoKeyPairLike>,
       ) => {
         callbacks.keyPairsDispatcher = (ctx, identifier) =>
           this._getTracer().startActiveSpan(
@@ -1212,7 +1216,7 @@ export class FederationBuilderImpl<TContextData>
         return setters;
       },
       setSharedKeyDispatcher: (
-        dispatcher: SharedInboxKeyDispatcher<TContextData>,
+        dispatcher: SharedInboxKeyDispatcher<TContextData, CryptoKeyLike>,
       ): InboxListenerSetters<TContextData> => {
         this.sharedInboxKeyDispatcher = dispatcher;
         return setters;
@@ -1459,7 +1463,7 @@ export function createFederationBuilder<TContextData>(): FederationBuilder<
 
 interface ActorCallbacks<TContextData> {
   dispatcher?: ActorDispatcher<TContextData>;
-  keyPairsDispatcher?: ActorKeyPairsDispatcher<TContextData>;
+  keyPairsDispatcher?: ActorKeyPairsDispatcher<TContextData, CryptoKeyPairLike>;
   handleMapper?: ActorHandleMapper<TContextData>;
   aliasMapper?: ActorAliasMapper<TContextData>;
   authorizePredicate?: AuthorizePredicate<TContextData>;

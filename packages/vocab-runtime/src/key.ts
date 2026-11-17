@@ -8,6 +8,7 @@ import {
   getMulticodecPrefix,
   removeMulticodecPrefix,
 } from "./internal/multicodec.ts";
+import { asCryptoKey, type CryptoKeyLike } from "./crypto-key.ts";
 import { validateCryptoKey } from "./jwk.ts";
 import { decodeMultibase, encodeMultibase } from "./multibase/mod.ts";
 
@@ -59,9 +60,9 @@ export async function importSpki(pem: string): Promise<CryptoKey> {
  * @throws {TypeError} If the key is invalid or unsupported.
  * @since 0.5.0
  */
-export async function exportSpki(key: CryptoKey): Promise<string> {
+export async function exportSpki(key: CryptoKeyLike): Promise<string> {
   validateCryptoKey(key);
-  const spki = await crypto.subtle.exportKey("spki", key);
+  const spki = await crypto.subtle.exportKey("spki", asCryptoKey(key));
   let pem = encodeBase64(spki);
   pem = (pem.match(/.{1,64}/g) || []).join("\n");
   return `-----BEGIN PUBLIC KEY-----\n${pem}\n-----END PUBLIC KEY-----\n`;
@@ -146,18 +147,18 @@ export async function importMultibaseKey(key: string): Promise<CryptoKey> {
  * @throws {TypeError} If the key is invalid or unsupported.
  * @since 0.10.0
  */
-export async function exportMultibaseKey(key: CryptoKey): Promise<string> {
+export async function exportMultibaseKey(key: CryptoKeyLike): Promise<string> {
   let content: ArrayBuffer;
   let code: number;
   if (key.algorithm.name === "Ed25519") {
-    content = await crypto.subtle.exportKey("raw", key);
+    content = await crypto.subtle.exportKey("raw", asCryptoKey(key));
     code = 0xed; // ed25519-pub
   } else if (
     key.algorithm.name === "RSASSA-PKCS1-v1_5" &&
     (key.algorithm as unknown as { hash: { name: string } }).hash.name ===
       "SHA-256"
   ) {
-    const jwk = await crypto.subtle.exportKey("jwk", key);
+    const jwk = await crypto.subtle.exportKey("jwk", asCryptoKey(key));
     const decodedN = decodeBase64Url(jwk.n!);
     const n = new Uint8Array(decodedN.length + 1);
     n.set(decodedN, 1);

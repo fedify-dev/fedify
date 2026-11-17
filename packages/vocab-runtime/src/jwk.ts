@@ -1,5 +1,7 @@
+import { asCryptoKey, type CryptoKeyLike } from "./crypto-key.ts";
+
 export function validateCryptoKey(
-  key: CryptoKey,
+  key: CryptoKeyLike,
   type?: "public" | "private",
 ): void {
   if (type != null && key.type !== type) {
@@ -30,9 +32,9 @@ export function validateCryptoKey(
   }
 }
 
-export async function exportJwk(key: CryptoKey): Promise<JsonWebKey> {
+export async function exportJwk(key: CryptoKeyLike): Promise<JsonWebKey> {
   validateCryptoKey(key);
-  const jwk = await crypto.subtle.exportKey("jwk", key);
+  const jwk = await crypto.subtle.exportKey("jwk", asCryptoKey(key));
   if (jwk.crv === "Ed25519") jwk.alg = "Ed25519";
   return jwk;
 }

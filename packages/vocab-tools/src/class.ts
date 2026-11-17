@@ -1,5 +1,6 @@
 import { generateDecoder, generateEncoder } from "./codec.ts";
 import { generateCloner, generateConstructor } from "./constructor.ts";
+import { generateContextHelpers } from "./context.ts";
 import { generateFields } from "./field.ts";
 import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
@@ -200,6 +201,7 @@ export async function* generateClasses(
   validateTypeSchemas(types);
   const runtimeImports = [
     "canParseDecimal",
+    "type CryptoKeyLike",
     "decodeMultibase",
     "type Decimal",
     "type DocumentLoader",
@@ -226,6 +228,7 @@ export async function* generateClasses(
   yield `import {
     isTemporalDuration,
     isTemporalInstant,
+    normalizeDateTimeLiteral,
 } from "@fedify/vocab-runtime/temporal";\n`;
   yield `
 function canDecodeIri(iri: string): boolean {
@@ -251,6 +254,7 @@ function isValidLanguageTag(language: string): boolean {
 `;
   yield "\n\n";
   const moduleVarNames = new Map<string, string>();
+  yield generateContextHelpers();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {
     for (const property of types[typeUri].properties) {

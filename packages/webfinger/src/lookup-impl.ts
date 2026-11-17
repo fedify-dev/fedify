@@ -15,6 +15,7 @@ import type {
 const logger = getLogger(["fedify", "webfinger", "lookup"]);
 
 const DEFAULT_MAX_REDIRECTION = 5;
+const DEFAULT_TIMEOUT_MS = 10_000;
 
 /**
  * The dependencies of {@link lookupWebFingerInternal}.
@@ -25,7 +26,12 @@ export interface LookupWebFingerDependencies {
    * Opens a fetch session for a single hop.  Defaults to `openDirectFetch()`
    * if `allowPrivateAddress` is turned on, or `openPublicFetch()` otherwise.
    */
-  readonly openHop?: (url: string) => Promise<PublicFetchSession>;
+  readonly openHop?: (
+    url: string,
+    signal?: AbortSignal,
+  ) => Promise<PublicFetchSession>;
+  /** Overrides the lookup deadline for internal tests. */
+  readonly timeoutMs?: number;
 }
 
 /**
@@ -87,29 +93,118 @@ export async function lookupWebFingerInternal(
     protocol = resource.protocol;
     server = resource.host;
   }
-  let url = new URL(`${protocol}//${server}/.well-known/webfinger`);
+  const url = new URL(`${protocol}//${server}/.well-known/webfinger`);
   url.searchParams.set("resource", resource.href);
+  const controller = new AbortController();
+  const signal = controller.signal;
+  let timedOut = false;
+  const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  if (
+    !Number.isSafeInteger(timeoutMs) || timeoutMs <= 0 ||
+    timeoutMs > 2_147_483_647
+  ) {
+    throw new RangeError(
+      "The WebFinger timeout must be a positive integer of at most 2147483647 ms.",
+    );
+  }
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort(
+      new DOMException("WebFinger lookup timed out", "TimeoutError"),
+    );
+  }, timeoutMs);
+  const abortFromCaller = () => controller.abort(options.signal?.reason);
+  if (options.signal?.aborted) abortFromCaller();
+  else {options.signal?.addEventListener("abort", abortFromCaller, {
+      once: true,
+    });}
+  let stopWaiting: () => void = () => {};
+  const cancelledOutcome = (): WebFingerLookupOutcome => ({
+    resource: null,
+    result: "network_error",
+    remoteHost: url.host,
+  });
+  const aborted = new Promise<WebFingerLookupOutcome>((resolve) => {
+    if (signal.aborted) resolve(cancelledOutcome());
+    else {
+      stopWaiting = () => signal.removeEventListener("abort", onAbort);
+      const onAbort = () => resolve(cancelledOutcome());
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+  });
   const openHop = deps.openHop ??
-    ((hopUrl: string) =>
+    ((hopUrl: string, hopSignal?: AbortSignal) =>
       options.allowPrivateAddress === true
         ? openDirectFetch(hopUrl)
-        : openPublicFetch(hopUrl, { signal: options.signal }));
+        : openPublicFetch(hopUrl, { signal: hopSignal }));
+  const work = lookupHops(url, options, openHop, signal);
+  try {
+    const result = await Promise.race([work, aborted]);
+    if (signal.aborted) {
+      if (timedOut) {
+        logger.warn(
+          "WebFinger lookup timed out for {url} after {timeoutMs} ms.",
+          {
+            url: url.href,
+            timeoutMs,
+          },
+        );
+      }
+      return cancelledOutcome();
+    }
+    return result;
+  } catch (error) {
+    if (signal.aborted) return cancelledOutcome();
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    stopWaiting();
+    options.signal?.removeEventListener("abort", abortFromCaller);
+    // A DNS resolver or a custom stream may ignore cancellation.  Observe
+    // the abandoned work so its eventual rejection is never unhandled.
+    void work.catch(() => {});
+  }
+}
+
+async function lookupHops(
+  initialUrl: URL,
+  options: LookupWebFingerOptions,
+  openHop: (url: string, signal?: AbortSignal) => Promise<PublicFetchSession>,
+  signal: AbortSignal,
+): Promise<WebFingerLookupOutcome> {
+  let url = initialUrl;
   let redirected = 0;
   while (true) {
+    if (signal.aborted) {
+      return { resource: null, result: "network_error", remoteHost: url.host };
+    }
     logger.debug(
       "Fetching WebFinger resource descriptor from {url}...",
       { url: url.href },
     );
     const remoteHost = url.host;
-    const session = await openSession(url, openHop, options.signal);
+    const session = await openSession(url, openHop, signal);
     if (session == null) {
       return { resource: null, result: "network_error", remoteHost };
     }
     let hop: HopResult;
     try {
-      hop = await fetchHop(session, url, options);
+      if (signal.aborted) {
+        return { resource: null, result: "network_error", remoteHost };
+      }
+      hop = await fetchHopUntilAbort(session, url, options, signal);
     } finally {
-      await session.close();
+      if (signal.aborted) {
+        void session.close().catch((error) => {
+          logger.debug("Failed to close WebFinger session for {url}: {error}", {
+            url: url.href,
+            error,
+          });
+        });
+      } else await session.close();
+    }
+    if (signal.aborted) {
+      return { resource: null, result: "network_error", remoteHost };
     }
     if ("outcome" in hop) return hop.outcome;
     redirected++;
@@ -165,17 +260,46 @@ export async function lookupWebFingerInternal(
   }
 }
 
+/** Lets the session close even when a custom fetch or body ignores abort. */
+async function fetchHopUntilAbort(
+  session: PublicFetchSession,
+  url: URL,
+  options: LookupWebFingerOptions,
+  signal: AbortSignal,
+): Promise<HopResult> {
+  const fetching = fetchHop(session, url, options, signal);
+  let onAbort: (() => void) | undefined;
+  const aborted = new Promise<HopResult>((resolve) => {
+    const outcome: WebFingerLookupOutcome = {
+      resource: null,
+      result: "network_error",
+      remoteHost: url.host,
+    };
+    if (signal.aborted) resolve({ outcome });
+    else {
+      onAbort = () => resolve({ outcome });
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+  });
+  try {
+    return await Promise.race([fetching, aborted]);
+  } finally {
+    if (onAbort != null) signal.removeEventListener("abort", onAbort);
+    void fetching.catch(() => {});
+  }
+}
+
 /**
  * Opens a fetch session for a hop.  A disallowed URL, a failed DNS lookup,
  * or an aborted lookup yields `null` instead of an error.
  */
 async function openSession(
   url: URL,
-  openHop: (url: string) => Promise<PublicFetchSession>,
+  openHop: (url: string, signal?: AbortSignal) => Promise<PublicFetchSession>,
   signal: AbortSignal | undefined,
 ): Promise<PublicFetchSession | null> {
   try {
-    return await openHop(url.href);
+    return await openHop(url.href, signal);
   } catch (e) {
     if (e instanceof UrlError) {
       if (e.reason === "dns") {
@@ -210,6 +334,7 @@ async function fetchHop(
   session: PublicFetchSession,
   url: URL,
   options: LookupWebFingerOptions,
+  signal: AbortSignal,
 ): Promise<HopResult> {
   let response: Response;
   try {
@@ -221,7 +346,7 @@ async function fetchHop(
           : getUserAgent(options.userAgent),
       },
       redirect: "manual",
-      signal: options.signal,
+      signal,
     });
   } catch (error) {
     logger.debug(
@@ -271,7 +396,7 @@ async function fetchHop(
     return {
       outcome: {
         resource: JSON.parse(
-          await readBoundedText(response, MAX_BODY_SIZE, url),
+          await readBoundedText(response, MAX_BODY_SIZE, url, signal),
         ) as ResourceDescriptor,
         result: "found",
         statusCode: response.status,

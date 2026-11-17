@@ -106,6 +106,7 @@ const nodeinfoSchema = object({
   bestEffort: optional(boolean()),
   showFavicon: optional(boolean()),
   showMetadata: optional(boolean()),
+  timeout: optional(number()),
 });
 
 /**
