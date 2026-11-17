@@ -422,6 +422,55 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const definition of [
+  "{ var deliver = () => ctx.sendActivity(sender, inbox, activity); CONSUMER }",
+  "for (var deliver = () => ctx.sendActivity(sender, inbox, activity); condition;) { CONSUMER }",
+  "{ var deliver = async () => { await ctx.sendActivity(sender, inbox, activity); }; CONSUMER }",
+  "{ var deliver = () => [ctx.sendActivity(sender, inbox, activity)]; CONSUMER }",
+]) {
+  for (const shadowed of [false, true]) {
+    const consumer = shadowed
+      ? "{ const deliver = external; await deliver(); }"
+      : "deliver();";
+    test(
+      `${ruleName}: function-scoped var helper retains inference (${shadowed}): ${definition}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    ${definition.replace("CONSUMER", consumer)}
+  });
+`,
+        rule,
+        ruleName,
+        ...(shadowed ? {} : { expectedError: "Delivery is not awaited" }),
+      }),
+    );
+  }
+}
+
+test(
+  `${ruleName}: nested function var still shadows an outer helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    var deliver = () => [ctx.sendActivity(sender, inbox, activity)];
+    await Promise.all(deliver());
+    async function inner() {
+      var deliver = external;
+      await deliver();
+    }
+    await inner();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
 for (const replacement of [
   "var run = finish;",
   "{ var run = finish; }",

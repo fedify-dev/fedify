@@ -279,9 +279,19 @@ function helpersAt(
             ? assignmentRegion(declarator, node.name)
             : asNode(get(enclosingFunction(fn), "body"));
     if (region == null) return [];
+    const functionScope = enclosingFunction(fn);
     let current: Node | null = node;
     while (current != null && current !== region) {
-      if (shadowsName(current, node.name)) return [];
+      // A var declaration in this function initializes the same binding,
+      // even inside a block or loop head. In another function it can shadow.
+      if (
+        shadowsName(
+          current,
+          node.name,
+          enclosingFunction(current) === functionScope,
+        )
+      )
+        return [];
       current = parentOf(current);
     }
     if (current == null) return [];
