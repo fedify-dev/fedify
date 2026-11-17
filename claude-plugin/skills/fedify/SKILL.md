@@ -344,21 +344,40 @@ history collection is resolved, it stays selected even if empty or no
 items can be yielded. Later history references are not tried, and sources are
 not merged. Portable history references are passed to the configured backfill
 loader for resolution and verification.
-Existing strategies control post extraction; later explicitly configured
-strategies can still run. Set `contextDiscovery: "ancestors"` to search
-`inReplyTo` ancestors when the seed has no usable collection, bounded by
+
+Use `backfillActivities(context, seed, options)` for original conversation
+activities such as `Create`, `Update`, `Delete`, and `Like`. It reuses
+`BackfillContext` and returns `BackfillItem<Activity>` independently of the
+seed's type. `BackfillActivityOptions` pick `contextSource`, `contextDiscovery`,
+`maxDepth`, `maxItems`, `maxRequests`, `interval`, and `signal` from existing
+options; they expose neither `strategies` nor `output`. Ancestor discovery
+only locates a collection, and reply-tree output is unavailable. Activities
+are yielded in collection order without fetching their targets; direct posts
+are skipped and wrappers such as `Add` remain intact. Deduplicate by activity
+ID, count yielded activities toward `maxItems`, and use metadata
+`strategy: "context-activities"`, `origin: "collection"`, and `depth: 0`.
+Applications must authorize activities before applying them: discovery is not
+verified inbox delivery. Choose this function directly without first calling
+the post API; each invocation has its own traversal cache and budget.
+Vocabulary collections can separately cache items and skipped-load
+placeholders. A loader reusing the same collection instance can retain those
+across calls; return freshly parsed collections when retrying failed items.
+
+Existing `backfill()` strategies control post extraction; later explicitly
+configured strategies can still run. Set `contextDiscovery: "ancestors"` to
+search `inReplyTo` ancestors when the seed has no usable collection, bounded by
 `maxDepth`. The nearest usable collection wins, with reply-target property
 order breaking ties; a valid empty collection stays selected. Source selection
 applies to each ancestor. Discovery shares traversal limits, caching,
 cancellation, and ID deduplication with configured strategies. Per-object
 loader and verifier defaults remain effective across strategy orders, without
-hydrating the seed or loaded ancestors. Collection
-items retain origin `"collection"` and depth 0; ancestors are yielded only
-with `"reply-tree"`. Without this option, context strategies make no ancestor
-requests. These options do not unwrap
-`Add` activities or replay updates and deletions. Histories containing only
-`Add(Create(...))` activities yield nothing and do not trigger `context`
-fallback.
+hydrating the seed or loaded ancestors. Collection items retain origin
+`"collection"` and depth 0; ancestors are yielded only with `"reply-tree"`.
+Without this option, context strategies make no ancestor requests. For
+`backfill()`, these options do not unwrap `Add` activities or replay updates
+and deletions. Its histories containing only `Add(Create(...))` activities
+yield nothing and do not trigger `context` fallback; `backfillActivities()`
+yields those wrapper activities intact.
 
 Since Fedify 2.5.0, pass `dereference: false` to vocabulary accessors to read
 embedded or cached objects without fetching references. Singular accessors

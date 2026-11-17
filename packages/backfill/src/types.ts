@@ -171,6 +171,33 @@ export interface BackfillOptions<
 }
 
 /**
+ * Controls {@link backfillActivities} collection traversal.
+ *
+ * Reuses post backfill's collection source selection, ancestor discovery,
+ * request limits, caching, intervals, and cancellation. `maxItems` counts
+ * yielded activities; `maxDepth` bounds ancestor discovery only. Reply-tree
+ * traversal and post extraction strategies are not supported.
+ *
+ * @since 2.5.0
+ */
+export interface BackfillActivityOptions extends Pick<
+  BackfillOptions,
+  | "contextSource"
+  | "contextDiscovery"
+  | "maxDepth"
+  | "maxItems"
+  | "maxRequests"
+  | "interval"
+  | "signal"
+> {
+  /**
+   * Activity traversal always preserves collection activities and does not
+   * accept post backfill strategies.
+   */
+  readonly strategies?: never;
+}
+
+/**
  * A single object discovered by backfill traversal.
  *
  * @since 2.3.0

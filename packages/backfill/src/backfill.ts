@@ -15,6 +15,7 @@ import {
 } from "@fedify/vocab-runtime/internal/portable-dereference";
 
 import type {
+  BackfillActivityOptions,
   BackfillContext,
   BackfillItem,
   BackfillOptions,
@@ -158,6 +159,80 @@ export async function* backfill<TObject extends APObject = APObject>(
         yielded++;
         if (options.maxItems != null && yielded >= options.maxItems) return;
       }
+    }
+  } catch (error) {
+    if (error instanceof IntervalConfigurationError) throw error.cause;
+    if (error instanceof MaxRequestsExceeded) return;
+    throw error;
+  }
+}
+
+/**
+ * Backfills original activities from a conversation collection in traversal
+ * order, without sorting or dereferencing activity targets.
+ *
+ * Uses the same collection selection and traversal controls as {@link backfill}.
+ * Direct posts are skipped. Activities are deduplicated by activity ID,
+ * independently of the seed post ID; anonymous activities are yielded per
+ * occurrence. `maxItems` counts yielded activities.
+ *
+ * Items reuse {@link BackfillItem}: `object` is the activity, `id` is its ID,
+ * `strategy` is `"context-activities"`, `origin` is `"collection"`, and
+ * `depth` is 0, even when ancestors were searched to discover the collection.
+ * Unlike the existing post strategy, this function preserves `Create` itself.
+ * Collection discovery does not constitute verified inbox delivery; callers
+ * must authorize activities before applying them.
+ *
+ * @since 2.5.0
+ */
+export async function* backfillActivities(
+  context: BackfillContext,
+  seed: APObject,
+  options: BackfillActivityOptions = {},
+): AsyncGenerator<BackfillItem<Activity>, void, void> {
+  if (options.maxItems != null && options.maxItems <= 0) return;
+  const budget: RequestBudget = {
+    signal: options.signal,
+    requestCount: 0,
+    documents: new Map(),
+    discovery:
+      options.contextDiscovery === "ancestors"
+        ? { copies: new WeakMap(), sources: new WeakMap() }
+        : undefined,
+  };
+  const seenIds = new Set<string>();
+  let yielded = 0;
+  try {
+    const collection = await discoverConversationCollection(
+      context,
+      copyDiscoveryObject(seed, budget),
+      options,
+      budget,
+    );
+    if (collection == null) return;
+    for await (const object of getCollectionItems(
+      context,
+      collection,
+      options,
+      budget,
+      seenIds,
+    )) {
+      if (!(object instanceof Activity)) continue;
+      const id = object.id ?? undefined;
+      if (id != null) {
+        if (seenIds.has(id.href)) continue;
+        seenIds.add(id.href);
+      }
+      options.signal?.throwIfAborted();
+      yield {
+        object,
+        id,
+        strategy: "context-activities",
+        origin: "collection",
+        depth: 0,
+      };
+      yielded++;
+      if (options.maxItems != null && yielded >= options.maxItems) return;
     }
   } catch (error) {
     if (error instanceof IntervalConfigurationError) throw error.cause;
@@ -923,7 +998,10 @@ function skippedCollectionItemDocument(url: string) {
     documentUrl: url,
     document: {
       "@context": "https://www.w3.org/ns/activitystreams",
-      type: "Activity",
+      // An Activity placeholder could leak into backfillActivities() output as
+      // a real activity. Both APIs ignore Link placeholders, even when a
+      // collection caches one and is reused by a different traversal.
+      type: "Link",
     },
   };
 }
