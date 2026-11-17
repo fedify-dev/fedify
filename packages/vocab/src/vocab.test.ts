@@ -2053,6 +2053,116 @@ test(
   },
 );
 
+test("FEP-fe34: Re-decoded singular values respect cross-origin policy", async () => {
+  const context = "https://www.w3.org/ns/activitystreams";
+  const victim = "https://victim.example/notes/1";
+
+  for (const ownerId of [null, "https://attacker.example/create"]) {
+    for (const crossOrigin of [undefined, "throw", "trust"] as const) {
+      // The compact and expanded property keys force the cached JSON-LD value
+      // through a second decoding path when getObject() is called.
+      const create = await Create.fromJsonLd({
+        "@context": context,
+        type: "Create",
+        ...(ownerId == null ? {} : { id: ownerId }),
+        object: {
+          "@context": context,
+          type: "Note",
+          id: victim,
+          content: "forged",
+        },
+        [`${context}#object`]: [{ type: "Note" }],
+      });
+      const options = {
+        crossOrigin,
+        documentLoader: (url: string) =>
+          Promise.reject(new Error(`Unexpected fetch: ${url}`)),
+      };
+
+      if (crossOrigin === "throw") {
+        await rejects(
+          () => create.getObject(options),
+          (error: Error) =>
+            error.message.includes("has a different origin") &&
+            error.message.includes(ownerId ?? "null"),
+        );
+      } else {
+        const result = await create.getObject(options);
+        if (crossOrigin === "trust") {
+          assertInstanceOf(result, Note);
+          strictEqual(result.id?.href, victim);
+          strictEqual(result.content, "forged");
+        } else {
+          strictEqual(result, null);
+        }
+      }
+    }
+  }
+});
+
+test("FEP-fe34: Re-decoded plural values respect cross-origin policy", async () => {
+  const context = "https://www.w3.org/ns/activitystreams";
+  const victim = "https://victim.example/notes/1";
+
+  for (const ownerId of [null, "https://attacker.example/collection"]) {
+    for (const crossOrigin of [undefined, "throw", "trust"] as const) {
+      const collection = await Collection.fromJsonLd({
+        "@context": context,
+        type: "Collection",
+        ...(ownerId == null ? {} : { id: ownerId }),
+        items: {
+          "@context": context,
+          type: "Note",
+          id: victim,
+          content: "forged",
+        },
+        [`${context}#items`]: [{ type: "Note" }],
+      });
+      const fetched: string[] = [];
+      const options = {
+        crossOrigin,
+        documentLoader: (url: string) => {
+          fetched.push(url);
+          return Promise.resolve({
+            documentUrl: url,
+            contextUrl: null,
+            document: {
+              "@context": context,
+              type: "Note",
+              id: victim,
+              content: "genuine",
+            },
+          });
+        },
+      };
+      const read = () => Array.fromAsync(collection.getItems(options));
+
+      if (crossOrigin === "throw") {
+        await rejects(
+          read,
+          (error: Error) =>
+            error.message.includes("has a different origin") &&
+            error.message.includes(ownerId ?? "null"),
+        );
+        deepStrictEqual(fetched, []);
+      } else {
+        const results = await read();
+        const contents = results.map((result) => {
+          assertInstanceOf(result, Note);
+          return result.content;
+        });
+        if (crossOrigin === "trust") {
+          deepStrictEqual(contents, ["forged", "forged"]);
+          deepStrictEqual(fetched, []);
+        } else {
+          deepStrictEqual(contents, ["genuine"]);
+          deepStrictEqual(fetched, [victim]);
+        }
+      }
+    }
+  }
+});
+
 function getAllProperties(
   type: TypeSchema,
   types: Record<string, TypeSchema>,
