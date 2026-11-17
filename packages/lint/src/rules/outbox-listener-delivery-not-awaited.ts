@@ -958,7 +958,14 @@ function checkListener(
       kind === "awaited" &&
       returnedOutcome(fn, analysis).fate === "dropped"
     ) {
-      flag(fn);
+      const parent = parentOf(fn);
+      // The call-site pass also follows IIFE completion. Use the same node
+      // here so an unawaited invocation produces only one diagnostic.
+      flag(
+        parent?.type === "CallExpression" && get(parent, "callee") === fn
+          ? parent
+          : fn,
+      );
     }
   }
 

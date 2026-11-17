@@ -497,6 +497,36 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const invocation of [
+  "(async () => { await ctx.sendActivity(sender, inbox, activity); })()",
+  "(async function () { await ctx.sendActivity(sender, inbox, activity); })()",
+  "((async () => { await ctx.sendActivity(sender, inbox, activity); }) as () => Promise<void>)()",
+]) {
+  test(`${ruleName}: dropped async IIFE reports once: ${invocation}`, () => {
+    const code = `import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    ${invocation};
+  });`;
+    const messages = new Linter().verify(
+      `${FEDERATION_SETUP}\n\n${code}`,
+      [
+        {
+          files: ["**/*.ts"],
+          languageOptions: { parser: tsParser },
+          plugins: { fedify: { rules: { [ruleName]: rule.eslint } } },
+          rules: { [`fedify/${ruleName}`]: "error" },
+        },
+      ],
+      "listener.ts",
+    );
+    deepStrictEqual(
+      messages.map(({ ruleId, line }) => [ruleId, line]),
+      [[`fedify/${ruleName}`, 4 + FEDERATION_SETUP.split("\n").length + 1]],
+    );
+  });
+}
+
 test(`${ruleName}: array helper diagnostics identify only discarded call sites`, () => {
   const code = `import { Activity } from "@fedify/vocab";
 federation.setOutboxListeners("/users/{identifier}/outbox")
