@@ -95,10 +95,32 @@ To be released.
     redirects and HTTP signature retries, so a slow remote inbox cannot hold a
     delivery worker indefinitely.  Timed-out attempts follow the configured
     retry schedule.  \[[GHSA-fq5h-gjhp-g75x]]
+ -  NodeInfo lookups now stop following a redirect when its target repeats an
+    earlier URL in the same chain.  A self-redirect previously opened five
+    fetch sessions before hitting the redirect limit; it now stops after the
+    first response.  The existing redirect limit still applies to chains
+    without cycles.
+    [[GHSA-64hq-2hgr-q4pm]]
+ -  NodeInfo lookups now time out after 10 seconds by default.  A remote server
+    could previously keep `getNodeInfo()` or `Context.lookupNodeInfo()` waiting
+    indefinitely by delaying a response.  The limit covers discovery,
+    redirects, and the document body as one operation.  Pass a `timeout` value
+    in milliseconds to allow more time, or `null` to disable the limit; a
+    timed-out lookup returns `undefined`.
+    An optional `signal` can cancel the lookup, even with `timeout: null`.
+    [[GHSA-64hq-2hgr-q4pm]]
+ -  On Node.js, NodeInfo hostname resolution now starts at most two operating
+    system DNS lookups at a time.  Other hosts can still resolve when one
+    resolver call stalls.  A queued lookup can time out or be cancelled before
+    starting, so repeated abandoned NodeInfo requests cannot fill the shared
+    libuv thread pool.  An already-running operating system lookup cannot be
+    cancelled.
+    [[GHSA-64hq-2hgr-q4pm]]
 
 [mastodon/mastodon\#41640]: https://github.com/mastodon/mastodon/issues/41640
 [GHSA-9pmv-w936-hj3f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9pmv-w936-hj3f
 [GHSA-fq5h-gjhp-g75x]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-fq5h-gjhp-g75x
+[GHSA-64hq-2hgr-q4pm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-64hq-2hgr-q4pm
 [#554]: https://github.com/fedify-dev/fedify/issues/554
 [#664]: https://github.com/fedify-dev/fedify/issues/664
 [#1339]: https://github.com/fedify-dev/fedify/issues/1339
@@ -116,6 +138,13 @@ To be released.
 [#1413]: https://github.com/fedify-dev/fedify/pull/1413
 [#1421]: https://github.com/fedify-dev/fedify/issues/1421
 [#1422]: https://github.com/fedify-dev/fedify/pull/1422
+
+### @fedify/cli
+
+ -  The `fedify nodeinfo` command now accepts `-T`/`--timeout` in seconds.
+    It defaults to 10 seconds and reports a timeout separately from a missing
+    or invalid NodeInfo document.
+    [[GHSA-64hq-2hgr-q4pm]]
 
 ### @fedify/nestjs
 

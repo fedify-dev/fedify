@@ -9,11 +9,14 @@ import {
   command as Command,
   constant,
   flag,
+  float,
   group,
   type InferValue,
   merge,
   message,
   object,
+  option,
+  optional,
   string,
   text,
 } from "@optique/core";
@@ -30,6 +33,72 @@ import { colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "nodeinfo"]);
 const MAX_FAVICON_REDIRECTS = 5;
+const DEFAULT_NODEINFO_TIMEOUT_SECONDS = 10;
+const MAX_TIMER_DELAY = 2_147_483_647;
+
+/**
+ * Uses a CLI-owned signal so a timeout can be distinguished from the other
+ * lookup failures that `getNodeInfo()` reports as `undefined`.
+ * @internal
+ */
+export async function withNodeInfoTimeout<T>(
+  timeoutSeconds: number | undefined,
+  lookup: (signal: AbortSignal) => Promise<T>,
+): Promise<
+  { value: T | undefined; timedOut: boolean; timeoutSeconds: number }
+> {
+  const seconds = timeoutSeconds ?? DEFAULT_NODEINFO_TIMEOUT_SECONDS;
+  const milliseconds = Math.ceil(seconds * 1000);
+  if (
+    !Number.isFinite(seconds) || seconds <= 0 ||
+    milliseconds > MAX_TIMER_DELAY
+  ) {
+    throw new RangeError(
+      "The NodeInfo timeout must be a positive, finite number of seconds within the timer range.",
+    );
+  }
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<{ timedOut: true }>((resolve) => {
+    timer = setTimeout(() => {
+      // Settle the timeout branch before aborting: the lookup may react to
+      // abort synchronously and otherwise win the race with `undefined`.
+      resolve({ timedOut: true });
+      controller.abort();
+    }, milliseconds);
+  });
+  try {
+    const loading = lookup(controller.signal).then((value) => ({
+      timedOut: false as const,
+      value,
+    }));
+    // The lookup may reject after the deadline; observe that late result.
+    loading.catch(() => {});
+    const outcome = await Promise.race([loading, deadline]);
+    return outcome.timedOut
+      ? { value: undefined, timedOut: true, timeoutSeconds: seconds }
+      : { value: outcome.value, timedOut: false, timeoutSeconds: seconds };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Describes a lookup failure without treating a timeout as a missing document.
+ * @internal
+ */
+export function describeNodeInfoFailure(
+  timedOut: boolean,
+  raw: boolean,
+  timeoutSeconds: number,
+): string {
+  if (timedOut) {
+    return `NodeInfo request timed out after ${timeoutSeconds} seconds.`;
+  }
+  return raw
+    ? "No NodeInfo document found."
+    : "No NodeInfo document found or it is invalid.";
+}
 
 async function fetchFaviconResource(
   url: URL | string,
@@ -125,7 +194,32 @@ export const nodeInfoCommand = Command(
       }),
     }),
     nodeInfoOption,
-    group("Network options", userAgentOption),
+    group(
+      "Network options",
+      merge(
+        userAgentOption,
+        object({
+          timeout: bindConfig(
+            optional(
+              option(
+                "-T",
+                "--timeout",
+                float({ min: Number.MIN_VALUE, metavar: "SECONDS" }),
+                {
+                  description:
+                    message`Set the NodeInfo lookup timeout in seconds (default: 10).`,
+                },
+              ),
+            ),
+            {
+              context: configContext,
+              key: (config) => config.nodeinfo?.timeout,
+              default: DEFAULT_NODEINFO_TIMEOUT_SECONDS,
+            },
+          ),
+        }),
+      ),
+    ),
   ),
   {
     brief:
@@ -150,14 +244,27 @@ export async function runNodeInfo(
   );
 
   if (command.raw) {
-    const nodeInfo = await getNodeInfo(url, {
-      parse: "none",
-      userAgent: command.userAgent,
-    });
+    const { value: nodeInfo, timedOut, timeoutSeconds } =
+      await withNodeInfoTimeout(
+        command.timeout,
+        (signal) =>
+          getNodeInfo(url, {
+            parse: "none",
+            userAgent: command.userAgent,
+            timeout: null,
+            signal,
+          }),
+      );
 
     if (nodeInfo === undefined) {
-      spinner.fail("No NodeInfo document found.");
-      printError(message`No NodeInfo document found.`);
+      const failure = describeNodeInfoFailure(timedOut, true, timeoutSeconds);
+      spinner.fail(failure);
+      printError(message`${text(failure)}`);
+      if (timedOut) {
+        printError(
+          message`Try increasing the timeout with -T/--timeout or check network connectivity.`,
+        );
+      }
       process.exit(1);
     }
     spinner.succeed("NodeInfo document fetched.");
@@ -165,15 +272,27 @@ export async function runNodeInfo(
     print(message`${text(formatObject(nodeInfo, undefined, true))}`);
     return;
   }
-  const nodeInfo = await getNodeInfo(url, {
-    parse: command.bestEffort ? "best-effort" : "strict",
-    userAgent: command.userAgent,
-  });
+  const { value: nodeInfo, timedOut, timeoutSeconds } =
+    await withNodeInfoTimeout(
+      command.timeout,
+      (signal) =>
+        getNodeInfo(url, {
+          parse: command.bestEffort ? "best-effort" : "strict",
+          userAgent: command.userAgent,
+          timeout: null,
+          signal,
+        }),
+    );
   logger.debug("NodeInfo document: {nodeInfo}", { nodeInfo });
   if (nodeInfo == undefined) {
-    spinner.fail("No NodeInfo document found or it is invalid.");
-    printError(message`No NodeInfo document found or it is invalid.`);
-    if (!command.bestEffort) {
+    const failure = describeNodeInfoFailure(timedOut, false, timeoutSeconds);
+    spinner.fail(failure);
+    printError(message`${text(failure)}`);
+    if (timedOut) {
+      printError(
+        message`Try increasing the timeout with -T/--timeout or check network connectivity.`,
+      );
+    } else if (!command.bestEffort) {
       printError(
         message`Use the -b/--best-effort option to try to parse the document anyway.`,
       );

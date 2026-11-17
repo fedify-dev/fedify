@@ -993,6 +993,36 @@ test({
         protocols: ["activitypub", "diaspora"],
         usage: { users: {}, localPosts: 123, localComments: 456 },
       });
+
+      await assertRejects(
+        () => ctx.lookupNodeInfo("https://example.com/", { timeout: 0 }),
+        RangeError,
+      );
+      const caller = new AbortController();
+      caller.abort();
+      assertEquals(
+        await ctx.lookupNodeInfo("https://example.com/", {
+          signal: caller.signal,
+          timeout: null,
+        }),
+        undefined,
+      );
+      assertEquals(
+        await ctx.lookupNodeInfo("https://example.com/", {
+          parse: "none",
+          signal: caller.signal,
+          timeout: null,
+        }),
+        undefined,
+      );
+      await assertRejects(
+        () =>
+          ctx.lookupNodeInfo("https://example.com/", {
+            parse: "none",
+            timeout: 0,
+          }),
+        RangeError,
+      );
     });
 
     await t.step("RequestContext", async () => {

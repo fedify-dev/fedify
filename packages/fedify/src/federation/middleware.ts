@@ -2521,11 +2521,15 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       ? getNodeInfo(url, {
         parse: "none",
         direct: options.direct,
+        timeout: options.timeout,
+        signal: options.signal,
         userAgent: options?.userAgent ?? this.federation.userAgent,
       })
       : getNodeInfo(url, {
         parse: options.parse,
         direct: options.direct,
+        timeout: options.timeout,
+        signal: options.signal,
         userAgent: options?.userAgent ?? this.federation.userAgent,
       });
   }

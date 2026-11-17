@@ -161,6 +161,9 @@ The `Context.lookupNodeInfo()` method returns a `NodeInfo` object if the server
 provides a NodeInfo endpoint and the response is valid.  Otherwise, it returns
 `undefined`.
 
+Redirects to a URL already visited in the same NodeInfo request stop at that
+point.  This includes redirects that differ only by a URL fragment.
+
 > [!TIP]
 > Sometimes, a server may provide a slightly invalid NodeInfo object.  In such
 > case, you can enforce parsing the object by passing `{ parse: "best-effort" }`
@@ -184,3 +187,14 @@ Since Fedify 2.0.28, `Context.lookupNodeInfo()` and `getNodeInfo()` limit both
 the discovery descriptor and the NodeInfo document to 16 MiB of decoded bytes
 each, including after decompression.  An oversized response returns
 `undefined`, even with `parse: "none"`.
+
+NodeInfo lookups time out after 10 seconds by default.  This limit covers the
+discovery request, redirects, and the document request together, including
+reading their response bodies.  A timed-out lookup returns `undefined`.  Pass
+`{ timeout: 30000 }` to allow 30 seconds, or `{ timeout: null }` to disable the
+limit.  The timeout is measured in milliseconds and must be a positive, finite
+number when specified.
+
+Pass an `AbortSignal` as `{ signal }` to cancel a lookup when its caller stops
+waiting.  Cancellation also works with `{ timeout: null }` and returns
+`undefined`.
