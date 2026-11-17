@@ -14,6 +14,14 @@ const arrayHelperMap = `inboxes.map((inbox) => ${arrayHelperDelivery})`;
 for (const [producer, definition] of [
   ["map", `const deliverAll = () => ${arrayHelperMap};`],
   [
+    "inline flatMap array",
+    `const deliverAll = () => inboxes.flatMap(() => [${arrayHelperDelivery}]);`,
+  ],
+  [
+    "named flatMap array",
+    `const deliverOne = () => [${arrayHelperDelivery}]; const deliverAll = () => inboxes.flatMap(deliverOne);`,
+  ],
+  [
     "async map callback",
     `const deliverAll = () => inboxes.map(async () => { await ${arrayHelperDelivery}; });`,
   ],
@@ -187,6 +195,56 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
 }
 
 for (const [scenario, definition, consumer, dropped] of [
+  ["named array forEach", "", "inboxes.forEach(deliverAll);", true],
+  ["named array flatMap dropped", "", "inboxes.flatMap(deliverAll);", true],
+  [
+    "named array flatMap aggregated",
+    "",
+    "await Promise.all(inboxes.flatMap(deliverAll));",
+    false,
+  ],
+  [
+    "named array map nested",
+    "",
+    "await Promise.all(inboxes.map(deliverAll));",
+    false,
+  ],
+  [
+    "named array forEach thisArg",
+    "",
+    "inboxes.forEach(() => {}, deliverAll);",
+    false,
+  ],
+  [
+    "named array flatMap thisArg",
+    "",
+    "await inboxes.flatMap(() => [], deliverAll);",
+    false,
+  ],
+  [
+    "inline array flatMap thisArg",
+    "",
+    "await inboxes.flatMap(() => [], () => [ctx.sendActivity(sender, inbox, activity)]);",
+    false,
+  ],
+  [
+    "inline array forEach",
+    "",
+    "inboxes.forEach(() => [ctx.sendActivity(sender, inbox, activity)]);",
+    true,
+  ],
+  [
+    "inline array map nested",
+    "",
+    "await Promise.all(inboxes.map(() => [ctx.sendActivity(sender, inbox, activity)]));",
+    false,
+  ],
+  [
+    "async array flatMap",
+    "",
+    "await inboxes.flatMap(async () => [ctx.sendActivity(sender, inbox, activity)]);",
+    false,
+  ],
   [
     "async array and returned completion bindings",
     `let deliver = async () => []; if (condition) { deliver = () => ${arrayHelperDelivery}; }`,

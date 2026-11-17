@@ -292,16 +292,22 @@ function callbackResultOutcome(
   call: Node,
   analysis: Analysis,
   callback: Node,
+  shape: Shape = "promise",
 ): Outcome {
   const callee = unwrap(asNode(get(call, "callee")) ?? call);
   const name = memberName(callee);
   // `forEach()` discards what its callback returns, which is the one callback
   // consumer the rule knows for certain. An unknown one, such as
   // `setTimeout()`, may well keep it.
-  if (name === "forEach") return DROPPED;
-  if (name === "map" || name === "flatMap") {
+  if (name === "forEach" || name === "map" || name === "flatMap") {
     // The optional second argument is thisArg, not another callback.
     if ((get(call, "arguments") as Node[])[0] !== callback) return HANDLED;
+  }
+  if (name === "forEach") return DROPPED;
+  // Only flatMap flattens returned arrays; map and promise callbacks would
+  // need nested-array or Promise<Array> tracking, which remains unsupported.
+  if (shape === "promises" && name !== "flatMap") return HANDLED;
+  if (name === "map" || name === "flatMap") {
     return fateOf(call, analysis, "promises");
   }
   if (name != null && PROMISE_CHAIN_METHODS.has(name)) {
@@ -344,6 +350,15 @@ function returnedContainerOutcome(
   shape: Shape,
 ): Outcome {
   if (fn === analysis.listener) return DROPPED;
+  if (fn != null && shape === "promises" && get(fn, "async") !== true) {
+    const parent = parentOf(fn);
+    if (
+      parent?.type === "CallExpression" &&
+      (get(parent, "arguments") as Node[]).includes(fn)
+    ) {
+      return callbackResultOutcome(parent, analysis, fn, shape);
+    }
+  }
   return fn != null && shape === "promises"
     ? { fate: "returned", owner: fn, shape }
     : HANDLED;
@@ -778,6 +793,9 @@ function checkListener(
   const carriesCompletion = (helpers: readonly FunctionLikeNode[]): boolean =>
     helpers.some((fn) => carrying.has(fn)) &&
     helpers.every((fn) => !arrayInvolved.has(fn) || get(fn, "async") === true);
+  const carriesArray = (helpers: readonly FunctionLikeNode[]): boolean =>
+    helpers.some((fn) => carryingArrays.has(fn)) &&
+    helpers.every((fn) => shapes.get(fn) === "promises");
   const deliveryShape = (
     call: CallExpression,
     scope: UsedScope,
@@ -788,10 +806,7 @@ function checkListener(
     const helpers = helpersAt(callee, scope);
     if (helpers.length === 0) return null;
     if (carriesCompletion(helpers)) return "promise";
-    if (helpers.some((fn) => arrayInvolved.has(fn))) {
-      if (!helpers.every((fn) => shapes.get(fn) === "promises")) return null;
-      return helpers.some((fn) => carryingArrays.has(fn)) ? "promises" : null;
-    }
+    if (carriesArray(helpers)) return "promises";
     return null;
   };
   const noteCarrying = ({
@@ -830,8 +845,13 @@ function checkListener(
         for (const arg of call.arguments as Node[]) {
           if (arg.type !== "Identifier") continue;
           const helpers = helpersAt(arg, scope);
-          if (!carriesCompletion(helpers)) continue;
-          const outcome = callbackResultOutcome(call, analysis, arg);
+          const shape = carriesCompletion(helpers)
+            ? "promise"
+            : carriesArray(helpers)
+              ? "promises"
+              : null;
+          if (shape == null) continue;
+          const outcome = callbackResultOutcome(call, analysis, arg, shape);
           if (outcome.shape === "promises" && noteCarrying(outcome)) {
             changed = true;
           }
@@ -884,8 +904,15 @@ function checkListener(
       for (const arg of call.arguments as Node[]) {
         if (arg.type !== "Identifier") continue;
         const held = helpersAt(arg, scope);
-        if (!carriesCompletion(held)) continue;
-        if (callbackResultOutcome(call, analysis, arg).fate === "dropped") {
+        const shape = carriesCompletion(held)
+          ? "promise"
+          : carriesArray(held)
+            ? "promises"
+            : null;
+        if (shape == null) continue;
+        if (
+          callbackResultOutcome(call, analysis, arg, shape).fate === "dropped"
+        ) {
           flag(arg);
         }
       }
