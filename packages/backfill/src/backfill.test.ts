@@ -195,6 +195,200 @@ describe("backfill", () => {
     strictEqual(items[0].strategy, "context-auto");
   });
 
+  test("cross-origin embedded objects are dereferenced", async () => {
+    const contextId = new URL("https://attacker.example/context");
+    const itemId = new URL("https://victim.example/item");
+    const pageId = new URL("https://victim.example/page");
+    const objectId = new URL("https://victim.example/create-object");
+    const parentId = new URL("https://victim.example/parent");
+    const repliesId = new URL("https://victim.example/replies");
+    const seed = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "@type": "Note",
+      "@id": "https://attacker.example/seed",
+      "context": contextId.href,
+      "inReplyTo": {
+        "@type": "Note",
+        "@id": parentId.href,
+        "content": "spoofed parent",
+      },
+      "replies": {
+        "@type": "Collection",
+        "@id": repliesId.href,
+        "items": [{
+          "@type": "Note",
+          "@id": "https://victim.example/reply",
+          "content": "spoofed reply",
+        }],
+      },
+    });
+    const collection = await Collection.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "@type": "Collection",
+      "@id": contextId.href,
+      "items": [
+        {
+          "@type": "Note",
+          "@id": itemId.href,
+          "content": "spoofed item",
+        },
+        {
+          "@type": "Create",
+          "@id": "https://attacker.example/create",
+          "object": {
+            "@type": "Note",
+            "@id": objectId.href,
+            "content": "spoofed Create object",
+          },
+        },
+      ],
+      "first": {
+        "@type": "CollectionPage",
+        "@id": pageId.href,
+        "items": [{
+          "@type": "Note",
+          "@id": "https://victim.example/page-item",
+          "content": "spoofed page item",
+        }],
+      },
+    });
+    const requests: URL[] = [];
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        requests.push(iri);
+        return Promise.resolve(iri.href === contextId.href ? collection : null);
+      },
+    };
+
+    deepStrictEqual(
+      await collect(context, seed, {
+        strategies: ["context-auto", "reply-tree"],
+      }),
+      [],
+    );
+    deepStrictEqual(requests.map((iri) => iri.href), [
+      contextId.href,
+      itemId.href,
+      objectId.href,
+      pageId.href,
+      parentId.href,
+      repliesId.href,
+    ]);
+  });
+
+  test("cross-origin embedded objects use dereferenced content", async () => {
+    const replyId = new URL("https://victim.example/reply");
+    const seed = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "@type": "Note",
+      "@id": "https://attacker.example/seed",
+      "replies": {
+        "@type": "Collection",
+        "items": [{
+          "@type": "Note",
+          "@id": replyId.href,
+          "content": "spoofed reply",
+        }],
+      },
+    });
+    const genuineReply = new Note({
+      id: replyId,
+      content: "genuine reply",
+    });
+    const requests: URL[] = [];
+
+    const items = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri);
+          return Promise.resolve(
+            iri.href === replyId.href ? genuineReply : null,
+          );
+        },
+      },
+      seed,
+      { strategies: ["reply-tree"] },
+    );
+
+    deepStrictEqual(requests, [replyId]);
+    strictEqual(items.length, 1);
+    deepStrictEqual(items[0].object.id, replyId);
+    strictEqual(items[0].object.content, "genuine reply");
+  });
+
+  test("loader results cannot claim another origin", async () => {
+    const attacker = (name: string) =>
+      new URL(`https://attacker.example/${name}`);
+    const victim = (name: string) => new URL(`https://victim.example/${name}`);
+
+    const forgedContext = new Collection({
+      id: victim("context"),
+      items: [new Note({ id: victim("context-item") })],
+    });
+    const contextRequests: URL[] = [];
+    deepStrictEqual(
+      await collect({
+        documentLoader: (iri) => {
+          contextRequests.push(iri);
+          return Promise.resolve(forgedContext);
+        },
+      }, new Note({ contexts: [attacker("context")] })),
+      [],
+    );
+    deepStrictEqual(contextRequests, [attacker("context")]);
+
+    const pageRequests: URL[] = [];
+    deepStrictEqual(
+      await collect({
+        documentLoader: (iri) => {
+          pageRequests.push(iri);
+          if (iri.href === attacker("context").href) {
+            return Promise.resolve(
+              new Collection({
+                id: attacker("context"),
+                first: attacker("page"),
+              }),
+            );
+          }
+          return Promise.resolve(
+            new CollectionPage({
+              id: victim("page"),
+              items: [new Note({ id: victim("page-item") })],
+            }),
+          );
+        },
+      }, new Note({ contexts: [attacker("context")] })),
+      [],
+    );
+    deepStrictEqual(pageRequests, [attacker("context"), attacker("page")]);
+
+    const replyRequests: URL[] = [];
+    deepStrictEqual(
+      await collect(
+        {
+          documentLoader: (iri) => {
+            replyRequests.push(iri);
+            return Promise.resolve(
+              iri.href === attacker("parent").href
+                ? new Note({ id: victim("parent") })
+                : new Collection({
+                  id: victim("replies"),
+                  items: [new Note({ id: victim("reply") })],
+                }),
+            );
+          },
+        },
+        new Note({
+          replyTarget: attacker("parent"),
+          replies: attacker("replies"),
+        }),
+        { strategies: ["reply-tree"] },
+      ),
+      [],
+    );
+    deepStrictEqual(replyRequests, [attacker("parent"), attacker("replies")]);
+  });
+
   test("empty strategies yield nothing without dereferencing context", async () => {
     const note = new Note({
       id: new URL("https://example.com/notes/1"),
@@ -1975,7 +2169,10 @@ describe("collection pagination", () => {
 test("page loads share the cache and interval across strategies", async () => {
   const iri = (name: string) => new URL(`https://example.com/${name}`);
   const collection = new Collection({ first: iri("page") });
-  const page = new CollectionPage({ items: [new Note({ id: iri("a") })] });
+  const page = new CollectionPage({
+    id: iri("page"),
+    items: [new Note({ id: iri("a") })],
+  });
   const seed = new Note({
     contexts: [iri("thread")],
     replies: new Collection({ first: iri("page") }),

@@ -46,6 +46,14 @@ export interface BackfillDocumentLoaderOptions {
 /**
  * Dereferences an ActivityPub object or collection IRI.
  *
+ * Implementations must validate the returned object's declared ID against the
+ * final document URL after redirects.  `lookupObject()` from `@fedify/vocab`
+ * applies this check by default; custom loaders must provide equivalent
+ * validation before returning an object.
+ *
+ * Backfill ignores a returned object when its ID has a different origin from
+ * the requested IRI.
+ *
  * @since 2.3.0
  */
 export type BackfillDocumentLoader = (

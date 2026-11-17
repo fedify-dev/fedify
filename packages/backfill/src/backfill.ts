@@ -57,6 +57,9 @@ type ReplyTreeTraversal = {
  * The seed object is not yielded by default, but its ID is treated as already
  * seen so it will not be yielded again if the collection contains it.
  *
+ * Backfilled objects are unverified remote data.  Applications should verify
+ * their authenticity before persisting or otherwise trusting them.
+ *
  * @since 2.3.0
  */
 export async function* backfill<
@@ -409,7 +412,7 @@ async function* getReplyTargets(
       documentLoader: async (url) => {
         return await loadCollectionItemDocument(context, url, options, budget);
       },
-      crossOrigin: "trust",
+      crossOrigin: "ignore",
     });
   } catch (error) {
     if (error instanceof MaxRequestsExceeded) throw error;
@@ -428,7 +431,7 @@ async function getRepliesCollection(
       documentLoader: async (url) => {
         return await loadCollectionItemDocument(context, url, options, budget);
       },
-      crossOrigin: "trust",
+      crossOrigin: "ignore",
     });
   } catch (error) {
     if (error instanceof MaxRequestsExceeded) throw error;
@@ -529,7 +532,7 @@ async function* getCollectionItems(
         skipIds,
       );
     },
-    crossOrigin: "trust" as const,
+    crossOrigin: "ignore" as const,
   };
   const pageOptions = {
     documentLoader: async (url: string) => {
@@ -547,7 +550,7 @@ async function* getCollectionItems(
         document: await object.toJsonLd(),
       };
     },
-    crossOrigin: "trust" as const,
+    crossOrigin: "ignore" as const,
   };
   const visitedIds = new Set<string>();
   const visitedPages = new WeakSet<BackfillCollection>();
@@ -598,7 +601,7 @@ async function getCreateActivityObject(
       documentLoader: async (url) => {
         return await loadCollectionItemDocument(context, url, options, budget);
       },
-      crossOrigin: "trust",
+      crossOrigin: "ignore",
     });
   } catch (error) {
     if (error instanceof MaxRequestsExceeded) throw error;
@@ -681,7 +684,10 @@ async function loadObject(
   budget.requestCount++;
   let document: Promise<APObject | null> | undefined;
   try {
-    document = context.documentLoader(iri, { signal: budget.signal });
+    document = context.documentLoader(iri, { signal: budget.signal }).then(
+      (object) =>
+        object?.id != null && object.id.origin !== iri.origin ? null : object,
+    );
     budget.documents.set(cacheKey, document);
     return await document;
   } catch (error) {
