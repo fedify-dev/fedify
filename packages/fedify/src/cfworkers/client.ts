@@ -93,7 +93,10 @@ try {
     )}, ${styleText("yellow", `${skipped} skipped`)}.`,
   );
 
-  if (failed > 0 || (!selfTest && skipped > 0)) process.exitCode = 1;
+  if (passed + failed + skipped === 0) {
+    console.error("No tests were executed.");
+    process.exitCode = 1;
+  } else if (failed > 0 || (!selfTest && skipped > 0)) process.exitCode = 1;
 } finally {
   await mf.dispose();
 }

@@ -6094,6 +6094,9 @@ test("fanout worker actions preserve earlier direct entries across later setup f
         });
         try {
           let failure: unknown;
+          // Delivery now drains before a later preparation failure is returned.
+          // Let the already-started send finish while processing unwinds.
+          release();
           await rejects(
             federation.processQueuedTask(undefined, task),
             (error: unknown) => {
@@ -6124,7 +6127,7 @@ test("fanout worker actions preserve earlier direct entries across later setup f
               action.delivery,
               task.inboxes[recipient.inboxId!.href].outbound,
             );
-            strictEqual(attempts.length, 0);
+            strictEqual(attempts.length, 1);
             release();
             await settled;
             strictEqual(attempts.length, 1);

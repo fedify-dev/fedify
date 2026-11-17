@@ -597,8 +597,34 @@ have `~Context.verifyPortableObject` as their default: activities that inboxes
 receive, including queued ones, objects that `~Context.lookupObject()` returns,
 and the activities passed to the `onOutboxError` callback.  So
 `create.getObject()` in an inbox listener verifies portable objects even
-without options.  A clone does not inherit the default; pass
-`verifyPortableObject` to `clone()` if you need it.
+without options.
+
+A [clone](#immutability) does not inherit the default, though.  Without
+a verifier, the clone's accessors no longer verify embedded portable objects,
+and refuse to dereference portable references.  So pass `verifyPortableObject`
+to `clone()` if you need it:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+import type { Create } from "@fedify/vocab";
+declare const ctx: Context<void>;
+declare const create: Create;
+// ---cut-before---
+const copy = create.clone(
+  { summary: "A copy" },
+  // Keeps verifying portable objects that the copy's accessors dereference:
+  { verifyPortableObject: ctx.verifyPortableObject },
+);
+~~~~
+
+Cloning an object that has a default verifier without
+the `verifyPortableObject` option logs a warning in the
+[`["fedify", "vocab", "portable"]`](./log.md#fedify-vocab-portable) category.
+Pass `verifyPortableObject: undefined` to drop the default deliberately
+without the warning.  Either way, nested objects that the clone shares with
+the source keep their own defaults.  To get a separate copy instead, serialize
+the object and re-parse it with `fromJsonLd()`, passing the verifier again,
+as the [*Immutability* section](#immutability) shows.
 
 #### Compatible identifiers
 
@@ -1014,6 +1040,8 @@ It makes a *shallow copy*: the clone has its own property arrays, but nested
 objects and URLs are shared with the source.  Hydrating a shared nested object
 through either instance changes that nested object for both when their accessors
 return the shared instance.
+The clone does not inherit the source's document loaders or default portable
+object verifier; see the [*Default verifiers* section](#default-verifiers).
 
 ### Deep copies
 
@@ -1173,9 +1201,32 @@ const create = new Create({});
 const jsonLd = await create.toJsonLd();
 ~~~~
 
-By default, the `toJsonLd()` method returns the JSON-LD document which is
-neither compacted nor expanded.  Instead, it processes the JSON-LD document
-without the proper JSON-LD processor for efficiency.
+By default, `toJsonLd()` preserves the cached document of a parsed object and
+uses the default context for a constructed object.  When a constructed object
+embeds a child with its own `@context`, it isolates that child's context on
+ordinary node-valued properties, including collection items.  This preserves
+the child's standalone meaning and cached document even if it defines a term
+the parent's context protects, such as `proof`.
+
+Generated children also carry their own contexts, so isolation applies even
+when the child and parent have identical `@context` values.  The serialized
+parent's context array gains an inline definition with a property-scoped
+`@context: null` for each affected property.  Consumers that process contexts
+need to support JSON-LD 1.1 property-scoped contexts.
+
+Context processing adds work at each nesting level with contextual children;
+default serialization no longer always avoids the JSON-LD processor.  Reuse
+a caching `contextLoader` when serializing repeated or deeply nested objects
+with remote contexts.  Objects without contextual children skip this step.
+
+Isolation can resolve the parent's context through `contextLoader`.  A URL
+reference alongside an isolated child is represented as an object with `id`
+and its own context.  Custom `toJsonLd()` implementations should return
+standalone JSON-LD documents: a partial child context that relies on a previous
+parent does not carry that parent's definitions into a new parent.  Properties
+whose definitions are protected, already scoped, or literal JSON retain their
+existing serialization behavior.  Objects with protected type-scoped
+definitions also retain their existing behavior.
 
 The `toJsonLd()` method takes some options to customize the JSON-LD document.
 For example, you can compact the JSON-LD document with a custom context.

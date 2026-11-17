@@ -194,14 +194,6 @@ export interface KnownDeclarationProblem {
  */
 export const KNOWN_DECLARATION_PROBLEMS: readonly KnownDeclarationProblem[] = [
   {
-    file: `${DECLARATION_CONSUMERS}/nestjs/cjs/index.cts`,
-    code: "TS2307",
-    message: /Cannot find module '@fedify\/nestjs'/,
-    reason:
-      "packages/nestjs/package.json maps require.types to " +
-      "dist/index.d.ts, which the build does not emit.",
-  },
-  {
     file: "packages/fedify/dist/runtime/mod.d.cts",
     code: "TS2304",
     message: /Cannot find name '__(?:reExport|exportAll)'/,

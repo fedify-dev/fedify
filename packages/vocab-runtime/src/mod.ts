@@ -5,6 +5,7 @@
  * @module
  */
 export { default as preloadedContexts } from "./contexts.ts";
+export type { CryptoKeyLike, CryptoKeyPairLike } from "./crypto-key.ts";
 export {
   type AuthenticatedDocumentLoaderFactory,
   type DocumentLoader,

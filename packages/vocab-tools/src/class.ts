@@ -8,6 +8,7 @@ import {
   generateDeepCloneDescriptor,
   generateDeepCloneHelpers,
 } from "./deep-clone.ts";
+import { generateContextHelpers } from "./context.ts";
 import { generateFields } from "./field.ts";
 import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
@@ -75,6 +76,7 @@ const SIGNED_REPRESENTATION_IMPORTS = [
 ].join(",\n    ");
 const RUNTIME_IMPORTS = [
   "canParseDecimal",
+  "type CryptoKeyLike",
   "decodeMultibase",
   "type Decimal",
   "type DocumentLoader",
@@ -176,6 +178,12 @@ async function* generateClass(
         return this.#tracerProvider;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/fedify and @fedify/testing,
+     * which read this through \`Reflect.get()\` to pass an object's default
+     * verifier on to its clones.  Keep this accessor name and its semantics
+     * stable.
+     */
     protected get _verifyPortableObject(): PortableObjectVerifier | undefined {
       return this.#verifyPortableObject;
     }
@@ -371,6 +379,7 @@ export async function* generateClasses(
   yield `import {
     isTemporalDuration,
     isTemporalInstant,
+    normalizeDateTimeLiteral,
 } from "@fedify/vocab-runtime/temporal";\n`;
   yield `
 function canDecodeIri(iri: string): boolean {
@@ -503,6 +512,7 @@ function getExtraContexts(document: unknown): string[] {
     [...portableIriKeys].sort(),
   )});\n\n`;
   const moduleVarNames = new Map<string, string>();
+  yield generateContextHelpers();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {
     for (const property of types[typeUri].properties) {

@@ -8,6 +8,13 @@ import {
   getTypeNames,
 } from "./type.ts";
 
+/**
+ * Generates the TypeScript type of a property in the `values` object that the
+ * constructor and `clone()` accept.
+ * @param property The property to generate the type for.
+ * @param types The vocabulary types in scope.
+ * @returns The generated type expression.
+ */
 function generateParameterType(
   property: PropertySchema,
   types: Record<string, TypeSchema>,
@@ -18,13 +25,20 @@ function generateParameterType(
   if (hasSingularAccessor(property)) {
     if (scalar) {
       code.push(
-        `${property.singularName}?: ${getTypeNames(range, types)} | null;`,
+        `${property.singularName}?: ${getTypeNames(
+          range,
+          types,
+          false,
+          true,
+        )} | null;`,
       );
     } else {
       code.push(
         `${property.singularName}?: ${getTypeNames(
           range,
           types,
+          false,
+          true,
         )} | URL | null;`,
       );
     }
@@ -32,11 +46,21 @@ function generateParameterType(
   if (isNonFunctionalProperty(property)) {
     if (scalar) {
       code.push(
-        `${property.pluralName}?: (${getTypeNames(range, types, true)})[];`,
+        `${property.pluralName}?: (${getTypeNames(
+          range,
+          types,
+          true,
+          true,
+        )})[];`,
       );
     } else {
       code.push(
-        `${property.pluralName}?: (${getTypeNames(range, types)} | URL)[];`,
+        `${property.pluralName}?: (${getTypeNames(
+          range,
+          types,
+          false,
+          true,
+        )} | URL)[];`,
       );
     }
   }
@@ -272,8 +296,33 @@ export async function* generateCloner(
    * would be wrong.  Sign the clone again if it has to be embedded as a
    * secured child.
    *
+   * The clone does not inherit this instance's default FEP-ef61 portable
+   * object verifier, i.e., the \`verifyPortableObject\` option given when this
+   * instance was constructed, parsed, or fetched by an accessor, nor its
+   * \`documentLoader\` or \`contextLoader\`.  Without a verifier, the clone's
+   * accessors no longer verify embedded portable objects, and refuse to
+   * dereference portable references.  To keep verifying them, pass
+   * \`verifyPortableObject\` in \`options\`, or serialize this instance and
+   * re-parse it with \`fromJsonLd()\` and the verifier.  A verifier is only
+   * a policy for dereferencing; passing one does not verify the clone itself.
+   *
+   * Cloning an instance that has a default verifier without passing
+   * the \`verifyPortableObject\` option logs a warning in the
+   * \`["fedify", "vocab", "portable"]\` category.  Pass
+   * \`verifyPortableObject: undefined\` to drop the verifier deliberately
+   * without the warning.  Either way, nested objects shared with this
+   * instance keep their own defaults.
+   *
    * @param values The values to update the clone with.
    * @param options The options to use for cloning.
+   *
+   *                - \`documentLoader\`: The document loader for the clone.
+   *                - \`contextLoader\`: The JSON-LD context loader for
+   *                  the clone.
+   *                - \`verifyPortableObject\`: The default FEP-ef61 portable
+   *                  object verifier for the clone.  It is not inherited from
+   *                  this instance.  Pass \`undefined\` explicitly to clone
+   *                  without a verifier and without a warning.
    * @returns The cloned instance with its own property arrays.  Nested objects
    *          and URLs are shared with this instance.
    */
@@ -286,7 +335,7 @@ export async function* generateCloner(
     options: {
       documentLoader?: DocumentLoader,
       contextLoader?: DocumentLoader,
-      verifyPortableObject?: PortableObjectVerifier,
+      verifyPortableObject?: PortableObjectVerifier | undefined,
     } = {}
   ): ${type.name} {
     if (this._warning != null) {
@@ -294,8 +343,15 @@ export async function* generateCloner(
         this._warning.message,
         this._warning.values
       );
-      // @ts-ignore: $warning is not recognized as a property, but it is.
-      options = { ...options, $warning: this._warning };
+      // Keep an explicit verifyPortableObject option, even an inherited or
+      // non-enumerable one, since its presence decides whether to warn below:
+      options = {
+        ...options,
+        ...("verifyPortableObject" in options
+          ? { verifyPortableObject: options.verifyPortableObject }
+          : {}),
+        $warning: this._warning,
+      } as typeof options;
     }
   `;
   if (type.extends == null) {
@@ -403,6 +459,23 @@ export async function* generateCloner(
         }
       `;
     }
+  }
+  if (type.extends == null) {
+    yield `
+    if (
+      this._verifyPortableObject != null &&
+      !("verifyPortableObject" in options)
+    ) {
+      getLogger(["fedify", "vocab", "portable"]).warn(
+        "Cloning {typeName} {objectId} drops its default portable object " +
+          "verifier, since clone() does not inherit it.  Pass " +
+          "the verifyPortableObject option to clone() to keep verifying " +
+          "portable objects, or verifyPortableObject: undefined to drop " +
+          "the verifier deliberately without this warning.",
+        { typeName: this.constructor.name, objectId: this.id?.href ?? "(no id)" },
+      );
+    }
+    `;
   }
   yield (
     `

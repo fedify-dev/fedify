@@ -12,6 +12,7 @@ import type {
   TraverseCollectionOptions,
 } from "@fedify/vocab";
 import type {
+  CryptoKeyLike,
   DocumentLoader,
   PortableObjectVerifier,
 } from "@fedify/vocab-runtime";
@@ -589,7 +590,7 @@ export interface Context<TContextData> {
    */
   getDocumentLoader(identity: {
     keyId: URL;
-    privateKey: CryptoKey;
+    privateKey: CryptoKeyLike;
   }): DocumentLoader;
 
   /**
@@ -734,8 +735,8 @@ export interface Context<TContextData> {
    */
   sendActivity(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],
@@ -1558,8 +1559,8 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
    */
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],
@@ -1624,8 +1625,8 @@ export interface OutboxContext<TContextData> extends Context<TContextData> {
    */
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],

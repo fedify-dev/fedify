@@ -10,6 +10,8 @@ import type {
 } from "@fedify/vocab";
 import type {
   AuthenticatedDocumentLoaderFactory,
+  CryptoKeyLike,
+  CryptoKeyPairLike,
   DocumentLoaderFactory,
   GetUserAgentOptions,
 } from "@fedify/vocab-runtime";
@@ -1107,6 +1109,12 @@ export interface FederationOptions<TContextData> {
    *
    * By default, the queue starts automatically.
    *
+   * Automatic startup is best-effort: if a queue cannot start listening,
+   * a warning is logged once per federation instance and the failed worker is
+   * not retried, while an explicit {@link Federation.startQueue} call rejects.
+   * Runtimes that consume the queue elsewhere, such as Cloudflare Workers with
+   * {@link Federation.processQueuedTask}, should set this to `true`.
+   *
    * @since 0.12.0
    */
   manuallyStartQueue?: boolean;
@@ -1435,7 +1443,7 @@ export interface ActorCallbackSetters<TContextData> {
    * @since 0.10.0
    */
   setKeyPairsDispatcher(
-    dispatcher: ActorKeyPairsDispatcher<TContextData>,
+    dispatcher: ActorKeyPairsDispatcher<TContextData, CryptoKeyPairLike>,
   ): ActorCallbackSetters<TContextData>;
 
   /**
@@ -1787,7 +1795,7 @@ export interface InboxListenerSetters<TContextData> {
    * @since 0.11.0
    */
   setSharedKeyDispatcher(
-    dispatcher: SharedInboxKeyDispatcher<TContextData>,
+    dispatcher: SharedInboxKeyDispatcher<TContextData, CryptoKeyLike>,
   ): InboxListenerSetters<TContextData>;
 
   /**

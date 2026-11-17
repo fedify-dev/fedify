@@ -301,6 +301,17 @@ related to looking up ActivityPub objects.  When you are curious about the
 lookup process, you can check the log messages in this category with the
 `"debug"` level.
 
+### `["fedify", "vocab", "portable"]`
+
+*This category is available since Fedify 2.4.6.*
+
+The `["fedify", "vocab", "portable"]` category is used for logging warnings
+about [FEP-ef61 portable objects](./vocab.md#fep-ef61-portable-objects) in
+the vocabulary API.  For example, `clone()` logs a warning with the
+`"warning"` level when it drops the default portable object verifier of
+an object; see the [*Default verifiers* section](./vocab.md#default-verifiers)
+of the *Vocabulary* chapter.
+
 ### `["fedify", "webfinger", "server"]`
 
 *This category is available since Fedify 0.13.0.*

@@ -71,6 +71,7 @@
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:^",
+    "@logtape/logtape": "catalog:",
     "@standard-schema/spec": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

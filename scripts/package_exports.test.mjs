@@ -40,7 +40,7 @@ test("requires built exports to be included in the tarball", () => {
   });
 });
 
-test("limits existing build exceptions to the exact NestJS paths", (t) => {
+test("rejects missing NestJS paths without build exceptions", (t) => {
   t.mock.method(console, "warn", () => {});
   withBuild((root) => {
     const manifest = {
@@ -53,7 +53,7 @@ test("limits existing build exceptions to the exact NestJS paths", (t) => {
         },
       },
     };
-    doesNotThrow(() => checkExports("@fedify/nestjs", [], manifest, root));
+    throws(() => checkExports("@fedify/nestjs", [], manifest, root));
     throws(() => checkExports("@fedify/other", [], manifest, root));
     throws(() =>
       checkExports("@fedify/nestjs", [], { exports: "./dist/other.js" }, root),

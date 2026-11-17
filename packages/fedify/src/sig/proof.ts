@@ -14,6 +14,7 @@ import {
   type Object,
 } from "@fedify/vocab";
 import {
+  type CryptoKeyLike,
   type DocumentLoader,
   encodeMultibase,
   formatIri,
@@ -26,6 +27,7 @@ import {
   type PortableObjectVerifier,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
+import { asCryptoKey } from "@fedify/vocab-runtime/internal";
 import { getPortableActorGateways } from "@fedify/vocab-runtime/internal/jsonld-cache";
 import {
   isPlainJsonTree,
@@ -61,6 +63,7 @@ import {
 } from "./key.ts";
 import { getNormalizationContextLoader } from "./ld.ts";
 import { getPortableDid, isPortableId } from "./portable-key-id.ts";
+import { getDefaultPortableObjectVerifier } from "../utils/portable-verifier.ts";
 
 /**
  * Known Object Integrity Proof `cryptosuite` values, used to keep
@@ -189,6 +192,7 @@ export interface CreateProofOptions {
  * document that the proof covers when Fedify was able to capture one.
  */
 interface CreatedProof {
+  jsonLd: unknown;
   readonly proof: DataIntegrityProof;
   /**
    * The complete secured JSON document, or `null` when it could not be
@@ -265,7 +269,7 @@ async function captureSecuredDocument(
 
 async function createProofInternal(
   object: Object,
-  privateKey: CryptoKey,
+  privateKey: CryptoKeyLike,
   keyId: URL,
   { contextLoader, context, created }: CreateProofOptions = {},
   /**
@@ -279,7 +283,13 @@ async function createProofInternal(
   if (privateKey.algorithm.name !== "Ed25519") {
     throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
   }
-  const objectWithoutProofs = object.clone({ proofs: [] });
+  // Only serialized below, so it needs no portable object verifier:
+  const objectWithoutProofs = object.clone(
+    { proofs: [] },
+    {
+      verifyPortableObject: undefined,
+    },
+  );
   let compactMsg = await objectWithoutProofs.toJsonLd({
     format: "compact",
     contextLoader,
@@ -314,7 +324,7 @@ async function createProofInternal(
   digest.set(new Uint8Array(proofDigest), 0);
   digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
   const sig = new Uint8Array(
-    await crypto.subtle.sign("Ed25519", privateKey, digest),
+    await crypto.subtle.sign("Ed25519", asCryptoKey(privateKey), digest),
   );
   const proof = new DataIntegrityProof({
     cryptosuite: "eddsa-jcs-2022",
@@ -333,7 +343,7 @@ async function createProofInternal(
         contextLoader,
       )
     : null;
-  return { proof, securedDocument };
+  return { proof, securedDocument, jsonLd: compactMsg };
 }
 
 /**
@@ -348,7 +358,7 @@ async function createProofInternal(
  */
 export async function createProof(
   object: Object,
-  privateKey: CryptoKey,
+  privateKey: CryptoKeyLike,
   keyId: URL,
   options: CreateProofOptions = {},
 ): Promise<DataIntegrityProof> {
@@ -359,6 +369,24 @@ export async function createProof(
     options,
   );
   return proof;
+}
+
+function getJsonLdContextKey(value: unknown): string {
+  const context =
+    typeof value === "object" && value != null && !Array.isArray(value)
+      ? ((value as Record<string, unknown>)["@context"] ?? null)
+      : null;
+  return JSON.stringify(sortJsonKeys(context));
+}
+
+function sortJsonKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortJsonKeys);
+  if (typeof value !== "object" || value == null) return value;
+  return globalThis.Object.fromEntries(
+    globalThis.Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, item]) => [key, sortJsonKeys(item)]),
+  );
 }
 
 /**
@@ -391,7 +419,7 @@ export interface SignObjectOptions extends CreateProofOptions {
  */
 export async function signObject<T extends Object>(
   object: T,
-  privateKey: CryptoKey,
+  privateKey: CryptoKeyLike,
   keyId: URL,
   options: SignObjectOptions = {},
 ): Promise<T> {
@@ -407,20 +435,41 @@ export async function signObject<T extends Object>(
         if (object.id != null) {
           span.setAttribute("activitypub.object.id", object.id.href);
         }
-        const existingProofs: DataIntegrityProof[] = [];
-        for await (const proof of object.getProofs(options)) {
-          existingProofs.push(proof);
-        }
-        // The map-local compound-proof profile accepts exactly one direct
-        // proof per map, so an object that already carried one cannot be
-        // embedded as a secured child and needs no capture.
-        const { proof, securedDocument } = await createProofInternal(
+        const { proof, jsonLd, securedDocument } = await createProofInternal(
           object,
           privateKey,
           keyId,
           options,
-          existingProofs.length < 1,
+          true,
         );
+        // Existing proofs only cover the current serialization if the object
+        // is serialized with the same context.  A restored document may retain
+        // an older context, and appending to its proofs would leave an invalid
+        // proof alongside the new one.
+        const existingProofs: DataIntegrityProof[] = [];
+        let hasProofs = object.proofIds.length > 0;
+        if (!hasProofs) {
+          for await (const _ of object.getProofs(options)) {
+            hasProofs = true;
+            break;
+          }
+        }
+        if (hasProofs) {
+          let sameContext = true;
+          if (options.context == null) {
+            const originalJsonLd = await object.toJsonLd({
+              contextLoader: options.contextLoader,
+            });
+            sameContext =
+              getJsonLdContextKey(originalJsonLd) ===
+              getJsonLdContextKey(jsonLd);
+          }
+          if (sameContext) {
+            for await (const existingProof of object.getProofs(options)) {
+              existingProofs.push(existingProof);
+            }
+          }
+        }
         if (span.isRecording()) {
           if (proof.cryptosuite != null) {
             span.setAttribute(
@@ -441,10 +490,16 @@ export async function signObject<T extends Object>(
             );
           }
         }
-        const signed = object.clone({
-          proofs: [...existingProofs, proof],
-        }) as T;
-        if (securedDocument != null) {
+        const signed = object.clone(
+          {
+            proofs: [...existingProofs, proof],
+          },
+          {
+            // A clone does not inherit the default verifier, so keep it:
+            verifyPortableObject: getDefaultPortableObjectVerifier(object),
+          },
+        ) as T;
+        if (securedDocument != null && existingProofs.length < 1) {
           // Retain the secured JSON document so that embedding this object in
           // another object's typed property emits the exact bytes its proof
           // covers instead of reconstructing it under the parent's context.

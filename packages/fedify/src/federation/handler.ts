@@ -26,6 +26,7 @@ import {
   parseIri,
 } from "@fedify/vocab-runtime";
 import { isCompatibleEf61Iri } from "@fedify/vocab-runtime/internal/portable-dereference";
+import { normalizeAttachmentArrays } from "../compat/attachment-arrays.ts";
 import {
   BodyTooLargeError,
   MAX_BODY_SIZE,
@@ -57,9 +58,10 @@ import {
 } from "../sig/http.ts";
 import {
   compactJsonLd,
+  describeSignatureShape,
   detachSignature,
   getNormalizationContextLoader,
-  hasSignature,
+  hasVerifiableSignature,
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
   isInvalidUrlTypeError,
@@ -302,7 +304,7 @@ export async function handleActor<TContextData>(
     }
   }
   if (actor instanceof Tombstone) {
-    const jsonLd = await actor.toJsonLd(context);
+    const jsonLd = await serializeForResponse(actor, context);
     return new Response(JSON.stringify(jsonLd), {
       status: 410,
       headers: {
@@ -311,7 +313,7 @@ export async function handleActor<TContextData>(
       },
     });
   }
-  const jsonLd = await actor.toJsonLd(context);
+  const jsonLd = await serializeForResponse(actor, context);
   return new Response(JSON.stringify(jsonLd), {
     headers: {
       "Content-Type": "application/activity+json",
@@ -359,7 +361,7 @@ export async function handleObject<TContextData>(
       return await onUnauthorized(request);
     }
   }
-  const jsonLd = await object.toJsonLd(context);
+  const jsonLd = await serializeForResponse(object, context);
   if (object instanceof Tombstone) {
     return new Response(
       request.method === "HEAD" ? null : JSON.stringify(jsonLd),
@@ -1144,7 +1146,11 @@ export async function handleCollection<
         return finish(await onUnauthorized(request), "unauthorized");
       }
     }
-    const jsonLd = await collection.toJsonLd(context);
+    const jsonLd = await serializeForResponse(
+      collection,
+      context,
+      portable != null,
+    );
     if (portable != null) {
       return (await verifyPortableCollection(jsonLd, context, portable))
         ? finish(respondWithPortableCollection(request, jsonLd), "served")
@@ -2012,7 +2018,17 @@ async function handleInboxInternal<TContextData>(
   const standardLoader = snapshot.loader("standard");
   const normalizationLoader = snapshot.loader("normalization");
   const jsonWithoutSig = detachSignature(json);
-  const hasLdSignature = hasSignature(json);
+  const hasLdSignature = hasVerifiableSignature(json);
+  if (!hasLdSignature) {
+    const shape = describeSignatureShape(json);
+    if (shape != null) {
+      logger.debug(
+        "Linked Data Signature has an unsupported shape: {signatureKind}; " +
+          "properties: {signatureProperties}.",
+        shape,
+      );
+    }
+  }
   const canAttemptAlternateAuthAfterLdSignatureFailure =
     skipSignatureVerification ||
     hasHttpSignatureHeaders(request) ||
@@ -3570,7 +3586,11 @@ class CustomCollectionHandler<
    * @returns A promise that resolves to the JSON-LD representation.
    */
   async toJsonLd() {
-    return (await this.collection).toJsonLd(this.context);
+    return serializeForResponse(
+      await this.collection,
+      this.context,
+      this.portable != null,
+    );
   }
 
   /**
@@ -4130,7 +4150,7 @@ export async function respondWithObject(
   object: Object,
   options?: RespondWithObjectOptions,
 ): Promise<Response> {
-  const jsonLd = await object.toJsonLd(options);
+  const jsonLd = await serializeForResponse(object, options);
   return new Response(JSON.stringify(jsonLd), {
     headers: {
       "Content-Type": "application/activity+json",
@@ -4314,6 +4334,25 @@ function isPortableActorKey(key: CryptographicKey | null): boolean {
     isPortableKeyId(key.id) &&
     key.ownerId != null &&
     isPortableId(key.ownerId)
+  );
+}
+
+/** Applies compatibility changes after ordinary vocabulary serialization. */
+async function serializeForResponse(
+  object: Object,
+  options?: { contextLoader?: DocumentLoader },
+  compact = false,
+): Promise<unknown> {
+  return await normalizeAttachmentArrays(
+    // Portable collections are checked map by map.  Compaction resolves the
+    // generated property-scoped contexts without widening that proof policy;
+    // retained signed child maps keep their original representation.
+    await object.toJsonLd(
+      compact
+        ? { format: "compact", contextLoader: options?.contextLoader }
+        : options,
+    ),
+    options?.contextLoader,
   );
 }
 

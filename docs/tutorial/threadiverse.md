@@ -1648,6 +1648,8 @@ export const config = {
     },
     { source: "/.well-known/nodeinfo" },
     { source: "/.well-known/x-nodeinfo2" },
+    { source: "/.well-known/apgateway/:path*" },
+    { source: "/nodeinfo/:path*" },
   ],
 };
 ~~~~

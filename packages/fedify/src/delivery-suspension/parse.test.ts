@@ -1335,7 +1335,7 @@ test("delivery suspension bounds context expansion before materializing IRIs", a
           }),
         }),
     ),
-  }).toJsonLd();
+  }).toJsonLd({ format: "compact" });
   const ordinaryActorResult = success(
     await parseActorControlMetadata(ordinaryActor),
   );
@@ -1353,7 +1353,7 @@ test("delivery suspension bounds context expansion before materializing IRIs", a
           }),
         }),
     ),
-  }).toJsonLd();
+  }).toJsonLd({ format: "compact" });
   success(await parseInboxControlMetadata(ordinaryInbox));
 
   const oversized = "https://example.net/" + "a".repeat(2049);

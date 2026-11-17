@@ -79,6 +79,7 @@ type ErrorHandlers = Omit<FederationFetchOptions<unknown>, "contextData">;
  *     { source: "/.well-known/nodeinfo" },
  *     { source: "/.well-known/x-nodeinfo2" },
  *     { source: "/.well-known/apgateway/:path*" },
+ *     { source: "/nodeinfo/:path*" },
  *   ],
  * };
  * ```
@@ -140,12 +141,22 @@ export const hasFederationHeader =
     return value ? FEDERATION_ACCEPT_REGEX.test(value) : false;
   };
 
+/**
+ * Check for a well-known NodeInfo path or a path under `/nodeinfo/`.
+ * This does not check whether a NodeInfo dispatcher is registered.
+ * Dispatchers at other paths require explicit delegation to
+ * {@link integrateFederation}.
+ */
 export const isNodeInfoRequest = (request: Request): boolean => {
   const url = new URL(request.url);
   return NODEINFO_PATHS.some((path) => url.pathname.startsWith(path));
 };
 
-const NODEINFO_PATHS = ["/.well-known/nodeinfo", "/.well-known/x-nodeinfo2"];
+const NODEINFO_PATHS = [
+  "/.well-known/nodeinfo",
+  "/.well-known/x-nodeinfo2",
+  "/nodeinfo/",
+];
 
 /**
  * Check if the request is an [FEP-ef61] gateway request for a resource

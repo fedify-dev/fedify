@@ -21,18 +21,17 @@ import {
 } from "./outbound-observation.ts";
 import { InboxObservation } from "./inbox-observation.ts";
 import { type Path, RouterError } from "@fedify/uri-template";
-import type {
-  Actor,
-  Collection,
-  Link,
-  LookupObjectOptions,
-  Object,
-  Recipient,
-  TraverseCollectionOptions,
-} from "@fedify/vocab";
 import {
+  type Actor,
+  type Collection,
+  type Link,
+  type LookupObjectOptions,
+  type Object,
+  type Recipient,
+  type TraverseCollectionOptions,
   Activity,
   CryptographicKey,
+  type DataIntegrityProof,
   getTypeId,
   lookupObject,
   lookupObserver,
@@ -42,6 +41,8 @@ import {
 } from "@fedify/vocab";
 import type { DereferenceCandidate } from "@fedify/vocab-runtime/internal/portable-dereference";
 import type {
+  CryptoKeyLike,
+  CryptoKeyPairLike,
   AuthenticatedDocumentLoaderFactory,
   DocumentLoader,
   DocumentLoaderFactory,
@@ -49,6 +50,8 @@ import type {
   GetUserAgentOptions,
   PortableObjectVerifier,
 } from "@fedify/vocab-runtime";
+import { asCryptoKey } from "@fedify/vocab-runtime/internal";
+import { getDefaultPortableObjectVerifier } from "../utils/portable-verifier.ts";
 import {
   FetchError,
   getDocumentLoader,
@@ -101,7 +104,6 @@ import {
   compactJsonLd,
   detachSignature,
   getNormalizationContextLoader,
-  hasSignature,
   hasSignatureLike,
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
@@ -1208,6 +1210,20 @@ export class FederationImpl<TContextData>
     return this.taskQueueResolution === "strict" ? undefined : this.outboxQueue;
   }
 
+  #listenQueue(
+    queue: MessageQueue,
+    ctxData: TContextData,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    try {
+      return queue.listen((msg) => this.processQueuedTask(ctxData, msg), {
+        signal,
+      });
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
   async _startQueueInternal(
     ctxData: TContextData,
     signal?: AbortSignal,
@@ -1239,13 +1255,22 @@ export class FederationImpl<TContextData>
       if (this.startedQueues.has(target)) continue;
       this.startedQueues.add(target);
       logger.debug("Starting a {role} queue worker.", { role });
-      promises.push(
-        target.listen((msg) => this.processQueuedTask(ctxData, msg), {
-          signal,
-        }),
-      );
+      promises.push(this.#listenQueue(target, ctxData, signal));
     }
     await Promise.all(promises);
+  }
+
+  #queueStartupFailureReported = false;
+
+  _startQueueAutomatically(ctxData: TContextData): void {
+    this._startQueueInternal(ctxData).catch((error) => {
+      if (this.#queueStartupFailureReported) return;
+      this.#queueStartupFailureReported = true;
+      getLogger(["fedify", "federation", "queue"]).warn(
+        "Failed to start queue workers automatically: {error}",
+        { error },
+      );
+    });
   }
 
   async processQueuedTask(
@@ -1552,10 +1577,10 @@ export class FederationImpl<TContextData>
     const logger = getLogger(["fedify", "federation", "fanout"]);
     logger.debug(
       "Fanning out activity {activityId} to {inboxes} inbox(es)...",
-      {
+      () => ({
         activityId: message.activityId,
         inboxes: globalThis.Object.keys(message.inboxes).length,
-      },
+      }),
     );
     const importKeys = () =>
       Promise.all(
@@ -3051,7 +3076,7 @@ export class FederationImpl<TContextData>
           // Messages without a verified view, e.g., those queued by older
           // versions of Fedify, are parsed as they used to be:
           if (activity == null) {
-            const hasSignatureField = hasSignature(message.activity);
+            const hasSignatureField = hasSignatureLike(message.activity);
             const shouldParseFromNormalizedSignedPayload =
               message.ldSignatureVerified === true ||
               message.normalizedActivity != null ||
@@ -3539,7 +3564,7 @@ export class FederationImpl<TContextData>
   }
 
   async sendActivity(
-    keys: SenderKeyPair[],
+    keys: SenderKeyPair<CryptoKeyLike>[],
     inboxes: Record<
       string,
       {
@@ -3592,7 +3617,7 @@ export class FederationImpl<TContextData>
     // activity; its Object Integrity Proof does that instead:
     const resolveRsaKey = () => {
       const ldSignable = !hasPortableActor(activity);
-      let rsaKey: { keyId: URL; privateKey: CryptoKey } | null = null;
+      let rsaKey: SenderKeyPair<CryptoKeyLike> | null = null;
       for (const { keyId, privateKey } of keys) {
         validateCryptoKey(privateKey, "private");
         if (
@@ -3636,9 +3661,10 @@ export class FederationImpl<TContextData>
     observation?.setPhase("serialization");
     const serializeActivity = async () => {
       let result =
-        !proofCreated && options.activityJsonLd != null
+        signed.jsonLd ??
+        (!proofCreated && options.activityJsonLd != null
           ? options.activityJsonLd
-          : await activity.toJsonLd({ format: "compact", contextLoader });
+          : await activity.toJsonLd({ format: "compact", contextLoader }));
       // Existing proofs are preserved by default because they may have been
       // created over the compact JSON-LD bytes exactly as supplied.  Fedify can
       // safely normalize unsigned activities, proofs it just created, or
@@ -3671,13 +3697,13 @@ export class FederationImpl<TContextData>
           "the activity {activityId}.  The activity will be sent without " +
           "a Linked Data signature.  In order to create a Linked Data " +
           "signature, at least one RSASSA-PKCS1-v1_5 key must be provided.",
-        {
+        () => ({
           activityId,
           keys: keys.map((pair) => ({
             keyId: pair.keyId.href,
             privateKey: pair.privateKey,
           })),
-        },
+        }),
       );
     } else {
       const signLinkedData = async () => {
@@ -3708,13 +3734,13 @@ export class FederationImpl<TContextData>
         "No supported key found to create a proof for the activity {activityId}.  " +
           "The activity will be sent without a proof.  " +
           "In order to create a proof, at least one Ed25519 key must be provided.",
-        {
+        () => ({
           activityId,
           keys: keys.map((pair) => ({
             keyId: pair.keyId.href,
             privateKey: pair.privateKey,
           })),
-        },
+        }),
       );
     }
     observation?.setPhase("request-preparation");
@@ -3732,72 +3758,76 @@ export class FederationImpl<TContextData>
         );
       }
       const promises: Promise<void>[] = [];
-      for (const inbox in inboxes) {
-        const delivery = observation?.delivery(inbox);
-        let sending: Promise<void>;
-        try {
-          const createHeaders =
-            collectionSync == null
-              ? undefined
-              : async () =>
-                  new Headers({
-                    "Collection-Synchronization":
-                      await buildCollectionSynchronizationHeader(
-                        collectionSync,
-                        inboxes[inbox].actorIds,
-                      ),
-                  });
-          const sendActivityId = activity.id?.href;
-          const activityType = getTypeId(activity).href;
-          observation?.setActivity({
-            ...(sendActivityId == null ? {} : { id: sendActivityId }),
-            type: activityType,
-          });
-          sending = sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
-            attemptStarted:
-              worker == null
+      try {
+        for (const inbox in inboxes) {
+          const delivery = observation?.delivery(inbox);
+          let sending: Promise<void>;
+          try {
+            const createHeaders =
+              collectionSync == null
                 ? undefined
-                : (target) =>
-                    worker.directAttemptStarted(
-                      target,
-                      observation?.continuation(inbox)?.outbound,
-                    ),
-            observation: delivery,
-            allowPrivateAddress: this.allowPrivateAddress,
-            keys,
-            activity: jsonLd,
-            activityId: sendActivityId,
-            activityType,
-            sharedInbox: inboxes[inbox].sharedInbox,
-            headers:
-              createHeaders == null
-                ? undefined
-                : await (worker == null
-                    ? createHeaders()
-                    : worker.prepare("request-preparation", createHeaders)),
-            specDeterminer: new KvSpecDeterminer(
-              this.kv,
-              this.kvPrefixes.httpMessageSignaturesSpec,
-              this.firstKnock,
-              { specTtl: this.httpMessageSignaturesSpecTtl },
-            ),
-            meterProvider: this.meterProvider,
-            tracerProvider: this.tracerProvider,
-          });
-        } catch (error) {
-          if (delivery != null) await delivery.failed(error);
-          throw error;
-        }
-        if (observation != null) {
-          // The preparation callback may await while an earlier send rejects.
-          // Keep its original rejection for Promise.all without an unhandled one.
+                : async () =>
+                    new Headers({
+                      "Collection-Synchronization":
+                        await buildCollectionSynchronizationHeader(
+                          collectionSync,
+                          inboxes[inbox].actorIds,
+                        ),
+                    });
+            const sendActivityId = activity.id?.href;
+            const activityType = getTypeId(activity).href;
+            observation?.setActivity({
+              ...(sendActivityId == null ? {} : { id: sendActivityId }),
+              type: activityType,
+            });
+            sending = sendActivityToInbox(
+              inbox,
+              inboxes[inbox].gatewayInboxes,
+              {
+                attemptStarted:
+                  worker == null
+                    ? undefined
+                    : (target) =>
+                        worker.directAttemptStarted(
+                          target,
+                          observation?.continuation(inbox)?.outbound,
+                        ),
+                observation: delivery,
+                allowPrivateAddress: this.allowPrivateAddress,
+                keys,
+                activity: jsonLd,
+                activityId: sendActivityId,
+                activityType,
+                sharedInbox: inboxes[inbox].sharedInbox,
+                headers:
+                  createHeaders == null
+                    ? undefined
+                    : await (worker == null
+                        ? createHeaders()
+                        : worker.prepare("request-preparation", createHeaders)),
+                specDeterminer: new KvSpecDeterminer(
+                  this.kv,
+                  this.kvPrefixes.httpMessageSignaturesSpec,
+                  this.firstKnock,
+                  { specTtl: this.httpMessageSignaturesSpecTtl },
+                ),
+                meterProvider: this.meterProvider,
+                tracerProvider: this.tracerProvider,
+              },
+            );
+          } catch (error) {
+            if (delivery != null) await delivery.failed(error);
+            throw error;
+          }
           sending.catch(() => {});
+          promises.push(sending);
+          if (delivery != null) await delivery.handoff({ type: "direct" });
         }
-        if (delivery != null) await delivery.handoff({ type: "direct" });
-        promises.push(sending);
+        if (observation != null) await observation.prepared("delivery");
+        await Promise.all(promises);
+      } finally {
+        await Promise.allSettled(promises);
       }
-      if (observation != null) await observation.prepared("delivery");
-      await Promise.all(promises);
       return;
     }
     logger.debug("Enqueuing activity {activityId} to send later.", {
@@ -3814,7 +3844,7 @@ export class FederationImpl<TContextData>
           : await worker.prepare("key-export", exportPrivateKey);
       keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
     }
-    if (!this.manuallyStartQueue) this._startQueueInternal(ctx.data);
+    if (!this.manuallyStartQueue) this._startQueueAutomatically(ctx.data);
     observation?.setPhase("request-preparation");
     const carrier: Record<string, string> = {};
     const injectTraceContext = () =>
@@ -4971,7 +5001,7 @@ export class FederationImpl<TContextData>
       observation?: InboxObservation;
     },
   ): Promise<Response> {
-    if (!this.manuallyStartQueue) this._startQueueInternal(contextData);
+    if (!this.manuallyStartQueue) this._startQueueAutomatically(contextData);
     const inboxContextFactory = context.toInboxContext.bind(
       context,
     ) as typeof context.toInboxContext & {
@@ -5160,7 +5190,7 @@ export class FederationImpl<TContextData>
                       outboxQueue: this.outboxQueue,
                       startQueue: this.manuallyStartQueue
                         ? undefined
-                        : () => this._startQueueInternal(contextData),
+                        : () => this._startQueueAutomatically(contextData),
                       allowPrivateAddress: this.allowPrivateAddress,
                       getKeys: () =>
                         this.#getPortableGatewayKeyPairs(
@@ -6012,7 +6042,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // Resolved outside the try block below, so that errors from the portable
     // actor ID mapper are not mistaken for a missing key pairs dispatcher:
     const portableActor = await this.getPortableActorKeyOwner(identifier);
-    let keyPairs: (CryptoKeyPair & { keyId: URL })[];
+    let keyPairs: (CryptoKeyPairLike & { keyId: URL })[];
     try {
       keyPairs = await this.getKeyPairsFromIdentifier(
         identifier,
@@ -6028,6 +6058,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     for (const keyPair of keyPairs) {
       const newPair: ActorKeyPair = {
         ...keyPair,
+        privateKey: asCryptoKey(keyPair.privateKey),
+        publicKey: asCryptoKey(keyPair.publicKey),
         cryptographicKey: new CryptographicKey({
           id: keyPair.keyId,
           owner,
@@ -6073,7 +6105,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   protected async getKeyPairsFromIdentifier(
     identifier: string,
     portableActor?: PortableActorKeyOwner | null,
-  ): Promise<(CryptoKeyPair & { keyId: URL })[]> {
+  ): Promise<(CryptoKeyPairLike & { keyId: URL })[]> {
     const logger = getLogger(["fedify", "federation", "actor"]);
     if (this.federation.actorCallbacks?.keyPairsDispatcher == null) {
       throw new Error("No actor key pairs dispatcher registered.");
@@ -6122,7 +6154,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   protected async getRsaKeyPairFromIdentifier(
     identifier: string,
-  ): Promise<(CryptoKeyPair & { keyId: URL }) | null> {
+  ): Promise<(CryptoKeyPairLike & { keyId: URL }) | null> {
     const keyPairs = await this.getKeyPairsFromIdentifier(identifier);
     for (const keyPair of keyPairs) {
       const { privateKey } = keyPair;
@@ -6144,9 +6176,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   getDocumentLoader(
     identity: { identifier: string } | { username: string },
   ): Promise<DocumentLoader>;
-  getDocumentLoader(identity: SenderKeyPair): DocumentLoader;
+  getDocumentLoader(identity: SenderKeyPair<CryptoKeyLike>): DocumentLoader;
   getDocumentLoader(
-    identity: SenderKeyPair | { identifier: string } | { username: string },
+    identity:
+      | SenderKeyPair<CryptoKeyLike>
+      | { identifier: string }
+      | { username: string },
   ): DocumentLoader | Promise<DocumentLoader> {
     if ("identifier" in identity || "username" in identity) {
       let identifierPromise: Promise<string | null>;
@@ -6170,10 +6205,16 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         const pair = await this.getRsaKeyPairFromIdentifier(identifier);
         return pair == null
           ? this.documentLoader
-          : this.federation.authenticatedDocumentLoaderFactory(pair);
+          : this.federation.authenticatedDocumentLoaderFactory({
+              keyId: pair.keyId,
+              privateKey: asCryptoKey(pair.privateKey),
+            });
       });
     }
-    return this.federation.authenticatedDocumentLoaderFactory(identity);
+    return this.federation.authenticatedDocumentLoaderFactory({
+      keyId: identity.keyId,
+      privateKey: asCryptoKey(identity.privateKey),
+    });
   }
 
   lookupObject(
@@ -6225,11 +6266,15 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       ? getNodeInfo(url, {
           parse: "none",
           direct: options.direct,
+          timeout: options.timeout,
+          signal: options.signal,
           userAgent: options?.userAgent ?? this.federation.userAgent,
         })
       : getNodeInfo(url, {
           parse: options.parse,
           direct: options.direct,
+          timeout: options.timeout,
+          signal: options.signal,
           userAgent: options?.userAgent ?? this.federation.userAgent,
         });
   }
@@ -6277,8 +6322,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   sendActivity(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -6288,7 +6333,25 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return observeOutboundBroadcast(
       this,
       this.federation.outboundObservers,
-      (observation, provenance) => {
+      async (observation, provenance) => {
+        observation?.setPhase("signing");
+        // Preserve the proof-covered representation before lazy accessors run.
+        let activityJsonLd: unknown = undefined;
+        let hasProof = activity.proofIds.length > 0;
+        if (!hasProof) {
+          for await (const _ of activity.getProofs({
+            contextLoader: this.contextLoader,
+          })) {
+            hasProof = true;
+            break;
+          }
+        }
+        if (hasProof) {
+          activityJsonLd = await activity.toJsonLd({
+            contextLoader: this.contextLoader,
+          });
+          if (!hasTopLevelProof(activityJsonLd)) activityJsonLd = undefined;
+        }
         const tracer = this.tracerProvider.getTracer(
           metadata.name,
           metadata.version,
@@ -6336,6 +6399,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
                 span,
                 observation,
                 provenance,
+                activityJsonLd,
               );
             } catch (e) {
               span.setStatus({
@@ -6356,8 +6420,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   protected async sendActivityInternal(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -6366,10 +6430,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     span: Span,
     observation?: OutboundBroadcastObservation<TContextData>,
     provenance: OutboundProvenance = getOutboundProvenance(this),
+    activityJsonLd?: unknown,
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     observation?.setPhase("sender-resolution");
-    let keys: SenderKeyPair[];
+    let keys: SenderKeyPair<CryptoKeyLike>[];
     let identifier: string | null = null;
     let actorKeyPairs: ActorKeyPair[] | null = null;
     if ("identifier" in sender || "username" in sender) {
@@ -6471,6 +6536,39 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
     }
+    let contextMatches = false;
+    if (activityJsonLd != null) {
+      const capturedJsonLd = activityJsonLd;
+      const transformedJsonLd = await activity.toJsonLd({
+        format: "compact",
+        contextLoader: this.contextLoader,
+      });
+      const contentChanged =
+        getContentFields(transformedJsonLd) !==
+        getContentFields(capturedJsonLd);
+      contextMatches =
+        getContextFields(transformedJsonLd) ===
+        getContextFields(capturedJsonLd);
+      const proofsChanged =
+        getProofFields(transformedJsonLd) !== getProofFields(capturedJsonLd);
+      if (contentChanged || (!contextMatches && proofsChanged)) {
+        activity = activity.clone(
+          {
+            proofs: await getUncapturedProofs(
+              activity,
+              capturedJsonLd,
+              this.contextLoader,
+            ),
+          },
+          {
+            verifyPortableObject: getDefaultPortableObjectVerifier(activity),
+          },
+        );
+        activityJsonLd = undefined;
+      } else if (proofsChanged) {
+        activityJsonLd = undefined;
+      }
+    }
     let transformedActivityId: string | undefined;
     try {
       transformedActivityId = activity?.id?.href;
@@ -6519,31 +6617,50 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // applies before signing.  Actor key pairs keep appending outside that
     // profile, as they always have.
     observation?.setPhase("signing");
-    const { activity: signedActivity, proofCreated } =
-      await signOutgoingActivity(
-        activity,
-        actorKeyPairs == null
-          ? keys.map(({ keyId, privateKey }) => ({
-              verificationMethod: keyId,
-              privateKey,
-            }))
-          : actorKeyPairs.flatMap((kp) =>
-              kp.multikey.id == null
-                ? []
-                : [
-                    {
-                      verificationMethod: kp.multikey.id,
-                      privateKey: kp.privateKey,
-                    },
-                  ],
-            ),
+    if (
+      actorKeyPairs != null &&
+      activityJsonLd != null &&
+      !contextMatches &&
+      actorKeyPairs.some(
+        (kp) =>
+          kp.privateKey.algorithm.name === "Ed25519" &&
+          kp.multikey.id != null &&
+          !isPortableKeyId(kp.multikey.id),
+      )
+    ) {
+      activity = activity.clone(
+        { proofs: [] },
         {
-          contextLoader: this.contextLoader,
-          tracerProvider: this.tracerProvider,
-          appendToExistingProofs: actorKeyPairs != null,
+          verifyPortableObject: getDefaultPortableObjectVerifier(activity),
         },
       );
-    activity = signedActivity;
+      activityJsonLd = undefined;
+    }
+    const signed = await signOutgoingActivity(
+      activity,
+      actorKeyPairs == null
+        ? keys.map(({ keyId, privateKey }) => ({
+            verificationMethod: keyId,
+            privateKey,
+          }))
+        : actorKeyPairs.flatMap((kp) =>
+            kp.multikey.id == null
+              ? []
+              : [
+                  {
+                    verificationMethod: kp.multikey.id,
+                    privateKey: kp.privateKey,
+                  },
+                ],
+          ),
+      {
+        contextLoader: this.contextLoader,
+        tracerProvider: this.tracerProvider,
+        appendToExistingProofs: actorKeyPairs != null,
+      },
+    );
+    activity = signed.activity;
+    const { proofCreated } = signed;
     observation?.setPhase("destination-planning");
     const inboxes = extractInboxes({
       recipients: expandedRecipients,
@@ -6559,16 +6676,23 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       if (observation != null) await observation.skipped();
       return false;
     }
-    logger.debug("Sending activity {activityId} to inboxes:\n{inboxes}", {
-      inboxes: globalThis.Object.keys(inboxes),
-      activityId: activity.id?.href,
-      activity,
-    });
+    logger.debug(
+      "Sending activity {activityId} to inboxes:\n{inboxes}",
+      () => ({
+        inboxes: globalThis.Object.keys(inboxes),
+        activityId: activity.id?.href,
+        activity,
+      }),
+    );
     observation?.setPhase("serialization");
-    const activityJsonLd = await activity.toJsonLd({
-      format: "compact",
-      contextLoader: this.contextLoader,
-    });
+    activityJsonLd =
+      signed.jsonLd ??
+      (!proofCreated && activityJsonLd != null
+        ? activityJsonLd
+        : await activity.toJsonLd({
+            format: "compact",
+            contextLoader: this.contextLoader,
+          }));
     try {
       await warnCompatibleIdsInJson(
         activityJsonLd,
@@ -6645,7 +6769,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       traceContext: carrier,
     };
     if (!this.federation.manuallyStartQueue) {
-      this.federation._startQueueInternal(this.data);
+      this.federation._startQueueAutomatically(this.data);
     }
     if (observation != null) await observation.prepared("fanout");
     await (observation == null
@@ -7468,8 +7592,8 @@ function forwardActivity<TContextData>(
   ctx: ForwardActivityContext<TContextData>,
   loggerCategory: "inbox" | "outbox",
   forwarder:
-    | SenderKeyPair
-    | SenderKeyPair[]
+    | SenderKeyPair<CryptoKeyLike>
+    | SenderKeyPair<CryptoKeyLike>[]
     | { identifier: string }
     | { username: string },
   recipients: Recipient | Recipient[] | "followers",
@@ -7532,8 +7656,8 @@ async function forwardActivityInternal<TContextData>(
   ctx: ForwardActivityContext<TContextData>,
   loggerCategory: "inbox" | "outbox",
   forwarder:
-    | SenderKeyPair
-    | SenderKeyPair[]
+    | SenderKeyPair<CryptoKeyLike>
+    | SenderKeyPair<CryptoKeyLike>[]
     | { identifier: string }
     | { username: string },
   recipients: Recipient | Recipient[] | "followers",
@@ -7543,7 +7667,7 @@ async function forwardActivityInternal<TContextData>(
 ): Promise<boolean> {
   const logger = getLogger(["fedify", "federation", loggerCategory]);
   observation?.setPhase("sender-resolution");
-  let keys: SenderKeyPair[];
+  let keys: SenderKeyPair<CryptoKeyLike>[];
   let identifier: string | null = null;
   if ("identifier" in forwarder || "username" in forwarder) {
     if ("identifier" in forwarder) {
@@ -7637,11 +7761,14 @@ async function forwardActivityInternal<TContextData>(
     if (observation != null) await observation.skipped();
     return false;
   }
-  logger.debug("Forwarding activity {activityId} to inboxes:\n{inboxes}", {
-    inboxes: globalThis.Object.keys(inboxes),
-    activityId: ctx.activityId,
-    activity: ctx.activity,
-  });
+  logger.debug(
+    "Forwarding activity {activityId} to inboxes:\n{inboxes}",
+    () => ({
+      inboxes: globalThis.Object.keys(inboxes),
+      activityId: ctx.activityId,
+      activity: ctx.activity,
+    }),
+  );
   if (options?.immediate || ctx.federation.outboxQueue == null) {
     if (options?.immediate) {
       logger.debug(
@@ -7656,40 +7783,41 @@ async function forwardActivityInternal<TContextData>(
     }
     observation?.setPhase("request-preparation");
     const promises: Promise<void>[] = [];
-    for (const inbox in inboxes) {
-      const delivery = observation?.delivery(inbox);
-      let sending: Promise<void>;
-      try {
-        sending = sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
-          observation: delivery,
-          allowPrivateAddress: ctx.federation.allowPrivateAddress,
-          keys,
-          activity: ctx.activity,
-          activityId: ctx.activityId,
-          activityType: ctx.activityType,
-          sharedInbox: inboxes[inbox].sharedInbox,
-          meterProvider: ctx.meterProvider,
-          tracerProvider: ctx.tracerProvider,
-          specDeterminer: new KvSpecDeterminer(
-            ctx.federation.kv,
-            ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
-            ctx.federation.firstKnock,
-            { specTtl: ctx.federation.httpMessageSignaturesSpecTtl },
-          ),
-        });
-      } catch (error) {
-        if (delivery != null) await delivery.failed(error);
-        throw error;
-      }
-      if (observation != null) {
-        // Preserve early rejections while the preparation observer is awaited.
+    try {
+      for (const inbox in inboxes) {
+        const delivery = observation?.delivery(inbox);
+        let sending: Promise<void>;
+        try {
+          sending = sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
+            observation: delivery,
+            allowPrivateAddress: ctx.federation.allowPrivateAddress,
+            keys,
+            activity: ctx.activity,
+            activityId: ctx.activityId,
+            activityType: ctx.activityType,
+            sharedInbox: inboxes[inbox].sharedInbox,
+            meterProvider: ctx.meterProvider,
+            tracerProvider: ctx.tracerProvider,
+            specDeterminer: new KvSpecDeterminer(
+              ctx.federation.kv,
+              ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
+              ctx.federation.firstKnock,
+              { specTtl: ctx.federation.httpMessageSignaturesSpecTtl },
+            ),
+          });
+        } catch (error) {
+          if (delivery != null) await delivery.failed(error);
+          throw error;
+        }
         sending.catch(() => {});
+        promises.push(sending);
+        if (delivery != null) await delivery.handoff({ type: "direct" });
       }
-      if (delivery != null) await delivery.handoff({ type: "direct" });
-      promises.push(sending);
+      if (observation != null) await observation.prepared("delivery");
+      await Promise.all(promises);
+    } finally {
+      await Promise.allSettled(promises);
     }
-    if (observation != null) await observation.prepared("delivery");
-    await Promise.all(promises);
     return true;
   }
   logger.debug("Enqueuing activity {activityId} to forward later.", {
@@ -7698,7 +7826,7 @@ async function forwardActivityInternal<TContextData>(
   });
   observation?.setPhase("request-preparation");
   if (!ctx.federation.manuallyStartQueue) {
-    ctx.federation._startQueueInternal(ctx.data);
+    ctx.federation._startQueueAutomatically(ctx.data);
   }
   observation?.setPhase("key-resolution");
   const keyJwkPairs: SenderKeyJwkPair[] = [];
@@ -7865,8 +7993,8 @@ export class InboxContextImpl<TContextData>
 
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],
@@ -7879,8 +8007,8 @@ export class InboxContextImpl<TContextData>
   ): Promise<void>;
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -7924,8 +8052,8 @@ export class OutboxContextImpl<TContextData>
 
   override sendActivity(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -8004,8 +8132,8 @@ export class OutboxContextImpl<TContextData>
 
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],
@@ -8018,8 +8146,8 @@ export class OutboxContextImpl<TContextData>
   ): Promise<void>;
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -8126,6 +8254,114 @@ export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
 
 function notFound(_request: Request): Response {
   return new Response("Not Found", { status: 404 });
+}
+
+function hasTopLevelProof(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    !Array.isArray(value) &&
+    globalThis.Object.prototype.hasOwnProperty.call(value, "proof")
+  );
+}
+
+function getContentFields(value: unknown): string {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return JSON.stringify(sortJsonKeys(value));
+  }
+  const record = { ...(value as Record<string, unknown>) };
+  delete record["@context"];
+  delete record.proof;
+  delete record.signature;
+  return JSON.stringify(sortJsonKeys(record));
+}
+
+function getContextFields(value: unknown): string {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return JSON.stringify(sortJsonKeys(value));
+  }
+  const context = (value as Record<string, unknown>)["@context"];
+  return JSON.stringify(sortJsonKeys(context ?? null));
+}
+
+function getProofEntries(value: unknown): unknown[] {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return [];
+  }
+  const proof = (value as Record<string, unknown>).proof;
+  if (proof == null) return [];
+  return Array.isArray(proof) ? proof : [proof];
+}
+
+function normalizeProofEntry(proof: unknown): unknown {
+  const stripped = stripContexts(proof);
+  if (
+    typeof stripped !== "object" ||
+    stripped == null ||
+    Array.isArray(stripped)
+  ) {
+    return stripped;
+  }
+  const record = { ...(stripped as Record<string, unknown>) };
+  if (typeof record.created === "string") {
+    try {
+      record.created = Temporal.Instant.from(record.created).toString();
+    } catch {
+      // Keep unrecognized timestamps as they are.
+    }
+  }
+  return record;
+}
+
+function getProofEntryFields(proof: unknown): string {
+  return JSON.stringify(sortJsonKeys(normalizeProofEntry(proof)));
+}
+
+function getProofFields(value: unknown): string {
+  return JSON.stringify(getProofEntries(value).map(getProofEntryFields).sort());
+}
+
+async function getUncapturedProofs(
+  activity: Activity,
+  capturedJsonLd: unknown,
+  contextLoader: DocumentLoader,
+): Promise<DataIntegrityProof[]> {
+  const capturedProofs = new Set(
+    getProofEntries(capturedJsonLd).map(getProofEntryFields),
+  );
+  const retainedProofs: DataIntegrityProof[] = [];
+  for await (const proof of activity.getProofs({ contextLoader })) {
+    const proofJsonLd = await proof.toJsonLd({
+      format: "compact",
+      contextLoader,
+    });
+    if (!capturedProofs.has(getProofEntryFields(proofJsonLd))) {
+      retainedProofs.push(proof);
+    }
+  }
+  return retainedProofs;
+}
+
+function stripContexts(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripContexts);
+  if (typeof value !== "object" || value == null) return value;
+  const record = { ...(value as Record<string, unknown>) };
+  delete record["@context"];
+  delete record.signature;
+  for (const key of globalThis.Object.keys(record)) {
+    record[key] = stripContexts(record[key]);
+  }
+  return record;
+}
+
+function sortJsonKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortJsonKeys);
+  if (typeof value !== "object" || value == null) return value;
+  return globalThis.Object.fromEntries(
+    globalThis.Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, item]) => [key, sortJsonKeys(item)]),
+  );
 }
 
 function notAcceptable(_request: Request): Response {

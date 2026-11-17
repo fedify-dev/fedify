@@ -5,9 +5,7 @@ import { join } from "node:path";
 // Nest.js currently declares CommonJS paths that its build does not emit.
 // The declaration mismatch is also tracked in check_types.ts. Keep this
 // exception limited to those exact targets until that separate fix lands.
-const knownMissingBuildTargets = new Map([
-  ["@fedify/nestjs", new Set(["dist/index.d.ts", "dist/index.js"])],
-]);
+const knownMissingBuildTargets = new Map([]);
 
 function exportTargets(value) {
   if (typeof value === "string")

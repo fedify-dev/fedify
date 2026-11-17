@@ -132,8 +132,8 @@ const NOTE_QUOTE_CONTEXT = [
 ] as const;
 
 const QUOTE_REQUEST_CONTEXT = [
-  "https://w3id.org/identity/v1",
   "https://www.w3.org/ns/activitystreams",
+  "https://w3id.org/security/v1",
   "https://w3id.org/security/data-integrity/v1",
   "https://gotosocial.org/ns",
   {
@@ -168,8 +168,8 @@ const FEATURED_COLLECTION_CONTEXT = [
 ] as const;
 
 const DELETE_QUOTE_REQUEST_CONTEXT = [
-  "https://w3id.org/identity/v1",
   "https://www.w3.org/ns/activitystreams",
+  "https://w3id.org/security/v1",
   "https://w3id.org/security/data-integrity/v1",
   "https://gotosocial.org/ns",
   {
@@ -518,7 +518,16 @@ test("Note.toJsonLd()", async () => {
     ],
   });
   deepStrictEqual(await note.toJsonLd({ contextLoader: mockDocumentLoader }), {
-    "@context": NOTE_QUOTE_CONTEXT,
+    "@context": [
+      ...NOTE_QUOTE_CONTEXT,
+      {
+        tag: {
+          "@id": "https://www.w3.org/ns/activitystreams#tag",
+          "@type": "@id",
+          "@context": null,
+        },
+      },
+    ],
     tag: {
       "@context": [
         "https://www.w3.org/ns/activitystreams",
@@ -2023,7 +2032,6 @@ test({
     const jsonLd = await activity.toJsonLd();
     deepStrictEqual(jsonLd, {
       "@context": [
-        "https://w3id.org/identity/v1",
         "https://www.w3.org/ns/activitystreams",
         "https://w3id.org/security/v1",
         "https://w3id.org/security/data-integrity/v1",
@@ -3711,6 +3719,13 @@ test("Collection.toJsonLd() compacts embedded QuoteRequest", async () => {
           },
         },
         CONTEXT_HISTORY_CONTEXT,
+        {
+          items: {
+            "@id": "https://www.w3.org/ns/activitystreams#items",
+            "@type": "@id",
+            "@context": null,
+          },
+        },
       ],
       items: {
         "@context": QUOTE_REQUEST_CONTEXT,
@@ -5734,6 +5749,107 @@ test("FEP-0837: Full marketplace flow - Proposal => Offer => Accept => Confirmat
   deepStrictEqual(receiptObject.contextIds[0]?.href, agreementId.href);
 });
 
+test("FEP-fe34: Embedded singular values respect cross-origin policy", async () => {
+  const context = "https://www.w3.org/ns/activitystreams";
+  const victim = "https://victim.example/notes/1";
+
+  for (const ownerId of [null, "https://attacker.example/create"]) {
+    for (const crossOrigin of [undefined, "throw", "trust"] as const) {
+      // Anonymous parents must enforce the same boundary as named parents.
+      const create = await Create.fromJsonLd({
+        "@context": context,
+        type: "Create",
+        ...(ownerId == null ? {} : { id: ownerId }),
+        object: {
+          "@context": context,
+          type: "Note",
+          id: victim,
+          content: "forged",
+        },
+      });
+      const options = {
+        crossOrigin,
+        documentLoader: (url: string) =>
+          Promise.resolve({
+            documentUrl: url,
+            contextUrl: null,
+            document: {
+              "@context": context,
+              type: "Note",
+              id: victim,
+              content: "genuine",
+            },
+          }),
+      };
+      if (crossOrigin !== "trust") {
+        strictEqual(
+          await create.getObject({ ...options, dereference: false }),
+          null,
+        );
+      }
+      const result = await create.getObject(options);
+      assertInstanceOf(result, Note);
+      strictEqual(result.id?.href, victim);
+      strictEqual(
+        result.content,
+        crossOrigin === "trust" ? "forged" : "genuine",
+      );
+    }
+  }
+});
+
+test("FEP-fe34: Embedded plural values respect cross-origin policy", async () => {
+  const context = "https://www.w3.org/ns/activitystreams";
+  const victim = "https://victim.example/notes/1";
+
+  for (const ownerId of [null, "https://attacker.example/collection"]) {
+    for (const crossOrigin of [undefined, "throw", "trust"] as const) {
+      const collection = await Collection.fromJsonLd({
+        "@context": context,
+        type: "Collection",
+        ...(ownerId == null ? {} : { id: ownerId }),
+        items: {
+          "@context": context,
+          type: "Note",
+          id: victim,
+          content: "forged",
+        },
+      });
+      const fetched: string[] = [];
+      const options = {
+        crossOrigin,
+        documentLoader: (url: string) => {
+          fetched.push(url);
+          return Promise.resolve({
+            documentUrl: url,
+            contextUrl: null,
+            document: {
+              "@context": context,
+              type: "Note",
+              id: victim,
+              content: "genuine",
+            },
+          });
+        },
+      };
+      const read = () => Array.fromAsync(collection.getItems(options));
+
+      const results = await read();
+      const contents = results.map((result) => {
+        assertInstanceOf(result, Note);
+        return result.content;
+      });
+      if (crossOrigin === "trust") {
+        deepStrictEqual(contents, ["forged"]);
+        deepStrictEqual(fetched, []);
+      } else {
+        deepStrictEqual(contents, ["genuine"]);
+        deepStrictEqual(fetched, [victim]);
+      }
+    }
+  }
+});
+
 function getAllProperties(
   type: TypeSchema,
   types: Record<string, TypeSchema>,
@@ -6185,7 +6301,41 @@ for (const typeUri in types) {
         ),
       ),
     ];
-    if (extraContexts.length === 0) {
+    const isolatedTerms: Record<string, Record<string, unknown>> = {
+      CryptographicKey: {
+        owner: {
+          "@id": "https://w3id.org/security#owner",
+          "@type": "@id",
+          "@context": null,
+        },
+      },
+      Commitment: {
+        resourceQuantity: {
+          "@id": "https://w3id.org/valueflows/ont/vf#resourceQuantity",
+          "@context": null,
+        },
+      },
+      Intent: {
+        availableQuantity: {
+          "@id": "https://w3id.org/valueflows/ont/vf#availableQuantity",
+          "@context": null,
+        },
+        minimumQuantity: {
+          "@id": "https://w3id.org/valueflows/ont/vf#minimumQuantity",
+          "@context": null,
+        },
+        resourceQuantity: {
+          "@id": "https://w3id.org/valueflows/ont/vf#resourceQuantity",
+          "@context": null,
+        },
+      },
+    };
+    if (isolatedTerms[type.name] != null) {
+      deepStrictEqual(jsonLd["@context"], [
+        ...defaultContexts,
+        isolatedTerms[type.name],
+      ]);
+    } else if (extraContexts.length === 0) {
       deepStrictEqual(jsonLd["@context"], type.defaultContext);
     } else {
       // Extra contexts follow the default ones in the order their terms are
@@ -6731,4 +6881,83 @@ test("portable verifiers suppress document logs only during dereferencing", asyn
   } finally {
     await reset();
   }
+});
+
+test("Note.fromJsonLd() accepts date-times without seconds", async () => {
+  const cases: readonly (readonly [string, string])[] = [
+    ["2024-01-01T10:00Z", "2024-01-01T10:00:00Z"],
+    ["2024-01-01T10:00+09:00", "2024-01-01T01:00:00Z"],
+    ["2024-01-01T10:00-05:00", "2024-01-01T15:00:00Z"],
+    ["2024-01-01T10:00", "2024-01-01T10:00:00Z"],
+    ["2024-01-01T10:00.5Z", "2024-01-01T10:00:00.5Z"],
+    ["2024-01-01T10:00.5+09:00", "2024-01-01T01:00:00.5Z"],
+    ["2024-01-01T10:00.5-05:00", "2024-01-01T15:00:00.5Z"],
+    ["2024-01-01T10:00.5", "2024-01-01T10:00:00.5Z"],
+  ];
+  for (const [published, expected] of cases) {
+    const note = await Note.fromJsonLd(
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Note",
+        published,
+      },
+      {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      },
+    );
+    // deepStrictEqual() cannot tell Temporal.Instant values apart.
+    strictEqual(
+      note.published?.toString(),
+      Temporal.Instant.from(expected).toString(),
+    );
+  }
+});
+
+test("Question.fromJsonLd() decodes closed values without seconds", async () => {
+  const parse = (closed: string | boolean) =>
+    Question.fromJsonLd(
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Question",
+        closed,
+      },
+      {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      },
+    );
+  const cases: readonly (readonly [string, string])[] = [
+    ["2024-01-01T10:00.5Z", "2024-01-01T10:00:00.5Z"],
+    ["2024-01-01T10:00.5+09:00", "2024-01-01T01:00:00.5Z"],
+  ];
+  for (const [closed, expected] of cases) {
+    const question = await parse(closed);
+    strictEqual(
+      question.closed?.toString(),
+      Temporal.Instant.from(expected).toString(),
+    );
+  }
+  await rejects(() => parse("2024-02-31T10:00.5Z"), RangeError);
+  await rejects(() => parse("Sat, 01 Jan 2024 10:00:00 GMT"), RangeError);
+  strictEqual((await parse(true)).closed, true);
+  strictEqual((await parse("not a date")).closed, null);
+});
+
+test("Note.fromJsonLd() rejects date-times that Temporal cannot parse", async () => {
+  await rejects(
+    () =>
+      Note.fromJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Note",
+          published: "Sat, 01 Jan 2024 10:00:00 GMT",
+        },
+        {
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+        },
+      ),
+    RangeError,
+  );
 });

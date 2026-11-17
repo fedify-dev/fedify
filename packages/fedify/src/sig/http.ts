@@ -6,8 +6,15 @@ import {
   type VerificationObservationOptions,
 } from "./verification.ts";
 import { CryptographicKey } from "@fedify/vocab";
-import { type DocumentLoader, FetchError } from "@fedify/vocab-runtime";
-import type { PublicFetchSession } from "@fedify/vocab-runtime/internal";
+import {
+  type CryptoKeyLike,
+  type DocumentLoader,
+  FetchError,
+} from "@fedify/vocab-runtime";
+import {
+  asCryptoKey,
+  type PublicFetchSession,
+} from "@fedify/vocab-runtime/internal";
 import { getLogger } from "@logtape/logtape";
 import {
   type MeterProvider,
@@ -169,11 +176,12 @@ export interface Rfc9421SignRequestOptions {
  */
 export async function signRequest(
   request: Request,
-  privateKey: CryptoKey,
+  privateKey: CryptoKeyLike,
   keyId: URL,
   options: SignRequestOptions = {},
 ): Promise<Request> {
   validateCryptoKey(privateKey, "private");
+  const signingKey = asCryptoKey(privateKey);
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   return await tracer.startActiveSpan("http_signatures.sign", async (span) => {
@@ -186,7 +194,7 @@ export async function signRequest(
         // Pass through test options if provided
         signed = await signRequestRfc9421(
           request,
-          privateKey,
+          signingKey,
           keyId,
           span,
           options.currentTime,
@@ -197,7 +205,7 @@ export async function signRequest(
         // Default to draft-cavage
         signed = await signRequestDraft(
           request,
-          privateKey,
+          signingKey,
           keyId,
           span,
           options.currentTime,
@@ -2279,7 +2287,7 @@ interface DoubleKnockHop {
  */
 export async function doubleKnock(
   request: Request,
-  identity: { keyId: URL; privateKey: CryptoKey },
+  identity: { keyId: URL; privateKey: CryptoKeyLike },
   options: DoubleKnockOptions = {},
 ): Promise<Response> {
   const { response } = await doubleKnockCore(
@@ -2308,7 +2316,7 @@ export async function doubleKnock(
  */
 export async function doubleKnockScoped<T>(
   request: Request,
-  identity: { keyId: URL; privateKey: CryptoKey },
+  identity: { keyId: URL; privateKey: CryptoKeyLike },
   options: DoubleKnockOptions,
   openHop: DoubleKnockOpenHop,
   consume: (response: Response) => Promise<T>,
@@ -2377,7 +2385,7 @@ function cancelResponseBody(response: Response, url: string): void {
 
 async function doubleKnockCore(
   request: Request,
-  identity: { keyId: URL; privateKey: CryptoKey },
+  identity: { keyId: URL; privateKey: CryptoKeyLike },
   options: DoubleKnockOptions,
   openHop: DoubleKnockOpenHop,
   observation?: DoubleKnockObservation,

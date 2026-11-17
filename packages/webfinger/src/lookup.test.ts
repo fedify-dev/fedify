@@ -1587,3 +1587,227 @@ nodeTest(
     }
   },
 );
+
+test("lookupWebFinger() caller abort releases a stalled session open", async () => {
+  const controller = new AbortController();
+  let finishOpen!: (session: PublicFetchSession) => void;
+  let closed = false;
+  const opening = new Promise<PublicFetchSession>((resolve) => {
+    finishOpen = resolve;
+  });
+  const lookup = lookupResourceWithDependencies(
+    "acct:alice@example.com",
+    {
+      signal: controller.signal,
+    },
+    { openHop: () => opening },
+  );
+  controller.abort();
+  deepStrictEqual(await settleWithin(lookup, 1000), null);
+  finishOpen({
+    url: new URL("https://example.com"),
+    fetch: () => {
+      throw new Error("fetch after abort");
+    },
+    close: () => {
+      closed = true;
+      return Promise.resolve();
+    },
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  ok(closed);
+});
+
+test("lookupWebFinger() deadline covers session opening", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const result = lookupWebFingerWithDependencies(
+    "acct:alice@example.com",
+    {
+      meterProvider,
+    },
+    {
+      timeoutMs: 20,
+      openHop: () => new Promise(() => {}),
+    },
+  );
+  deepStrictEqual(await settleWithin(result, 1000), null);
+  const measurement = recorder.getMeasurement("webfinger.lookup");
+  ok(measurement != null);
+  deepStrictEqual(
+    measurement.attributes["webfinger.lookup.result"],
+    "network_error",
+  );
+  deepStrictEqual(
+    measurement.attributes["activitypub.remote.host"],
+    "example.com",
+  );
+});
+
+test("lookupWebFinger() shares one deadline across redirects", async () => {
+  const descriptor: ResourceDescriptor = {
+    subject: "acct:alice@example.com",
+    links: [],
+  };
+  const pending: Promise<Response>[] = [];
+  const result = lookupResourceWithDependencies(
+    "acct:alice@example.com",
+    {},
+    {
+      timeoutMs: 100,
+      openHop: (url) =>
+        Promise.resolve({
+          url: new URL(url),
+          fetch: () => {
+            const response = new Promise<Response>((resolve) => {
+              setTimeout(() => {
+                resolve(
+                  url.includes("/final")
+                    ? new Response(JSON.stringify(descriptor))
+                    : new Response(null, {
+                        status: 302,
+                        headers: { Location: "/final" },
+                      }),
+                );
+              }, 60);
+            });
+            pending.push(response);
+            return response;
+          },
+          close: () => Promise.resolve(),
+        }),
+    },
+  );
+  deepStrictEqual(await settleWithin(result, 1000), null);
+  await Promise.all(pending);
+});
+
+test("lookupWebFinger() caller signal cannot extend its deadline", async () => {
+  const signal = AbortSignal.timeout(5000);
+  let reason: unknown;
+  const result = lookupResourceWithDependencies(
+    "acct:alice@example.com",
+    {
+      signal,
+    },
+    {
+      timeoutMs: 50,
+      openHop: (_url, effectiveSignal) => {
+        effectiveSignal?.addEventListener(
+          "abort",
+          () => {
+            reason = effectiveSignal.reason;
+          },
+          { once: true },
+        );
+        return new Promise(() => {});
+      },
+    },
+  );
+  deepStrictEqual(await settleWithin(result, 1000), null);
+  ok(!signal.aborted);
+  ok(reason instanceof DOMException);
+  deepStrictEqual(reason.name, "TimeoutError");
+});
+
+test("lookupWebFinger() deadline covers response headers", async () => {
+  let closed = false;
+  let fetchSignal: AbortSignal | null | undefined;
+  let fetchAborted = false;
+  const result = lookupResourceWithDependencies(
+    "acct:alice@example.com",
+    {},
+    {
+      timeoutMs: 20,
+      openHop: () =>
+        Promise.resolve({
+          url: new URL("https://example.com"),
+          fetch: (_input, init) => {
+            fetchSignal = init?.signal;
+            fetchSignal?.addEventListener(
+              "abort",
+              () => {
+                fetchAborted = true;
+              },
+              { once: true },
+            );
+            return new Promise(() => {});
+          },
+          close: () => {
+            closed = true;
+            return Promise.resolve();
+          },
+        }),
+    },
+  );
+  deepStrictEqual(await settleWithin(result, 1000), null);
+  ok(fetchSignal?.aborted);
+  ok(fetchAborted);
+  deepStrictEqual(fetchSignal.reason.name, "TimeoutError");
+  await Promise.resolve();
+  ok(closed);
+});
+
+test("lookupWebFinger() discards completed JSON when body stalls", async () => {
+  const descriptor: ResourceDescriptor = {
+    subject: "acct:alice@example.com",
+    links: [],
+  };
+  let cancelled!: () => void;
+  const cancellation = new Promise<void>((resolve) => {
+    cancelled = resolve;
+  });
+  const result = lookupResourceWithDependencies(
+    "acct:alice@example.com",
+    {},
+    {
+      timeoutMs: 20,
+      openHop: () =>
+        Promise.resolve({
+          url: new URL("https://example.com"),
+          fetch: () =>
+            Promise.resolve(
+              new Response(
+                new ReadableStream<Uint8Array>({
+                  start(controller) {
+                    controller.enqueue(
+                      new TextEncoder().encode(JSON.stringify(descriptor)),
+                    );
+                  },
+                  cancel() {
+                    cancelled();
+                  },
+                }),
+              ),
+            ),
+          close: async () => {},
+        }),
+    },
+  );
+  deepStrictEqual(await settleWithin(result, 1000), null);
+  await settleWithin(cancellation, 1000);
+});
+
+test("lookupWebFinger() accepts a response before its deadline", async () => {
+  const descriptor: ResourceDescriptor = {
+    subject: "acct:alice@example.com",
+    links: [],
+  };
+  deepStrictEqual(
+    await lookupResourceWithDependencies(
+      "acct:alice@example.com",
+      {},
+      {
+        timeoutMs: 1000,
+        openHop: () =>
+          Promise.resolve({
+            url: new URL("https://example.com"),
+            fetch: () =>
+              Promise.resolve(new Response(JSON.stringify(descriptor))),
+            close: async () => {},
+          }),
+      },
+    ),
+    descriptor,
+  );
+});

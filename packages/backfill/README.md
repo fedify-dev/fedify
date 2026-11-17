@@ -60,6 +60,39 @@ for await (
 }
 ~~~~
 
+Custom `BackfillDocumentLoader` implementations must validate an object's
+declared ID against the final response URL after redirects.  Fetching JSON
+and parsing it directly with `fromJsonLd()` loses that retrieval provenance.
+Pass a custom JSON-LD loader through `lookupObject()` instead:
+
+~~~~ typescript
+import { type DocumentLoader, lookupObject } from "@fedify/vocab";
+
+declare const customJsonLdLoader: DocumentLoader;
+
+const documentLoader = (iri: URL, options?: { signal?: AbortSignal }) =>
+  lookupObject(iri, {
+    crossOrigin: "ignore",
+    documentLoader: customJsonLdLoader,
+    signal: options?.signal,
+  });
+~~~~
+
+The JSON-LD loader must set `documentUrl` to the final response URL so
+`lookupObject()` can check its origin against the object's declared ID.
+`lookupObject()` checks only the top-level object's origin.  Backfill
+dereferences cross-origin embedded objects through the vocabulary accessors,
+which apply this check only to objects decoded with `fromJsonLd()` or
+`lookupObject()`.  Objects passed to a constructor are trusted as they are, so
+a loader must not build remote data with constructors.
+
+Backfill additionally ignores loader results whose ID origin differs from the
+requested IRI's origin, including otherwise valid cross-origin redirects.
+An ID with an opaque origin, such as a `did:` IRI, matches the requested IRI
+only when the two IRIs are identical.
+This does not replace the loader's validation: `BackfillDocumentLoader` does
+not expose the final response URL.
+
 The seed object itself is not yielded.  If it appears in the discovered
 collection, it is skipped by ID.
 
@@ -173,3 +206,6 @@ propagate.
 Dereferenced documents are cached in memory for one `backfill()` traversal.
 Applications that need persistent or shared caching can provide it through
 the `documentLoader`.
+
+Backfilled objects are unverified remote data.  Applications should verify
+their authenticity before persisting or otherwise trusting them.

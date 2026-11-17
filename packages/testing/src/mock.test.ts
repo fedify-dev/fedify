@@ -2993,3 +2993,64 @@ test("MockFederation explicit loaders take precedence over private-address defau
     strictEqual(context.contextLoader, contextLoader);
   }
 });
+
+test("receiveActivity keeps the default portable object verifier", async () => {
+  const did = "did:key:z6Mkabc";
+  const compatibleNoteId = `https://gw.example/.well-known/apgateway/${did}/objects/1`;
+  const mockFederation = createFederation<null>({
+    contextData: null,
+    documentLoader: (url) =>
+      url === compatibleNoteId
+        ? Promise.resolve({
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              id: `ap://${did}/objects/1`,
+              type: "Note",
+              content: "Portable note",
+            },
+          })
+        : mockDocumentLoader(url),
+    contextLoader: mockDocumentLoader,
+  });
+  let object: unknown;
+  mockFederation
+    .setInboxListeners("/users/{identifier}/inbox")
+    .on(Create, async (_ctx, activity) => {
+      object = await activity.getObject();
+    });
+  let calls = 0;
+  const activity = new Create(
+    {
+      id: new URL("https://example.com/activities/1"),
+      actor: new URL("https://example.com/users/alice"),
+      object: new URL(compatibleNoteId),
+    },
+    {
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: () => {
+        calls++;
+        return Promise.resolve({ verified: true as const });
+      },
+    },
+  );
+  const records: LogRecord[] = [];
+  await reset();
+  try {
+    await configure({
+      sinks: { buffer: (record: LogRecord) => records.push(record) },
+      loggers: [
+        { category: ["fedify", "vocab", "portable"], sinks: ["buffer"] },
+        { category: ["logtape", "meta"], sinks: [] },
+      ],
+    });
+    await mockFederation.receiveActivity(activity);
+  } finally {
+    await reset();
+  }
+  deepStrictEqual(records, []);
+  ok(object instanceof Note);
+  strictEqual(calls, 1);
+});
+import { configure, type LogRecord, reset } from "@logtape/logtape";

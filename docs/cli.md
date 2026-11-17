@@ -214,6 +214,7 @@ raw = false
 bestEffort = false
 showFavicon = true
 showMetadata = false
+timeout = 10  # seconds
 ~~~~
 
 All configuration options are optional.  Command-line arguments always take
@@ -1483,6 +1484,17 @@ the value `MyApp/1.0`, run the below command:
 
 ~~~~ sh
 fedify nodeinfo --user-agent MyApp/1.0 mastodon.social
+~~~~
+
+### `-T`/`--timeout`: NodeInfo lookup deadline
+
+The NodeInfo lookup defaults to a 10-second timeout.  Use `-T`/`--timeout` to
+allow a different number of seconds for discovery, redirects, and reading the
+document.  A timeout reports an error distinct from a missing or invalid
+NodeInfo document:
+
+~~~~ sh
+fedify nodeinfo --timeout 30 mastodon.social
 ~~~~
 
 

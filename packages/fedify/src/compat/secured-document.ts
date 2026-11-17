@@ -4,6 +4,8 @@
  * @internal
  */
 export interface OutgoingNormalizationOptions {
+  /** Leave the entire document unchanged if any node carries a signature. */
+  readonly preserveSecuredDocuments?: boolean;
   /**
    * Whether to leave a nested self-contained secured document untouched.
    *

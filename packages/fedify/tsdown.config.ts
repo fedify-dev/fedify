@@ -9,6 +9,8 @@ import {
   temporalPolyfillIntro,
 } from "../../scripts/tsdown/temporal.mts";
 
+const workersTests = process.env.FEDIFY_TEST_CFWORKERS === "true";
+
 function isTestingHelperImporter(importer: string | undefined): boolean {
   const normalized = importer?.replaceAll(sep, "/");
   return normalized?.includes("/src/testing/") ?? false;
@@ -60,14 +62,14 @@ export default [
       neverBundle: (id: string, parentId?: string) => {
         if (id.startsWith("node:")) return true;
         if (id !== "@fedify/fixture") return;
-        return !isTestingHelperImporter(parentId);
+        return !workersTests && !isTestingHelperImporter(parentId);
       },
-      // Bundle @fedify/fixture back in for src/testing/ files (needed for
-      // cfworkers), while keeping it external for test files so that
-      // pnpm pack --recursive does not try to resolve the private package:
+      // Workers need one bundled fixture registry shared by helpers and tests.
+      // Normal builds keep it external for test files so that pnpm pack
+      // --recursive does not try to resolve the private package:
       alwaysBundle: (id: string, importer: string | undefined) => {
         if (id !== "@fedify/fixture") return;
-        return isTestingHelperImporter(importer);
+        return workersTests || isTestingHelperImporter(importer);
       },
     },
     inputOptions: {

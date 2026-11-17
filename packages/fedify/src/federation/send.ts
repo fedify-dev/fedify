@@ -1,7 +1,11 @@
 import { takeCapturedDiagnostic } from "./outbound-capture.ts";
 import { ResponseBodyPump } from "./outbound-body.ts";
 import type { Recipient } from "@fedify/vocab";
-import { FetchError, UrlError } from "@fedify/vocab-runtime";
+import {
+  type CryptoKeyLike,
+  FetchError,
+  UrlError,
+} from "@fedify/vocab-runtime";
 import {
   openDirectFetch,
   openPublicFetch,
@@ -194,13 +198,18 @@ export function extractInboxes({
 
 /**
  * A key pair for an actor who sends an activity.
+ *
+ * The private key type is parameterized so that Fedify can accept keys from
+ * `node:crypto` at its input boundaries while `SenderKeyPair` still exposes the
+ * ambient `CryptoKey` type by default.
+ * @template TKey The type of the private key.
  * @since 0.10.0
  */
-export interface SenderKeyPair {
+export interface SenderKeyPair<TKey extends CryptoKeyLike = CryptoKey> {
   /**
    * The actor's private key to sign the request.
    */
-  readonly privateKey: CryptoKey;
+  readonly privateKey: TKey;
 
   /**
    * The public key ID that corresponds to the private key.
@@ -242,7 +251,7 @@ export interface SendActivityParameters {
    * authenticated by its own proof.
    * @since 0.10.0
    */
-  readonly keys: readonly SenderKeyPair[];
+  readonly keys: readonly SenderKeyPair<CryptoKeyLike>[];
 
   /**
    * The inbox URL to send the activity to.
@@ -296,6 +305,9 @@ export interface SendActivityDependencies {
    * `openDirectFetch()` if private addresses are allowed).
    */
   readonly openHop?: DoubleKnockOpenHop;
+
+  /** The delivery deadline in milliseconds, for tests. */
+  readonly timeoutMs?: number;
 }
 
 /**
@@ -304,7 +316,8 @@ export interface SendActivityDependencies {
  * @param parameters The parameters for sending the activity.
  *                   See also {@link SendActivityParameters}.
  * @param deps The dependencies, for tests.
- * @throws {Error} If the activity fails to send.
+ * @throws {FetchError} If the delivery times out before receiving a response.
+ * @throws {SendActivityError} If the inbox returns an unsuccessful response.
  */
 export function sendActivity(
   options: SendActivityParameters,
@@ -396,6 +409,31 @@ const MAX_ERROR_RESPONSE_BODY_BYTES = 1024;
 // Diagnostic previews must not indefinitely delay an already known HTTP failure.
 // This budget is independent of opt-in application response-body capture.
 const ERROR_RESPONSE_BODY_TIMEOUT_MS = 1000;
+const SEND_ACTIVITY_TIMEOUT_MS = 30_000;
+
+function raceWithAbort<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener("abort", onAbort);
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+}
 
 function getActivityActorId(activity: unknown): string | undefined {
   if (!isRecord(activity)) return undefined;
@@ -423,6 +461,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 async function readLimitedResponseBody(
   response: Response,
   maxBytes: number,
+  signal: AbortSignal,
 ): Promise<string> {
   const captured = takeCapturedDiagnostic(response);
   if (captured !== undefined) return captured;
@@ -440,7 +479,8 @@ async function readLimitedResponseBody(
   let timedOut = false;
   try {
     while (true) {
-      const result = await pump.read();
+      signal.throwIfAborted();
+      const result = await raceWithAbort(pump.read(), signal);
       if (result == null) {
         timedOut = true;
         break;
@@ -507,13 +547,46 @@ async function sendActivityInternal(
   const federationMetrics = getFederationMetrics(meterProvider);
   const started = performance.now();
   let deliverySuccess = false;
+  const timeoutMs = deps.timeoutMs ?? SEND_ACTIVITY_TIMEOUT_MS;
+  const controller = new AbortController();
+  const { signal } = controller;
+  const timer = setTimeout(
+    () =>
+      controller.abort(
+        new DOMException("The delivery timed out.", "TimeoutError"),
+      ),
+    timeoutMs,
+  );
+  function timeoutFailure(error: unknown): unknown {
+    if (!signal.aborted || error instanceof SendActivityError) return error;
+    const failure = new FetchError(
+      inbox.href,
+      `Timed out after ${timeoutMs} ms`,
+    );
+    failure.cause = signal.reason;
+    return failure;
+  }
   const openUnvalidatedHop: DoubleKnockOpenHop =
     deps.openHop ??
-    (allowPrivateAddress ? openDirectFetch : (url) => openPublicFetch(url));
+    (allowPrivateAddress
+      ? openDirectFetch
+      : (url) => openPublicFetch(url, { signal }));
   async function openHop(url: string): Promise<PublicFetchSession> {
     let session: PublicFetchSession;
     try {
-      session = await openUnvalidatedHop(url);
+      signal.throwIfAborted();
+      const opening = openUnvalidatedHop(url);
+      opening.then(
+        (lateSession) => {
+          if (signal.aborted) void closeAfterError(lateSession, logger);
+        },
+        () => {},
+      );
+      session = await raceWithAbort(opening, signal);
+      if (signal.aborted) {
+        void closeAfterError(session, logger);
+        signal.throwIfAborted();
+      }
     } catch (error) {
       if (error instanceof UrlError && error.reason === "dns") {
         attempt?.failure({ kind: "transport", phase: "validation", error });
@@ -558,7 +631,8 @@ async function sendActivityInternal(
   } catch (error) {
     // Initial DNS failures are transport failures, while initial policy
     // rejections remain outside delivery accounting and request creation.
-    if (error instanceof FetchError) {
+    const failure = timeoutFailure(error);
+    if (failure instanceof FetchError) {
       federationMetrics.recordDelivery(
         inbox,
         getDurationMs(started),
@@ -566,7 +640,14 @@ async function sendActivityInternal(
         activityType,
       );
     }
-    throw error;
+    if (signal.aborted) {
+      logger.error(
+        "Failed to send activity {activityId} to {inbox}:\n{error}",
+        { activityId, inbox: inbox.href, error: failure },
+      );
+    }
+    clearTimeout(timer);
+    throw failure;
   }
   let initialPending = true;
   const openDeliveryHop: DoubleKnockOpenHop = (url) => {
@@ -599,12 +680,13 @@ async function sendActivityInternal(
         headers,
         body,
         redirect: "manual",
+        signal,
       });
     } catch (error) {
       attempt?.failure({ kind: "local", phase: "request-preparation", error });
       throw error;
     }
-    let rsaKey: SenderKeyPair | null = null;
+    let rsaKey: SenderKeyPair<CryptoKeyLike> | null = null;
     for (const key of keys) {
       if (key.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5") {
         rsaKey = key;
@@ -632,9 +714,30 @@ async function sendActivityInternal(
       );
     }
     const consume = (response: Response) => {
-      return consumeSendActivityResponse(response, inbox);
+      return consumeSendActivityResponse(response, inbox, signal);
     };
     let outcome: SendActivityOutcome;
+    const boundedSpecDeterminer:
+      | HttpMessageSignaturesSpecDeterminer
+      | undefined =
+      specDeterminer == null
+        ? undefined
+        : {
+            determineSpec(origin) {
+              signal.throwIfAborted();
+              return raceWithAbort(
+                Promise.resolve(specDeterminer.determineSpec(origin)),
+                signal,
+              );
+            },
+            rememberSpec(origin, spec) {
+              signal.throwIfAborted();
+              return raceWithAbort(
+                Promise.resolve(specDeterminer.rememberSpec(origin, spec)),
+                signal,
+              );
+            },
+          };
     try {
       outcome =
         rsaKey == null
@@ -643,11 +746,12 @@ async function sendActivityInternal(
               openDeliveryHop,
               consume,
               attempt,
+              signal,
             )
           : await doubleKnockScoped(
               request,
               rsaKey,
-              { tracerProvider, specDeterminer },
+              { tracerProvider, specDeterminer: boundedSpecDeterminer, signal },
               openDeliveryHop,
               consume,
               attempt == null
@@ -664,10 +768,11 @@ async function sendActivityInternal(
       attempt?.unknown(error);
       // A refused redirect remains a policy error rather than a transport
       // failure, just as a refused initial inbox does.
+      const boundedError = timeoutFailure(error);
       const failure =
-        error instanceof FetchError || error instanceof UrlError
-          ? error
-          : createFetchError(inbox.href, error);
+        boundedError instanceof FetchError || boundedError instanceof UrlError
+          ? boundedError
+          : createFetchError(inbox.href, boundedError);
       logger.error(
         "Failed to send activity {activityId} to {inbox}:\n{error}",
         { activityId, inbox: inbox.href, error: failure },
@@ -723,6 +828,7 @@ async function sendActivityInternal(
       );
     }
   } finally {
+    clearTimeout(timer);
     // Once handed to scoped delivery, it owns closing the session.  Until
     // then, cover failures during request construction or body preparation.
     if (initialPending) await initialSession.close();
@@ -759,6 +865,7 @@ function cancelResponseBody(response: Response, url: string): void {
 async function consumeSendActivityResponse(
   response: Response,
   inbox: URL,
+  signal: AbortSignal,
 ): Promise<SendActivityOutcome> {
   if (response.ok) {
     cancelResponseBody(response, response.url || inbox.href);
@@ -769,9 +876,13 @@ async function consumeSendActivityResponse(
     error = await readLimitedResponseBody(
       response,
       MAX_ERROR_RESPONSE_BODY_BYTES,
+      signal,
     );
   } catch (_) {
     error = "";
+  }
+  if (signal.aborted) {
+    error = "(timed out reading response body)";
   }
   return {
     ok: false,
@@ -799,18 +910,20 @@ export async function fetchWithValidatedRedirects<T>(
   openHop: DoubleKnockOpenHop,
   consume: (response: Response) => Promise<T>,
   attempt?: OutboundAttemptObservation,
+  signal?: AbortSignal,
 ): Promise<T> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
   let body: string | undefined = await request.clone().text();
   for (let redirects = 0; ; redirects++) {
+    signal?.throwIfAborted();
     const session = await openHop(request.url);
     let response: Response;
     try {
       // Bun also needs the redirect option on fetch() itself.
       response = await (attempt == null
-        ? session.fetch(request, { redirect: "manual" })
+        ? session.fetch(request, { redirect: "manual", signal })
         : attempt.fetch(request, () =>
-            session.fetch(request, { redirect: "manual" }),
+            session.fetch(request, { redirect: "manual", signal }),
           ));
     } catch (error) {
       await closeAfterError(session, logger);
@@ -865,7 +978,13 @@ export async function fetchWithValidatedRedirects<T>(
       ])
         headers.delete(name);
     }
-    request = new Request(url, { method, headers, body, redirect: "manual" });
+    request = new Request(url, {
+      method,
+      headers,
+      body,
+      redirect: "manual",
+      signal: signal ?? request.signal,
+    });
   }
 }
 

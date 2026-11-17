@@ -5,10 +5,6 @@
 [![Matrix][Matrix badge]][Matrix]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
-> [!IMPORTANT]
-> In a CommonJS-based NestJS project, this ESM-only module requires setting
-> `NODE_OPTIONS=--experimental-require-module` at runtime
-
 This package provides a simple way to integrate [Fedify] with [NestJS].
 
 The integration code looks like this:

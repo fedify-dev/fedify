@@ -870,6 +870,14 @@ class MockFederation<TContextData> implements Federation<TContextData> {
             {
               documentLoader: this.documentLoader,
               contextLoader: this.contextLoader,
+              // _verifyPortableObject is an internal cross-package contract
+              // documented in @fedify/vocab-tools.  clone() does not inherit
+              // the default verifier, so pass it on:
+              // oxlint-disable-next-line anti-slop/no-reflect-get
+              verifyPortableObject: Reflect.get(
+                activity,
+                "_verifyPortableObject",
+              ),
             },
           )
         : activity;

@@ -1,8 +1,8 @@
 import type { Activity } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { CryptoKeyLike, DocumentLoader } from "@fedify/vocab-runtime";
 import { isCompatibleEf61Iri } from "@fedify/vocab-runtime/internal/portable-dereference";
 import { getLogger } from "@logtape/logtape";
-import type { TracerProvider } from "@opentelemetry/api";
+import { trace, type TracerProvider } from "@opentelemetry/api";
 import {
   containsCompoundPortableObject,
   findEmbeddedProofWithoutContext,
@@ -14,6 +14,10 @@ import {
   isPortableKeyId,
 } from "../sig/portable-key-id.ts";
 import { signObject } from "../sig/proof.ts";
+import {
+  prepareActivityJsonLd,
+  signActivityJsonLd,
+} from "../compat/delivery-jsonld.ts";
 
 /**
  * A key that could create an Object Integrity Proof for an outgoing activity.
@@ -23,7 +27,7 @@ export interface ProofSigningCandidate {
   /** The verification method ID the proof will name. */
   readonly verificationMethod: URL;
   /** The private key.  Keys other than Ed25519 are ignored. */
-  readonly privateKey: CryptoKey;
+  readonly privateKey: CryptoKeyLike;
 }
 
 /** @internal */
@@ -41,6 +45,8 @@ export interface SignOutgoingActivityOptions {
 /** @internal */
 export interface SignOutgoingActivityResult {
   readonly activity: Activity;
+  /** Exact normalized JSON signed by this call, when normalization changed it. */
+  readonly jsonLd?: unknown;
   /** Whether the resulting activity carries at least one proof. */
   readonly hasProof: boolean;
   /** Whether this call created a proof. */
@@ -151,6 +157,21 @@ export async function signOutgoingActivity(
   const sign = async (
     selected: readonly ProofSigningCandidate[],
   ): Promise<SignOutgoingActivityResult> => {
+    const prepared = !hasProof
+      ? await prepareActivityJsonLd(activity, contextLoader)
+      : undefined;
+    if (prepared != null) {
+      const signed = await signActivityJsonLd(
+        activity,
+        prepared,
+        selected.map(({ verificationMethod, privateKey }) => ({
+          keyId: verificationMethod,
+          privateKey,
+        })),
+        { tracerProvider: tracerProvider ?? trace.getTracerProvider() },
+      );
+      return { ...signed, hasProof: true, proofCreated: true };
+    }
     for (const { verificationMethod, privateKey } of selected) {
       activity = await signObject(activity, privateKey, verificationMethod, {
         contextLoader,
