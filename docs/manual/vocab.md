@@ -873,6 +873,52 @@ require fetching for verification are skipped.
 
 [`fetch()`]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
 
+### Observing accepted documents
+
+In Fedify 2.5.0 and later, plural dereferencing accessors accept an
+`onAcceptedDocument` callback.  It receives the parsed target and the exact
+`RemoteDocument` returned by the document loader.  When a portable lookup uses
+gateways, this is the response from the gateway that succeeded.  The callback
+runs synchronously once per newly fetched, accepted instance, before the
+accessor caches or yields it.
+
+~~~~ typescript twoslash
+import type { Note, RemoteDocument } from "@fedify/vocab";
+declare const note: Note;
+// ---cut-before---
+const acceptedResponses = new WeakMap<object, RemoteDocument>();
+for await (const target of note.getReplyTargets({
+  onAcceptedDocument(target, response) {
+    acceptedResponses.set(target, response);
+  },
+})) {
+  const response = acceptedResponses.get(target);
+  console.log(target.id?.href, response?.documentUrl);
+}
+~~~~
+
+Embedded targets, cache hits, rejected documents, and calls with
+`dereference: false` produce no callback.  Only plural accessors support the
+option: fetching through a singular accessor first also means a later plural
+cache hit produces no callback.  Install the callback before the first fetch
+and retain your own target-to-response map if you need the association later.
+The callback option is not inherited by fetched children.
+
+Acceptance does not imply proof verification.  Unverified portable claims
+that the accessor accepts are reported on every fetching pass because they
+are not cached.
+
+Callback exceptions propagate even with `suppressError: true`.  The target
+remains uncached in the parent, so retrying fetches it again.  Use a synchronous
+callback: returned promises are not awaited, and their rejections are not
+handled.
+
+Custom accessor overrides must forward the option when calling the superclass
+accessor.  An override that fetches and parses targets itself must invoke the
+callback after accepting each target and before caching or yielding it.  The
+shared callback type, `AcceptedDocumentCallback<T>`, is exported from
+`@fedify/vocab` and `@fedify/vocab-runtime`.
+
 
 Property hydration
 ------------------

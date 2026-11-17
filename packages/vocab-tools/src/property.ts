@@ -74,6 +74,7 @@ async function* generateProperty(
         verifyPortableObject?: PortableObjectVerifier;
         inheritPortableObjectVerifier?: boolean;
       } = {},
+      accepted?: {response?: RemoteDocument}
     ): Promise<${getTypeNames(property.range, types)} | null> {
       const documentLoader =
         options.documentLoader ?? this._documentLoader ?? getDocumentLoader();
@@ -124,6 +125,11 @@ async function* generateProperty(
                   verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
+              onAcceptedResponse: accepted == null
+                ? undefined
+                : (response) => {
+                    accepted.response = response;
+                  },
             });
             if (obj != null) {
               span.setAttribute(
@@ -248,6 +254,10 @@ async function* generateProperty(
                 // @ts-ignore: obj.constructor always has a typeId.
                 obj.constructor.typeId.href
               );
+              // Store accepted document for
+              if (accepted != null) {
+                accepted.response = fetchResult;
+              }
               span.end();
               return obj;
             }
@@ -576,6 +586,14 @@ async function* generateProperty(
            * @since 2.4.0
            */
           inheritPortableObjectVerifier?: boolean;
+          /**
+           * Called synchronously before caching or yielding each newly
+           * fetched, accepted target.  Not called for embedded or cached
+           * targets.  See {@link AcceptedDocumentCallback} for the full
+           * callback contract.
+           * @since 2.5.0
+           */
+          onAcceptedDocument?: AcceptedDocumentCallback<${getTypeNames(property.range, types)}>;
         } = {}
       ): AsyncIterable<${getTypeNames(property.range, types)}> {
         if (this._warning != null) {
@@ -619,9 +637,15 @@ async function* generateProperty(
           }
           if (v instanceof URL) {
             if (options.dereference === false) continue;
+            const accepted = options.onAcceptedDocument == null ?
+            undefined
+            : { response: undefined as RemoteDocument | undefined}
             const fetched =
-              await this.#fetch${pascalCase(property.singularName)}(v, options);
+              await this.#fetch${pascalCase(property.singularName)}(v, options, accepted);
             if (fetched == null) continue;
+            if (accepted?.response != null && options.onAcceptedDocument != null) {
+              options.onAcceptedDocument(fetched, accepted.response);
+            }
             // Not cached, so that it is verified when the portable object
             // policy applies later:
             if (isUnverifiedPortableClaim(fetched)) {

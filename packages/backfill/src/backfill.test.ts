@@ -708,6 +708,66 @@ describe("ancestor collection discovery", () => {
     strictEqual(verifications, 1);
   });
 
+  test("custom portable serialization retains the loaded ancestor's verifier", async () => {
+    const portableParent = parseIri("ap://did:key:z6Mkabc/parent");
+    const portableRoot = parseIri("ap://did:key:z6Mkabc/root");
+    let verifications = 0;
+    class Parent extends Note {
+      override toJsonLd() {
+        return Promise.resolve({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Note",
+          id: portableParent.href,
+          inReplyTo: portableRoot.href,
+        });
+      }
+    }
+    let acceptedTarget: Note | undefined;
+    let acceptedDocument: unknown;
+    class Seed extends Note {
+      override async *getReplyTargets(
+        options: Parameters<Note["getReplyTargets"]>[0] = {},
+      ) {
+        yield* super.getReplyTargets({
+          ...options,
+          onAcceptedDocument: (target, response) => {
+            ok(target instanceof Note);
+            acceptedTarget = target;
+            acceptedDocument = response.document;
+            options.onAcceptedDocument?.(target, response);
+          },
+        });
+      }
+    }
+    const parent = new Parent(
+      { id: portableParent, replyTarget: portableRoot },
+      {
+        verifyPortableObject: () => {
+          verifications++;
+          return Promise.resolve({ verified: false });
+        },
+      },
+    );
+    const context = loader([
+      [parentId.href, parent],
+      [portableRoot.href, new Note({ id: portableRoot })],
+    ]);
+    const results = await collect(
+      context,
+      new Seed({ replyTarget: parentId }),
+      {
+        contextDiscovery: "ancestors",
+      },
+    );
+    ok(acceptedTarget != null);
+    const serialized = JSON.stringify(await acceptedTarget.toJsonLd());
+    strictEqual(serialized === JSON.stringify(acceptedDocument), false);
+    ok(serialized.includes("ap+ef61://"));
+    deepStrictEqual(results, []);
+    deepStrictEqual(context.requests, [parentId.href, portableRoot.href]);
+    strictEqual(verifications, 1);
+  });
+
   test("custom fetching accessors retain source defaults without caching targets", async () => {
     const historyId = parseIri("ap://did:key:z6Mkabc/history");
     const parent = await Note.fromJsonLd(
@@ -732,7 +792,53 @@ describe("ancestor collection discovery", () => {
       ) {
         ok(options.documentLoader != null);
         const document = await options.documentLoader(parentId.href);
-        yield await Note.fromJsonLd(document.document);
+        const target = await Note.fromJsonLd(document.document);
+        options.onAcceptedDocument?.(target, document);
+        yield target;
+      }
+    }
+    const context = loader([[parentId.href, parent]]);
+    const results = await collect(context, new FetchingReply({}), {
+      contextDiscovery: "ancestors",
+      contextSource: "history-first",
+    });
+    deepStrictEqual(results, []);
+    deepStrictEqual(context.requests, [parentId.href, historyId.href]);
+  });
+
+  test("accepted response identity preserves source policy when target serialization differs", async () => {
+    const historyId = parseIri("ap://did:key:z6Mkabc/history");
+    const parent = await Note.fromJsonLd(
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/fep/171b",
+        ],
+        type: "Note",
+        id: parentId.href,
+        contextHistory: {
+          type: "OrderedCollection",
+          id: historyId.href,
+          orderedItems: [{ type: "Note", id: sibling.id!.href }],
+        },
+      },
+      { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+    );
+    class FetchingReply extends Note {
+      override async *getReplyTargets(
+        options: Parameters<Note["getReplyTargets"]>[0] = {},
+      ) {
+        ok(options.documentLoader != null);
+        const document = await options.documentLoader(parentId.href);
+        const parsed = await Note.fromJsonLd(document.document);
+        const target = parsed.clone({ content: "Transformed by the accessor" });
+        strictEqual(
+          JSON.stringify(await target.toJsonLd()) ===
+            JSON.stringify(document.document),
+          false,
+        );
+        options.onAcceptedDocument?.(target, document);
+        yield target;
       }
     }
     const context = loader([[parentId.href, parent]]);

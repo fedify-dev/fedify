@@ -192,9 +192,15 @@ To be released.
     loader, including portable `ap://`, `ap+ef61://`, and FEP-ef61-compatible
     HTTPS identifiers. Errors cloning embedded history propagate instead of
     triggering fallback. [[#1250], [#1396] by Jiwon Kwon\]
+ -  Fixed ancestor discovery losing a loaded object's loader and verifier
+    defaults when its parsed target serializes differently from the loader
+    document.  Rejected loads cannot transfer their defaults to embedded
+    targets with matching serialization.  [[#1423], [#1445] by Jiwon Kwon\]
 
 [#1252]: https://github.com/fedify-dev/fedify/issues/1252
 [#1416]: https://github.com/fedify-dev/fedify/pull/1416
+[#1423]: https://github.com/fedify-dev/fedify/issues/1423
+[#1445]: https://github.com/fedify-dev/fedify/pull/1445
 
 ### @fedify/cfworkers
 
@@ -637,6 +643,12 @@ To be released.
     into JSON-LD.  The values are not verified, so validate them before use.
     [[#1272], [#1356]]
 
+ -  Added `onAcceptedDocument` to plural dereferencing accessors.  The
+    synchronous callback receives each newly fetched, accepted target and its
+    exact `RemoteDocument` before caching or yielding.  Embedded targets and
+    cache hits do not trigger it.  The `AcceptedDocumentCallback<T>` type is
+    also exported.  [[#1423], [#1445] by Jiwon Kwon\]
+
  -  Added the `attributionDomains` property to `Application`, `Group`,
     `Organization`, `Person`, and `Service`, so applications can publish the
     domains an actor claims for Mastodon's `fediverse:creator` link credits
@@ -727,6 +739,9 @@ To be released.
     `@fedify/vocab-tools`.  The writers accept the same `RawPropertyValue`
     shapes as the read functions, copy supplied JSON values, and reject
     malformed or cyclic input before decoding properties.  [[#1355], [#1420]]
+ -  Added the `AcceptedDocumentCallback<T>` type for callbacks that receive a
+    fetched vocabulary target and the exact loader response accepted for it.
+    [[#1423], [#1445] by Jiwon Kwon\]
  -  Added the [FEP-f799] context to the preloaded JSON-LD contexts.  The default
     document loader now resolves <https://w3id.org/fep/f799> locally, so
     otherwise valid inbound documents can be parsed or verified without
@@ -747,6 +762,9 @@ To be released.
     can now use `"@container": "@set"` or `"@container": "@list"` to match
     their published JSON-LD contexts, while existing term definitions keep
     validating as before.  [[#1234], [#1353]]
+ -  Added an `onAcceptedDocument` option to generated plural dereferencing
+    accessors so applications can associate fetched targets with their exact
+    accepted loader responses.  [[#1423], [#1445] by Jiwon Kwon\]
  -  Added non-functional `redundantProperties` support with ordered fallback
     to the first non-empty value set, preserving lists and graphs without
     merging synonyms.  Added `redundantPropertiesWrite: canonical` to write

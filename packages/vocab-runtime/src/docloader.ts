@@ -225,6 +225,32 @@ async function bufferErrorResponse(
 }
 
 /**
+ * Reports the exact loader response accepted for a fetched target.
+ *
+ * Called synchronously by plural accessors before caching or yielding a newly
+ * fetched target.  Receives the original loader response, including the
+ * winning gateway's response for portable objects.  Unverified portable
+ * claims trigger it on every fetch; acceptance does not imply verification.
+ *
+ * Not called for embedded targets, cache hits (including after a singular
+ * fetch), or `dereference: false`.  Overrides must forward the option;
+ * fetched children do not inherit it.
+ *
+ * Exceptions propagate even with `suppressError`, leaving the target uncached
+ * so a retry fetches again.  Use a synchronous callback: returned promises
+ * are not awaited, and their rejections are not handled.
+ *
+ * @typeParam T The target's vocabulary type.
+ * @param target The parsed target accepted by the accessor.
+ * @param response Loader response accepted for a fetched target.
+ * @since 2.5.0
+ */
+export type AcceptedDocumentCallback<T> = (
+  target: T,
+  response: RemoteDocument,
+) => void;
+
+/**
  * Gets a {@link RemoteDocument} from the given response.
  * @param url The URL of the document to load.
  * @param response The response to get the document from.

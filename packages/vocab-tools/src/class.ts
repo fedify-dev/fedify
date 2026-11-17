@@ -97,6 +97,7 @@ const RUNTIME_IMPORTS = [
   "type RawPropertyValue",
   "type RemoteDocument",
   "type VocabularyObject",
+  "type AcceptedDocumentCallback",
 ].join(",\n    ");
 
 /**

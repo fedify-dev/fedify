@@ -365,6 +365,15 @@ embedded or cached objects without fetching references. Singular accessors
 return `null` when fetching is required; plural accessors skip those values.
 Origin and portable-object trust checks still apply. The default is `true`.
 
+Plural dereferencing accessors also accept
+`onAcceptedDocument(target, response)` to report the exact accepted loader
+response before caching or yielding a newly fetched target. Embedded and cached
+targets produce no event; unverified portable claims report every fetch. Use a
+synchronous callback: exceptions propagate even with `suppressError`, and
+promises are not awaited. Custom overrides must forward the option or report
+accepted fetches themselves. See *docs/manual/vocab.md*, “Observing accepted
+documents,” for the contract.
+
 `clone()` is shallow: it copies property arrays but shares nested vocabulary
 objects and URLs.  In Fedify 2.5.0 and later, use synchronous `deepClone()` to
 resolve nested properties without hydrating the source's objects.  Replacement

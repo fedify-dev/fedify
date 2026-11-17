@@ -190,6 +190,13 @@ Per-object loader and portable-object verifier defaults remain effective
 regardless of strategy order. Discovery does not hydrate the seed or loaded
 ancestor objects.
 
+If you override a vocabulary object's `getReplyTargets()` accessor, forward
+the `onAcceptedDocument` option to the superclass accessor.  If your override
+fetches targets itself, invoke the callback for each accepted fetch so discovery
+can preserve the source object's defaults.  See
+[Observing accepted documents](./vocab.md#observing-accepted-documents) for the
+callback contract.
+
 Ancestor discovery deep-clones the seed and loaded ancestors, including their
 embedded object graphs. Large embedded collections can therefore increase
 memory use and copying time independently of `maxDepth`. Objects yielded by
