@@ -267,12 +267,12 @@ async function* generateProperty(
       }
       yield `
         if (options.crossOrigin !== "trust" && v?.id != null &&
-            this.id != null && v.id.origin !== this.id.origin &&
+            v.id.origin !== this.id?.origin &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           if (options.crossOrigin === "throw") {
             throw new Error(
               "The property object's @id (" + v.id.href + ") has a different " +
-              "origin than the property owner's @id (" + this.id.href + "); " +
+              "origin than the property owner's @id (" + (this.id?.href ?? null) + "); " +
               "refusing to return the object.  If you want to bypass this " +
               "check and are aware of the security implications, set the " +
               'crossOrigin option to "trust".'
@@ -284,7 +284,7 @@ async function* generateProperty(
             "return the object.  If you want to bypass this check and are " +
             "aware of the security implications, set the crossOrigin option " +
             'to "trust".',
-            { objectId: v.id.href, parentObjectId: this.id.href },
+            { objectId: v.id.href, parentObjectId: this.id?.href ?? null },
           );
           return null;
         }
@@ -377,12 +377,12 @@ async function* generateProperty(
       }
       yield `
           if (options.crossOrigin !== "trust" && v?.id != null &&
-              this.id != null && v.id.origin !== this.id.origin &&
-              !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
+              v.id.origin !== this.id?.origin &&
+              !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             if (options.crossOrigin === "throw") {
               throw new Error(
                 "The property object's @id (" + v.id.href + ") has a different " +
-                "origin than the property owner's @id (" + this.id.href + "); " +
+                "origin than the property owner's @id (" + (this.id?.href ?? null) + "); " +
                 "refusing to return the object.  If you want to bypass this " +
                 "check and are aware of the security implications, set the " +
                 'crossOrigin option to "trust".'
@@ -394,7 +394,7 @@ async function* generateProperty(
               "return the object.  If you want to bypass this check and are " +
               "aware of the security implications, set the crossOrigin " +
               'option to "trust".',
-              { objectId: v.id.href, parentObjectId: this.id.href },
+              { objectId: v.id.href, parentObjectId: this.id?.href ?? null },
             );
             continue;
           }

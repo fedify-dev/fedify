@@ -3,6 +3,7 @@
  *
  * @module
  */
+export type { CryptoKeyLike, CryptoKeyPairLike } from "@fedify/vocab-runtime";
 export {
   type AcceptSignatureMember,
   type AcceptSignatureParameters,

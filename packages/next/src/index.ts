@@ -48,8 +48,8 @@ type ErrorHandlers = Omit<FederationFetchOptions<unknown>, "contextData">;
  *   }
  * )
  *
- * // This config makes middleware process only requests with the
- * // "Accept" header matching the federation accept regex.
+ * // Run middleware for federation media types and NodeInfo paths, including
+ * // NodeInfo documents fetched with "Accept: application/json".
  * // More details: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional.
  * export const config = {
  *   runtime: "nodejs",
@@ -76,6 +76,7 @@ type ErrorHandlers = Omit<FederationFetchOptions<unknown>, "contextData">;
  *     },
  *     { source: "/.well-known/nodeinfo" },
  *     { source: "/.well-known/x-nodeinfo2" },
+ *     { source: "/nodeinfo/:path*" },
  *   ],
  * };
  * ```
@@ -100,6 +101,10 @@ async (request: Request) => {
   return await middleware(request);
 };
 
+/**
+ * Check for federation media types or a recognized NodeInfo path.
+ * NodeInfo paths are recognized regardless of the request headers.
+ */
 export const isFederationRequest = (request: Request): boolean =>
   [
     hasFederationHeader("accept"),
@@ -121,6 +126,12 @@ export const hasFederationHeader =
     return value ? FEDERATION_ACCEPT_REGEX.test(value) : false;
   };
 
+/**
+ * Check for a well-known NodeInfo path or a path under `/nodeinfo/`.
+ * This does not check whether a NodeInfo dispatcher is registered.
+ * Dispatchers at other paths require explicit delegation to
+ * {@link integrateFederation}.
+ */
 export const isNodeInfoRequest = (request: Request): boolean => {
   const url = new URL(request.url);
   return NODEINFO_PATHS.some((path) => url.pathname.startsWith(path));
@@ -129,6 +140,7 @@ export const isNodeInfoRequest = (request: Request): boolean => {
 const NODEINFO_PATHS = [
   "/.well-known/nodeinfo",
   "/.well-known/x-nodeinfo2",
+  "/nodeinfo/",
 ];
 
 const FEDERATION_ACCEPT_REGEX =

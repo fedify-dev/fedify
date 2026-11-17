@@ -1,13 +1,10 @@
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
+import { normalizeDateTimeLiteral } from "@fedify/vocab-runtime/temporal";
 import { getNormalizationContextLoader } from "../sig/ld.ts";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value != null && !Array.isArray(value);
-}
-
-function normalizeDateTimeLiteral(value: string): string {
-  return value.substring(19).match(/[Z+-]/) ? value : value + "Z";
 }
 
 function isMalformedDateTimeLiteral(value: unknown): boolean {
@@ -68,8 +65,13 @@ function hasMalformedExpandedQuestionClosedLiteral(value: unknown): boolean {
   // literals
   // that pass the Date gate and then fail Temporal.Instant.from() still raise
   // RangeError and therefore belong in this boundary recovery path.
+  // Keep in lockstep with the xsd:dateTime dataCheck() in
+  // packages/vocab-tools/src/type.ts.
   if (value["@type"] !== XSD_DATE_TIME_IRI) return false;
-  if (new Date(literal).toString() === "Invalid Date") return false;
+  if (
+    new Date(literal).toString() === "Invalid Date" &&
+    new Date(normalizeDateTimeLiteral(literal)).toString() === "Invalid Date"
+  ) return false;
   return isMalformedDateTimeLiteral(literal);
 }
 

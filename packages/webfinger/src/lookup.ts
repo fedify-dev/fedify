@@ -46,7 +46,8 @@ export interface LookupWebFingerOptions {
   tracerProvider?: TracerProvider;
 
   /**
-   * AbortSignal for cancelling the request.
+   * `AbortSignal` for cancelling the lookup sooner than its default 10-second
+   * deadline.  A signal cannot extend that deadline.
    * @since 1.8.0
    */
   signal?: AbortSignal;

@@ -96,10 +96,13 @@ const result = await lookupWebFinger("acct:alice@example.com", {
   // Maximum redirects to follow (default: 5)
   maxRedirection: 3,
 
-  // AbortSignal for cancellation
+  // Cancel sooner than the default 10-second lookup deadline
   signal: AbortSignal.timeout(5000),
 });
 ~~~~
+
+Each lookup has a 10-second deadline across DNS resolution, redirects, and
+response reading.  A supplied signal can end it sooner but cannot extend it.
 
 
 API

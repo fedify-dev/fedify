@@ -8,6 +8,267 @@ Version 2.1.32
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `Context.sendActivity()` and `InboxContext.forwardActivity()` giving
+    up on the remaining deliveries when one recipient failed.  The immediate
+    delivery paths now wait for every delivery they have already started before
+    propagating the error, so the remaining recipients are still reached on
+    runtimes such as Cloudflare Workers, which may terminate an isolate once
+    the error response is returned.  This applies both to `immediate: true` and
+    to federations without an outbox queue.
+    [[#1380], [#1388]]
+ -  Fixed `CryptoKey` and `CryptoKeyPair` values obtained from `node:crypto`
+    being rejected by `ActorKeyPairsDispatcher`, `SharedInboxKeyDispatcher`,
+    `SenderKeyPair`, `signRequest()`, `createProof()`, `signObject()`,
+    `createSignature()`, `signJsonLd()`, `exportJwk()`, and the authenticated
+    document loader APIs when `@types/node` 24.7.0 or later is installed.
+    Those APIs now accept a structural key type that both Node.js and
+    DOM/Web Worker keys satisfy, while the keys returned by Fedify keep the
+    ambient `CryptoKey` types.  `SenderKeyPair` and
+    `SharedInboxKeyDispatcher` take a type parameter that defaults to
+    `CryptoKey`, so code that reads a key pair or calls a dispatcher keeps the
+    narrower type.
+    [[#554], [#1391]]
+ -  Fixed Linked Data Signature verification rejecting documents with unmapped
+    extension properties, such as an undefined `quoteUri`, that the sender's
+    JSON-LD processor discards.  Discarded properties are not authenticated by
+    the signature.  Outbound signing still rejects lossy input, and verification
+    continues to reject relative IRIs and unsafe graph structures.
+    [[#1405], [#1411]]
+ -  Fixed Linked Data Signatures being emitted with a JSON-LD context that no
+    longer resolves.  The attached `signature` object now uses
+    `https://w3id.org/security/v1` instead of
+    `https://w3id.org/identity/v1`, which redirects to an unreachable host.
+    Documents signed through `signJsonLd()` or `attachSignature()` whose
+    context does not define `signature` now also get a minimal inline
+    definition of that term, so the signed document remains valid JSON-LD.
+    Documents that already carry a `proof` are left unchanged, since a new
+    context definition would invalidate the proof.  Activities queued for
+    fanout before the upgrade also keep their original proof-covered JSON when
+    replayed.  Incoming signatures that still use `identity/v1` continue to
+    verify.  [[#664]]
+ -  Fixed automatic queue worker startup failures becoming unhandled promise
+    rejections.  When `manuallyStartQueue` was left `false` and a `MessageQueue`
+    implementation could not start listening, such as `WorkersMessageQueue` on
+    Cloudflare Workers whose `listen()` throws a `TypeError`, the rejection from
+    the implicit startup in inbox handling and in `Context.sendActivity()` was
+    discarded.  It is now logged as a warning once per `Federation` instance,
+    and a synchronous throw from one queue no longer prevents the remaining
+    queues from starting.  The failed worker is not retried, so restart the
+    process after fixing the queue.  `Federation.startQueue()` still rejects so
+    callers that start workers deliberately see the error, and Cloudflare
+    Workers deployments should set `manuallyStartQueue: true` to avoid the
+    warning entirely.
+    [[#1381], [#1390]]
+ -  Fixed inbox handling that treated valid date-times without seconds, such
+    as `2024-01-01T10:00Z` or `2024-01-01T10:00.5Z`, as permanently malformed.
+    Activity Streams 2.0 allows seconds to be omitted, so activities with such
+    date-times are no longer rejected or dropped.  Activities whose
+    `Question.closed` is a date-like but impossible value, such as
+    `2024-02-31T10:00.5Z`, are now treated as malformed instead of being
+    accepted with `closed` discarded.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+ -  Fixed incoming Linked Data Signatures without a `created` field being
+    treated as unsigned.  Valid `RsaSignature2017` signatures without that field
+    now verify through the JSON-LD APIs and inbox, including queued inbox
+    processing, and are forwarded when `skipIfUnsigned` is enabled.
+    Malformed signature objects now produce a debug log with
+    their property names.  Invalid creator URLs now fail verification without
+    throwing an exception.  Outgoing signatures still include `created`.
+    [[#1406], [#1413]]
+ -  Fixed singleton `attachment` values being serialized as objects in actor,
+    object, and collection responses, which caused Mastodon to ignore a single
+    profile field.  Served responses and newly generated activity deliveries
+    now preserve attachment arrays when the JSON-LD context permits it.
+    Documents containing existing proofs or Linked Data signatures are left
+    unchanged by the compatibility rewrite.  New normalized deliveries are
+    signed over the same JSON used for queueing and transport.
+    [[#1421], [#1422], [mastodon/mastodon\#41640]]
+ -  Fixed the fanout worker never starting when the `fanout` queue was the only
+    configured queue.  `Federation.startQueue()` returned without calling
+    `fanoutQueue.listen()`, so fanout messages were enqueued but never
+    consumed; the implicit startup triggered by a fanout enqueue silently did
+    nothing.  Both paths now start the fanout worker, and deployments that
+    configure only `queue: { fanout: ... }` no longer need to add an unused
+    `inbox` or `outbox` queue to make fanout delivery work.
+    [[#1389], [#1392]]
+ -  Limited WebFinger lookups made through federation contexts to 10 seconds
+    per lookup.  \[[GHSA-9pmv-w936-hj3f]]
+ -  Limited each outgoing activity delivery attempt to 30 seconds, including
+    redirects and HTTP signature retries, so a slow remote inbox cannot hold a
+    delivery worker indefinitely.  Timed-out attempts follow the configured
+    retry schedule.  \[[GHSA-fq5h-gjhp-g75x]]
+ -  NodeInfo lookups now stop following a redirect when its target repeats an
+    earlier URL in the same chain.  A self-redirect previously opened five
+    fetch sessions before hitting the redirect limit; it now stops after the
+    first response.  The existing redirect limit still applies to chains
+    without cycles.
+    [[GHSA-64hq-2hgr-q4pm]]
+ -  NodeInfo lookups now time out after 10 seconds by default.  A remote server
+    could previously keep `getNodeInfo()` or `Context.lookupNodeInfo()` waiting
+    indefinitely by delaying a response.  The limit covers discovery,
+    redirects, and the document body as one operation.  Pass a `timeout` value
+    in milliseconds to allow more time, or `null` to disable the limit; a
+    timed-out lookup returns `undefined`.
+    An optional `signal` can cancel the lookup, even with `timeout: null`.
+    [[GHSA-64hq-2hgr-q4pm]]
+ -  On Node.js, NodeInfo hostname resolution now starts at most two operating
+    system DNS lookups at a time.  Other hosts can still resolve when one
+    resolver call stalls.  A queued lookup can time out or be cancelled before
+    starting, so repeated abandoned NodeInfo requests cannot fill the shared
+    libuv thread pool.  An already-running operating system lookup cannot be
+    cancelled.
+    [[GHSA-64hq-2hgr-q4pm]]
+
+[mastodon/mastodon\#41640]: https://github.com/mastodon/mastodon/issues/41640
+[GHSA-9pmv-w936-hj3f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9pmv-w936-hj3f
+[GHSA-fq5h-gjhp-g75x]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-fq5h-gjhp-g75x
+[GHSA-64hq-2hgr-q4pm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-64hq-2hgr-q4pm
+[#554]: https://github.com/fedify-dev/fedify/issues/554
+[#664]: https://github.com/fedify-dev/fedify/issues/664
+[#1339]: https://github.com/fedify-dev/fedify/issues/1339
+[#1347]: https://github.com/fedify-dev/fedify/pull/1347
+[#1380]: https://github.com/fedify-dev/fedify/issues/1380
+[#1381]: https://github.com/fedify-dev/fedify/issues/1381
+[#1388]: https://github.com/fedify-dev/fedify/pull/1388
+[#1389]: https://github.com/fedify-dev/fedify/issues/1389
+[#1390]: https://github.com/fedify-dev/fedify/pull/1390
+[#1391]: https://github.com/fedify-dev/fedify/pull/1391
+[#1392]: https://github.com/fedify-dev/fedify/pull/1392
+[#1405]: https://github.com/fedify-dev/fedify/issues/1405
+[#1406]: https://github.com/fedify-dev/fedify/issues/1406
+[#1411]: https://github.com/fedify-dev/fedify/pull/1411
+[#1413]: https://github.com/fedify-dev/fedify/pull/1413
+[#1421]: https://github.com/fedify-dev/fedify/issues/1421
+[#1422]: https://github.com/fedify-dev/fedify/pull/1422
+
+### @fedify/cli
+
+ -  The `fedify nodeinfo` command now accepts `-T`/`--timeout` in seconds.
+    It defaults to 10 seconds and reports a timeout separately from a missing
+    or invalid NodeInfo document.
+    [[GHSA-64hq-2hgr-q4pm]]
+
+### @fedify/nestjs
+
+ -  Fixed `require("@fedify/nestjs")` failing with `MODULE_NOT_FOUND`, which
+    broke the integration in NestJS projects compiled to CommonJS, the NestJS
+    default.  The package manifest pointed its CommonJS entry point and type
+    declarations at files that the build no longer produced; they now point
+    to the files that are actually shipped, so the integration loads with
+    `require()` again and TypeScript finds its declarations.  ESM imports were
+    not affected.
+    [[#1424], [#1428]]
+
+[#1424]: https://github.com/fedify-dev/fedify/issues/1424
+[#1428]: https://github.com/fedify-dev/fedify/pull/1428
+
+### @fedify/next
+
+ -  Fixed `fedifyWith()` not forwarding NodeInfo document requests such as
+    `GET /nodeinfo/2.1` without federation media types in their headers.
+    `isNodeInfoRequest()` and `isFederationRequest()` now recognize paths under
+    `/nodeinfo/` regardless of their headers, so clients using
+    `Accept: application/json`, `*/*`, or no `Accept` header can reach the
+    dispatcher.  Existing applications must also add
+    `{ source: "/nodeinfo/:path*" }` to the `matcher` in their *middleware.ts*
+    or *proxy.ts*.  Dispatchers outside `/nodeinfo/` still require explicit
+    delegation to `integrateFederation()` and a matching `matcher` entry.
+    [[#1402], [#1412]]
+
+[#1402]: https://github.com/fedify-dev/fedify/issues/1402
+[#1412]: https://github.com/fedify-dev/fedify/pull/1412
+
+### @fedify/vocab
+
+ -  Fixed `CryptographicKey` and `Multikey` rejecting a `publicKey` obtained
+    from `node:crypto` in their constructors and `clone()` when `@types/node`
+    24.7.0 or later is installed.  The property accepts a structural key type
+    now, while the getters still return the ambient `CryptoKey` type.
+    [[#554], [#1391]]
+ -  Fixed an origin-check bypass that allowed crafted JSON-LD without a parent
+    `id` to return forged embedded objects claiming another origin.
+    [[GHSA-r388-57j3-5fgp]]
+ -  Fixed invalid JSON-LD when a collection page embeds a parsed item whose
+    context redefines a protected parent term, such as `proof`.  Default
+    serialization now isolates independent child contexts while preserving
+    their cached documents and extension meanings.  The parent's `@context`
+    array gains property-scoped definitions, including for generated children
+    with matching contexts; context-aware consumers need JSON-LD 1.1 support.
+    Resolving the parent context uses `contextLoader`; URL references alongside
+    isolated children are represented as objects with `id` and their own
+    context.
+    [[#1394], [#1397]]
+ -  Fixed parsing of date-times without seconds, such as `2024-01-01T10:00Z`,
+    `2024-01-01T10:00+09:00`, or `2024-01-01T10:00.5Z`, which Activity Streams
+    2.0 allows.  They raised a `RangeError`, or were ignored in
+    `Question.closed` when they had a fraction.  Date-like but impossible
+    values in `Question.closed`, such as `2024-02-31T10:00.5Z`, now raise a
+    `RangeError` instead of being silently dropped.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+ -  Limited WebFinger lookups used by object resolution to 10 seconds each,
+    and actor handle resolution to one 10-second deadline across alias checks.
+    Actor handle resolution now checks at most 100 subject/alias candidates and
+    skips duplicates.
+    [[GHSA-9pmv-w936-hj3f]]
+ -  Replaced <https://w3id.org/identity/v1> with
+    <https://w3id.org/security/v1> in the default JSON-LD contexts of activity
+    types.  The former no longer resolves, and <https://w3id.org/security/v1>
+    defines the same terms the signatures use.
+    [[#664], [#1351]]
+
+[GHSA-r388-57j3-5fgp]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-r388-57j3-5fgp
+[#1351]: https://github.com/fedify-dev/fedify/pull/1351
+[#1394]: https://github.com/fedify-dev/fedify/issues/1394
+[#1397]: https://github.com/fedify-dev/fedify/pull/1397
+
+### @fedify/vocab-runtime
+
+ -  Added `normalizeDateTimeLiteral()` to `@fedify/vocab-runtime/temporal` so
+    that generated vocabulary code and `@fedify/fedify` interpret `xsd:dateTime`
+    literals the same way.  It treats a literal without a UTC offset as UTC and
+    handles literals without seconds, including those with a fraction.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+ -  Added the `CryptoKeyLike` and `CryptoKeyPairLike` types for the structural
+    key shape that Fedify APIs accept.  They cover keys from Node.js,
+    DOM/Web Workers, and Cloudflare Workers, so `exportSpki()`,
+    `exportMultibaseKey()`, and `getAuthenticatedDocumentLoader()` no longer
+    reject keys obtained from `node:crypto` with `@types/node` 24.7.0 or later.
+    `AuthenticatedDocumentLoaderFactory` keeps the ambient `CryptoKey` type on
+    the identity it receives, so existing implementations do not have to
+    change.
+    [[#554], [#1391]]
+
+### @fedify/vocab-tools
+
+ -  Changed the code generated by `@fedify/vocab-tools` to import the
+    `CryptoKeyLike` type from `@fedify/vocab-runtime`.  Regenerated code now
+    requires `@fedify/vocab-runtime` 2.1.32 or later.
+    [[#554], [#1391]]
+ -  Fixed generated accessors bypassing origin checks for embedded objects when
+    the parent has no `id`.  Regenerate your vocabulary code to apply the fix.
+    [[GHSA-r388-57j3-5fgp]]
+ -  Fixed generated default encoders combining independent child documents
+    with conflicting inherited JSON-LD contexts.  Child documents retain their
+    original contexts and extension meanings, including in collections and
+    inherited properties.  Generated parents gain property-scoped definitions
+    in their `@context` arrays even when child and parent contexts match.
+    Regenerate your vocabulary code to apply the fix.
+    [[#1394], [#1397]]
+ -  Fixed generated `xsd:dateTime` decoders failing on date-times without
+    seconds, such as `2024-01-01T10:00Z` or `2024-01-01T10:00.5Z`.  Regenerate
+    your vocabulary code to get the fix.  Generated code now imports
+    `normalizeDateTimeLiteral()` from `@fedify/vocab-runtime/temporal`.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+
+### @fedify/webfinger
+
+ -  Limited WebFinger lookups to 10 seconds across DNS resolution, redirects,
+    and response reading.  A caller's abort signal can end a lookup sooner.
+    This prevents slow endpoints from occupying lookup workers indefinitely.
+    [[GHSA-9pmv-w936-hj3f]]
+
 
 Version 2.1.31
 --------------
@@ -1575,6 +1836,232 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.36
+--------------
+
+Released on November 17, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `Context.sendActivity()` and `InboxContext.forwardActivity()` giving
+    up on the remaining deliveries when one recipient failed.  The immediate
+    delivery paths now wait for every delivery they have already started before
+    propagating the error, so the remaining recipients are still reached on
+    runtimes such as Cloudflare Workers, which may terminate an isolate once
+    the error response is returned.  This applies both to `immediate: true` and
+    to federations without an outbox queue.  [[#1380], [#1388]]
+ -  Fixed `CryptoKey` and `CryptoKeyPair` values obtained from `node:crypto`
+    being rejected by `ActorKeyPairsDispatcher`, `SharedInboxKeyDispatcher`,
+    `SenderKeyPair`, `signRequest()`, `createProof()`, `signObject()`,
+    `createSignature()`, `signJsonLd()`, `exportJwk()`, and the authenticated
+    document loader APIs when `@types/node` 24.7.0 or later is installed.
+    Those APIs now accept a structural key type that both Node.js and
+    DOM/Web Worker keys satisfy, while the keys returned by Fedify keep the
+    ambient `CryptoKey` types.  `SenderKeyPair` and
+    `SharedInboxKeyDispatcher` take a type parameter that defaults to
+    `CryptoKey`, so code that reads a key pair or calls a dispatcher keeps the
+    narrower type.  [[#554], [#1391]]
+ -  Fixed Linked Data Signature verification rejecting documents with unmapped
+    extension properties, such as an undefined `quoteUri`, that the sender's
+    JSON-LD processor discards.  Discarded properties are not authenticated by
+    the signature.  Outbound signing still rejects lossy input, and verification
+    continues to reject relative IRIs and unsafe graph structures.
+    [[#1405], [#1411]]
+ -  Fixed Linked Data Signatures being emitted with a JSON-LD context that no
+    longer resolves.  The attached `signature` object now uses
+    `https://w3id.org/security/v1` instead of
+    `https://w3id.org/identity/v1`, which redirects to an unreachable host.
+    Documents signed through `signJsonLd()` or `attachSignature()` whose
+    context does not define `signature` now also get a minimal inline
+    definition of that term, so the signed document remains valid JSON-LD.
+    Documents that already carry a `proof` are left unchanged, since a new
+    context definition would invalidate the proof.  Activities queued for
+    fanout before the upgrade also keep their original proof-covered JSON when
+    replayed.  Incoming signatures that still use `identity/v1` continue to
+    verify.  [[#664]]
+ -  Fixed automatic queue worker startup failures becoming unhandled promise
+    rejections.  When `manuallyStartQueue` was left `false` and a `MessageQueue`
+    implementation could not start listening, such as `WorkersMessageQueue` on
+    Cloudflare Workers whose `listen()` throws a `TypeError`, the rejection from
+    the implicit startup in inbox handling and in `Context.sendActivity()` was
+    discarded.  It is now logged as a warning once per `Federation` instance,
+    and a synchronous throw from one queue no longer prevents the remaining
+    queues from starting.  The failed worker is not retried, so restart the
+    process after fixing the queue.  `Federation.startQueue()` still rejects so
+    callers that start workers deliberately see the error, and Cloudflare
+    Workers deployments should set `manuallyStartQueue: true` to avoid the
+    warning entirely.  [[#1381], [#1390]]
+ -  Fixed inbox handling that treated valid date-times without seconds, such
+    as `2024-01-01T10:00Z` or `2024-01-01T10:00.5Z`, as permanently malformed.
+    Activity Streams 2.0 allows seconds to be omitted, so activities with such
+    date-times are no longer rejected or dropped.  Activities whose
+    `Question.closed` is a date-like but impossible value, such as
+    `2024-02-31T10:00.5Z`, are now treated as malformed instead of being
+    accepted with `closed` discarded.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+ -  Fixed incoming Linked Data Signatures without a `created` field being
+    treated as unsigned.  Valid `RsaSignature2017` signatures without that field
+    now verify through the JSON-LD APIs and inbox, including queued inbox
+    processing, and are forwarded when `skipIfUnsigned` is enabled.
+    Malformed signature objects now produce a debug log with
+    their property names.  Invalid creator URLs now fail verification without
+    throwing an exception.  Outgoing signatures still include `created`.
+    [[#1406], [#1413]]
+ -  Fixed singleton `attachment` values being serialized as objects in actor,
+    object, and collection responses, which caused Mastodon to ignore a single
+    profile field.  Served responses and newly generated activity deliveries
+    now preserve attachment arrays when the JSON-LD context permits it.
+    Documents containing existing proofs or Linked Data signatures are left
+    unchanged by the compatibility rewrite.  New normalized deliveries are
+    signed over the same JSON used for queueing and transport.
+    [[#1421], [#1422], [mastodon/mastodon\#41640]]
+ -  Fixed the fanout worker never starting when the `fanout` queue was the only
+    configured queue.  `Federation.startQueue()` returned without calling
+    `fanoutQueue.listen()`, so fanout messages were enqueued but never
+    consumed; the implicit startup triggered by a fanout enqueue silently did
+    nothing.  Both paths now start the fanout worker, and deployments that
+    configure only `queue: { fanout: ... }` no longer need to add an unused
+    `inbox` or `outbox` queue to make fanout delivery work.  [[#1389], [#1392]]
+ -  Limited WebFinger lookups made through federation contexts to 10 seconds
+    per lookup.  \[[GHSA-9pmv-w936-hj3f]]
+ -  Limited each outgoing activity delivery attempt to 30 seconds, including
+    redirects and HTTP signature retries, so a slow remote inbox cannot hold a
+    delivery worker indefinitely.  Timed-out attempts follow the configured
+    retry schedule.  \[[GHSA-fq5h-gjhp-g75x]]
+ -  NodeInfo lookups now stop following a redirect when its target repeats an
+    earlier URL in the same chain.  A self-redirect previously opened five
+    fetch sessions before hitting the redirect limit; it now stops after the
+    first response.  The existing redirect limit still applies to chains
+    without cycles.
+    [[GHSA-64hq-2hgr-q4pm]]
+ -  NodeInfo lookups now time out after 10 seconds by default.  A remote server
+    could previously keep `getNodeInfo()` or `Context.lookupNodeInfo()` waiting
+    indefinitely by delaying a response.  The limit covers discovery,
+    redirects, and the document body as one operation.  Pass a `timeout` value
+    in milliseconds to allow more time, or `null` to disable the limit; a
+    timed-out lookup returns `undefined`.
+    An optional `signal` can cancel the lookup, even with `timeout: null`.
+    [[GHSA-64hq-2hgr-q4pm]]
+ -  On Node.js, NodeInfo hostname resolution now starts at most two operating
+    system DNS lookups at a time.  Other hosts can still resolve when one
+    resolver call stalls.  A queued lookup can time out or be cancelled before
+    starting, so repeated abandoned NodeInfo requests cannot fill the shared
+    libuv thread pool.  An already-running operating system lookup cannot be
+    cancelled.
+    [[GHSA-64hq-2hgr-q4pm]]
+
+### @fedify/cli
+
+ -  The `fedify nodeinfo` command now accepts `-T`/`--timeout` in seconds.
+    It defaults to 10 seconds and reports a timeout separately from a missing
+    or invalid NodeInfo document.
+    [[GHSA-64hq-2hgr-q4pm]]
+
+### @fedify/nestjs
+
+ -  Fixed `require("@fedify/nestjs")` failing with `MODULE_NOT_FOUND`, which
+    broke the integration in NestJS projects compiled to CommonJS, the NestJS
+    default.  The package manifest pointed its CommonJS entry point and type
+    declarations at files that the build no longer produced; they now point
+    to the files that are actually shipped, so the integration loads with
+    `require()` again and TypeScript finds its declarations.  ESM imports were
+    not affected.  [[#1424], [#1428]]
+
+### @fedify/next
+
+ -  Fixed `fedifyWith()` not forwarding NodeInfo document requests such as
+    `GET /nodeinfo/2.1` without federation media types in their headers.
+    `isNodeInfoRequest()` and `isFederationRequest()` now recognize paths under
+    `/nodeinfo/` regardless of their headers, so clients using
+    `Accept: application/json`, `*/*`, or no `Accept` header can reach the
+    dispatcher.  Existing applications must also add
+    `{ source: "/nodeinfo/:path*" }` to the `matcher` in their *middleware.ts*
+    or *proxy.ts*.  Dispatchers outside `/nodeinfo/` still require explicit
+    delegation to `integrateFederation()` and a matching `matcher` entry.
+    [[#1402], [#1412]]
+
+### @fedify/vocab
+
+ -  Fixed `CryptographicKey` and `Multikey` rejecting a `publicKey` obtained
+    from `node:crypto` in their constructors and `clone()` when `@types/node`
+    24.7.0 or later is installed.  The property accepts a structural key type
+    now, while the getters still return the ambient `CryptoKey` type.
+    [[#554], [#1391]]
+ -  Fixed an origin-check bypass that allowed crafted JSON-LD without a parent
+    `id` to return forged embedded objects claiming another origin.
+    [[GHSA-r388-57j3-5fgp]]
+ -  Fixed invalid JSON-LD when a collection page embeds a parsed item whose
+    context redefines a protected parent term, such as `proof`.  Default
+    serialization now isolates independent child contexts while preserving
+    their cached documents and extension meanings.  The parent's `@context`
+    array gains property-scoped definitions, including for generated children
+    with matching contexts; context-aware consumers need JSON-LD 1.1 support.
+    Resolving the parent context uses `contextLoader`; URL references alongside
+    isolated children are represented as objects with `id` and their own
+    context.
+    [[#1394], [#1397]]
+ -  Fixed parsing of date-times without seconds, such as `2024-01-01T10:00Z`,
+    `2024-01-01T10:00+09:00`, or `2024-01-01T10:00.5Z`, which Activity Streams
+    2.0 allows.  They raised a `RangeError`, or were ignored in
+    `Question.closed` when they had a fraction.  Date-like but impossible
+    values in `Question.closed`, such as `2024-02-31T10:00.5Z`, now raise a
+    `RangeError` instead of being silently dropped.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+ -  Limited WebFinger lookups used by object resolution to 10 seconds each,
+    and actor handle resolution to one 10-second deadline across alias checks.
+    Actor handle resolution now checks at most 100 subject/alias candidates and
+    skips duplicates.
+    [[GHSA-9pmv-w936-hj3f]]
+ -  Replaced <https://w3id.org/identity/v1> with
+    <https://w3id.org/security/v1> in the default JSON-LD contexts of activity
+    types.  The former no longer resolves, and <https://w3id.org/security/v1>
+    defines the same terms the signatures use.  [[#664], [#1351]]
+
+### @fedify/vocab-runtime
+
+ -  Added `normalizeDateTimeLiteral()` to `@fedify/vocab-runtime/temporal` so
+    that generated vocabulary code and `@fedify/fedify` interpret `xsd:dateTime`
+    literals the same way.  It treats a literal without a UTC offset as UTC and
+    handles literals without seconds, including those with a fraction.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+ -  Added the `CryptoKeyLike` and `CryptoKeyPairLike` types for the structural
+    key shape that Fedify APIs accept.  They cover keys from Node.js,
+    DOM/Web Workers, and Cloudflare Workers, so `exportSpki()`,
+    `exportMultibaseKey()`, and `getAuthenticatedDocumentLoader()` no longer
+    reject keys obtained from `node:crypto` with `@types/node` 24.7.0 or later.
+    `AuthenticatedDocumentLoaderFactory` keeps the ambient `CryptoKey` type on
+    the identity it receives, so existing implementations do not have to
+    change.  [[#554], [#1391]]
+
+### @fedify/vocab-tools
+
+ -  Changed the code generated by `@fedify/vocab-tools` to import the
+    `CryptoKeyLike` type from `@fedify/vocab-runtime`.  Regenerated code now
+    requires `@fedify/vocab-runtime` 2.0.36 or later.  [[#554], [#1391]]
+ -  Fixed generated accessors bypassing origin checks for embedded objects when
+    the parent has no `id`.  Regenerate your vocabulary code to apply the fix.
+    [[GHSA-r388-57j3-5fgp]]
+ -  Fixed generated default encoders combining independent child documents
+    with conflicting inherited JSON-LD contexts.  Child documents retain their
+    original contexts and extension meanings, including in collections and
+    inherited properties.  Generated parents gain property-scoped definitions
+    in their `@context` arrays even when child and parent contexts match.
+    Regenerate your vocabulary code to apply the fix.
+    [[#1394], [#1397]]
+ -  Fixed generated `xsd:dateTime` decoders failing on date-times without
+    seconds, such as `2024-01-01T10:00Z` or `2024-01-01T10:00.5Z`.  Regenerate
+    your vocabulary code to get the fix.  Generated code now imports
+    `normalizeDateTimeLiteral()` from `@fedify/vocab-runtime/temporal`.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+
+### @fedify/webfinger
+
+ -  Limited WebFinger lookups to 10 seconds across DNS resolution, redirects,
+    and response reading.  A caller's abort signal can end a lookup sooner.
+    This prevents slow endpoints from occupying lookup workers indefinitely.
+    [[GHSA-9pmv-w936-hj3f]]
 
 
 Version 2.0.35

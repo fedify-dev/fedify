@@ -4,6 +4,8 @@ import {
   UrlError,
 } from "@fedify/vocab-runtime";
 import {
+  detectRuntime,
+  lookupAllAddressesBounded,
   openPublicFetch,
   type PublicFetchSession,
 } from "@fedify/vocab-runtime/internal";
@@ -24,6 +26,8 @@ import type {
 const logger = getLogger(["fedify", "nodeinfo", "client"]);
 
 const DEFAULT_MAX_REDIRECTION = 5;
+const DEFAULT_TIMEOUT = 10_000;
+const MAX_TIMEOUT = 2_147_483_647;
 
 /**
  * The dependencies of {@link fetchPublicUrl} and {@link getNodeInfoInternal}.
@@ -33,7 +37,10 @@ export interface FetchPublicUrlDependencies {
   /**
    * Opens a fetch session for a single hop.  Defaults to `openPublicFetch()`.
    */
-  readonly openHop?: (url: string) => Promise<PublicFetchSession>;
+  readonly openHop?: (
+    url: string,
+    signal?: AbortSignal,
+  ) => Promise<PublicFetchSession>;
 }
 
 /**
@@ -52,6 +59,7 @@ export interface FetchPublicUrlDependencies {
  * @param headers The request headers.
  * @param consume The function to consume the final response with.
  * @param deps The dependencies.
+ * @param signal The signal for the whole NodeInfo lookup.
  * @returns The value returned by `consume`, or `null` if the URL is
  *          disallowed, its hostname cannot be resolved, or there are too many
  *          redirects.
@@ -62,15 +70,29 @@ export async function fetchPublicUrl<T>(
   headers: Record<string, string>,
   consume: (response: Response) => Promise<T>,
   deps: FetchPublicUrlDependencies = {},
+  signal?: AbortSignal,
 ): Promise<T | null> {
-  const openHop = deps.openHop ?? ((hopUrl: string) => openPublicFetch(hopUrl));
+  const openHop = deps.openHop ??
+    ((hopUrl: string, signal?: AbortSignal) =>
+      openPublicFetch(
+        hopUrl,
+        detectRuntime() === "node"
+          ? {
+            signal,
+            lookup: (hostname) => lookupAllAddressesBounded(hostname, signal),
+          }
+          : { signal },
+      ));
   let current = url instanceof URL ? url : new URL(url);
   let redirected = 0;
+  const visited = new Set<string>([redirectKey(current)]);
   while (true) {
+    signal?.throwIfAborted();
     let session: PublicFetchSession;
     try {
-      session = await openHop(current.href);
+      session = await openHop(current.href, signal);
     } catch (e) {
+      signal?.throwIfAborted();
       if (e instanceof UrlError) {
         if (e.reason === "dns") {
           logger.error("DNS lookup failed for {url}: {error}", {
@@ -89,10 +111,16 @@ export async function fetchPublicUrl<T>(
     }
     let location: string;
     try {
+      signal?.throwIfAborted();
       const response = await session.fetch(current, {
         headers,
         redirect: "manual",
+        signal,
       });
+      if (signal?.aborted) {
+        cancelBody(response, current);
+        signal.throwIfAborted();
+      }
       if (
         response.status < 300 || response.status >= 400 ||
         !response.headers.has("Location")
@@ -123,8 +151,24 @@ export async function fetchPublicUrl<T>(
       );
       return null;
     }
+    const key = redirectKey(next);
+    if (visited.has(key)) {
+      logger.error("Redirect cycle while fetching NodeInfo: {url}.", {
+        url: next.href,
+      });
+      return null;
+    }
+    visited.add(key);
     current = next;
   }
+}
+
+function redirectKey(url: URL): string {
+  // Fragments are not sent in HTTP requests, so they cannot make a repeated
+  // redirect target distinct.
+  const withoutFragment = new URL(url);
+  withoutFragment.hash = "";
+  return withoutFragment.href;
 }
 
 /**
@@ -177,6 +221,24 @@ export interface GetNodeInfoOptions {
    * @since 1.3.0
    */
   userAgent?: GetUserAgentOptions | string;
+
+  /**
+   * The timeout in milliseconds for the entire NodeInfo lookup, including
+   * discovery, redirects, and reading the document.  Defaults to 10 seconds.
+   * Set to `null` to disable the timeout.  A timeout returns `undefined`.
+   * Fractional values are rounded up.
+   * @throws {RangeError} If the value is not a positive finite number or is
+   *                      greater than 2,147,483,647.
+   * @since 2.0.36
+   */
+  timeout?: number | null;
+
+  /**
+   * A signal to cancel the entire NodeInfo lookup.  Cancellation returns
+   * `undefined`, including when the timeout is disabled.
+   * @since 2.0.36
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -236,6 +298,80 @@ export async function getNodeInfoInternal(
   options: GetNodeInfoOptions = {},
   deps: FetchPublicUrlDependencies = {},
 ): Promise<NodeInfo | JsonValue | undefined> {
+  const timeout = resolveTimeout(options.timeout);
+  if (timeout == null && options.signal == null) {
+    return await getNodeInfoWithSignal(url, options, deps);
+  }
+  const controller = new AbortController();
+  const timeoutReason = timeout == null ? undefined : new DOMException(
+    `The NodeInfo lookup timed out after ${timeout} ms.`,
+    "TimeoutError",
+  );
+  const timer = timeout == null ? undefined : setTimeout(
+    () => controller.abort(timeoutReason),
+    timeout,
+  );
+  const onCallerAbort = () => controller.abort(options.signal?.reason);
+  options.signal?.addEventListener("abort", onCallerAbort, { once: true });
+  if (options.signal?.aborted) onCallerAbort();
+  let onAbort: (() => void) | undefined;
+  const aborted = new Promise<never>((_, reject) => {
+    onAbort = () => reject(controller.signal.reason);
+    controller.signal.addEventListener("abort", onAbort, { once: true });
+  });
+  const loading = getNodeInfoWithSignal(url, options, deps, controller.signal);
+  // The operation may still finish after an uninterruptible DNS lookup.
+  // Observe its late rejection if the timeout wins the race.
+  loading.catch(() => {});
+  try {
+    return await Promise.race([loading, aborted]);
+  } catch (error) {
+    if (!controller.signal.aborted) throw error;
+    if (controller.signal.reason === timeoutReason) {
+      logger.error(
+        "Timed out after {timeout} ms while fetching NodeInfo: {url}",
+        { timeout, url: url.toString() },
+      );
+    } else {
+      logger.debug("Cancelled NodeInfo lookup for {url}.", {
+        url: url.toString(),
+      });
+    }
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener("abort", onCallerAbort);
+    if (onAbort != null) {
+      controller.signal.removeEventListener("abort", onAbort);
+    }
+  }
+}
+
+function resolveTimeout(timeout: number | null | undefined): number | null {
+  if (timeout === undefined) return DEFAULT_TIMEOUT;
+  if (timeout === null) return null;
+  if (!Number.isFinite(timeout) || timeout <= 0) {
+    throw new RangeError(
+      `The NodeInfo timeout must be a positive finite number of milliseconds, ` +
+        `but got ${String(timeout)}.`,
+    );
+  }
+  const ms = Math.ceil(timeout);
+  if (ms > MAX_TIMEOUT) {
+    throw new RangeError(
+      `The NodeInfo timeout must not be greater than ${MAX_TIMEOUT} ` +
+        `milliseconds, but got ${timeout}.`,
+    );
+  }
+  return ms;
+}
+
+async function getNodeInfoWithSignal(
+  url: URL | string,
+  options: GetNodeInfoOptions,
+  deps: FetchPublicUrlDependencies,
+  signal?: AbortSignal,
+): Promise<NodeInfo | JsonValue | undefined> {
   try {
     const headers = {
       Accept: "application/json",
@@ -261,11 +397,17 @@ export async function getNodeInfoInternal(
           }
           return {
             rd: JSON.parse(
-              await readBoundedText(response, MAX_BODY_SIZE, wellKnownUrl),
+              await readBoundedText(
+                response,
+                MAX_BODY_SIZE,
+                wellKnownUrl,
+                signal,
+              ),
             ) as ResourceDescriptor,
           };
         },
         deps,
+        signal,
       );
       if (wellKnown == null) return undefined;
       const wellKnownRd = wellKnown.rd;
@@ -304,11 +446,17 @@ export async function getNodeInfoInternal(
         }
         return {
           data: JSON.parse(
-            await readBoundedText(response, MAX_BODY_SIZE, nodeInfoUrl),
+            await readBoundedText(
+              response,
+              MAX_BODY_SIZE,
+              nodeInfoUrl,
+              signal,
+            ),
           ) as unknown,
         };
       },
       deps,
+      signal,
     );
     if (document == null) return undefined;
     const { data } = document;
@@ -317,10 +465,13 @@ export async function getNodeInfoInternal(
       tryBestEffort: options.parse === "best-effort",
     }) ?? undefined;
   } catch (error) {
-    logger.error("Failed to fetch NodeInfo document from {url}: {error}", {
-      url: url.toString(),
-      error,
-    });
+    logger[signal?.aborted ? "debug" : "error"](
+      "Failed to fetch NodeInfo document from {url}: {error}",
+      {
+        url: url.toString(),
+        error,
+      },
+    );
     return undefined;
   }
 }

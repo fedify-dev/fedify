@@ -12,13 +12,15 @@ import {
   type Object,
   Person,
 } from "@fedify/vocab";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { FetchError } from "@fedify/vocab-runtime";
-import { assert, assertEquals, assertRejects } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertRejects } from "@std/assert";
 import { parseAcceptSignature } from "../sig/accept.ts";
 import { signRequest } from "../sig/http.ts";
 import { generateCryptoKeyPair } from "../sig/key.ts";
 import { compactJsonLd, signJsonLd } from "../sig/ld.ts";
 import { signObject } from "../sig/proof.ts";
+import { ldSignatureWithoutCreated } from "../testing/ld-signature.ts";
 import {
   createInboxContext,
   createRequestContext,
@@ -690,8 +692,8 @@ test("handleCollection()", async () => {
     "application/activity+json",
   );
   const createCtx = [
-    "https://w3id.org/identity/v1",
     "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/v1",
     "https://w3id.org/security/data-integrity/v1",
     "https://gotosocial.org/ns",
     {
@@ -735,6 +737,14 @@ test("handleCollection()", async () => {
         emojiReactions: {
           "@id": "fedibird:emojiReactions",
           "@type": "@id",
+        },
+      },
+      {
+        orderedItems: {
+          "@id": "https://www.w3.org/ns/activitystreams#items",
+          "@type": "@id",
+          "@container": "@list",
+          "@context": null,
         },
       },
     ],
@@ -834,6 +844,14 @@ test("handleCollection()", async () => {
         emojiReactions: {
           "@id": "fedibird:emojiReactions",
           "@type": "@id",
+        },
+      },
+      {
+        orderedItems: {
+          "@id": "https://www.w3.org/ns/activitystreams#items",
+          "@type": "@id",
+          "@container": "@list",
+          "@context": null,
         },
       },
     ],
@@ -972,6 +990,14 @@ test("handleCollection()", async () => {
           "@type": "@id",
         },
       },
+      {
+        orderedItems: {
+          "@id": "https://www.w3.org/ns/activitystreams#items",
+          "@type": "@id",
+          "@container": "@list",
+          "@context": null,
+        },
+      },
     ],
     id: "https://example.com/users/someone?cursor=0",
     type: "OrderedCollectionPage",
@@ -1040,6 +1066,14 @@ test("handleCollection()", async () => {
         emojiReactions: {
           "@id": "fedibird:emojiReactions",
           "@type": "@id",
+        },
+      },
+      {
+        orderedItems: {
+          "@id": "https://www.w3.org/ns/activitystreams#items",
+          "@type": "@id",
+          "@container": "@list",
+          "@context": null,
         },
       },
     ],
@@ -2625,6 +2659,124 @@ test("handleInbox()", async () => {
   assertEquals(response.status, 400);
 });
 
+test("handleInbox() verifies Linked Data signatures without created", async (t) => {
+  const inserted = structuredClone(ldSignatureWithoutCreated);
+  const withTimestamp = {
+    ...inserted,
+    signature: { ...inserted.signature, created: "2024-09-12T16:50:46Z" },
+  };
+  const tampered = structuredClone(ldSignatureWithoutCreated);
+  tampered.object.content = "tampered";
+  const invalid = structuredClone(ldSignatureWithoutCreated);
+  invalid.signature.signatureValue = "AAAA";
+  const { signature: _, ...unsigned } = ldSignatureWithoutCreated;
+  for (
+    const [name, body, expected] of [
+      ["valid LD-only", ldSignatureWithoutCreated, 202],
+      ["inserted created", withTimestamp, 401],
+      ["tampered content", tampered, 401],
+      ["invalid signature", invalid, 401],
+      ["unsigned", unsigned, 401],
+      ["malformed created", {
+        ...ldSignatureWithoutCreated,
+        signature: { ...ldSignatureWithoutCreated.signature, created: 123 },
+      }, 401],
+      ["malformed creator", {
+        ...ldSignatureWithoutCreated,
+        signature: { ...ldSignatureWithoutCreated.signature, creator: {} },
+      }, 401],
+      [
+        "malformed null",
+        { ...ldSignatureWithoutCreated, signature: null },
+        401,
+      ],
+      ["malformed array", { ...ldSignatureWithoutCreated, signature: [] }, 401],
+      ["malformed primitive", {
+        ...ldSignatureWithoutCreated,
+        signature: "secret",
+      }, 401],
+    ] as const
+  ) {
+    await t.step(name, async () => {
+      const kv = new MemoryKvStore();
+      const federation = createFederation<void>({ kv });
+      const request = new Request("https://example.com/inbox", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      const context = createRequestContext({
+        federation,
+        request,
+        url: new URL(request.url),
+        data: undefined,
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      let deliveries = 0;
+      const inboxListeners = new InboxListenerSet<void>();
+      inboxListeners.add(Create, () => {
+        deliveries++;
+      });
+      const records: LogRecord[] = [];
+      await configure({
+        sinks: { buffer: (record) => records.push(record) },
+        loggers: [
+          { category: ["fedify"], sinks: ["buffer"], lowestLevel: "debug" },
+          { category: ["logtape", "meta"], sinks: [] },
+        ],
+        reset: true,
+      });
+      try {
+        const response = await handleInbox(request, {
+          recipient: null,
+          context,
+          inboxContextFactory() {
+            return createInboxContext({ ...context, clone: undefined });
+          },
+          kv,
+          kvPrefixes: {
+            activityIdempotence: ["_fedify", "activityIdempotence"],
+            publicKey: ["_fedify", "publicKey"],
+            acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+          },
+          actorDispatcher: () => null,
+          inboxListeners,
+          onNotFound: () => new Response("Not found", { status: 404 }),
+          signatureTimeWindow: { minutes: 5 },
+          skipSignatureVerification: false,
+        });
+        assertEquals(response.status, expected);
+        assertEquals(deliveries, expected === 202 ? 1 : 0);
+        const malformedRecords = records.filter((r) =>
+          r.rawMessage ===
+            "Linked Data Signature has an unsupported shape: {signatureKind}; properties: {signatureProperties}."
+        );
+        assertEquals(
+          malformedRecords.length,
+          name.startsWith("malformed") ? 1 : 0,
+        );
+        for (const record of malformedRecords) {
+          assertEquals(record.category, ["fedify", "federation", "inbox"]);
+          assertEquals(record.level, "debug");
+          assertFalse(
+            JSON.stringify(record).includes(
+              ldSignatureWithoutCreated.signature.creator,
+            ),
+          );
+          assertFalse(
+            JSON.stringify(record).includes(
+              ldSignatureWithoutCreated.signature.signatureValue,
+            ),
+          );
+          assertFalse(JSON.stringify(record).includes("secret"));
+        }
+      } finally {
+        await reset();
+      }
+    });
+  }
+});
+
 test("handleInbox() preserves the raw signed payload for inboxContextFactory", async () => {
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   const remoteContextUrl = "https://remote.example/contexts/ext";
@@ -3594,8 +3746,8 @@ test("handleCustomCollection()", async () => {
     "application/activity+json",
   );
   const createCtx = [
-    "https://w3id.org/identity/v1",
     "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/v1",
     "https://w3id.org/security/data-integrity/v1",
     "https://gotosocial.org/ns",
     {
@@ -3641,8 +3793,15 @@ test("handleCustomCollection()", async () => {
       },
     },
   ];
+  const ITEM_CONTEXT = [...CONTEXT, {
+    items: {
+      "@id": "https://www.w3.org/ns/activitystreams#items",
+      "@type": "@id",
+      "@context": null,
+    },
+  }];
   assertEquals(await response.json(), {
-    "@context": CONTEXT,
+    "@context": ITEM_CONTEXT,
     id: "https://example.com/",
     type: "Collection",
     items: [
@@ -3714,7 +3873,7 @@ test("handleCustomCollection()", async () => {
     "application/activity+json",
   );
   assertEquals(await response.json(), {
-    "@context": CONTEXT,
+    "@context": ITEM_CONTEXT,
     id: "https://example.com/",
     type: "Collection",
     items: [
@@ -3792,7 +3951,7 @@ test("handleCustomCollection()", async () => {
     "application/activity+json",
   );
   assertEquals(await response.json(), {
-    "@context": CONTEXT,
+    "@context": ITEM_CONTEXT,
     id: "https://example.com/?cursor=0",
     type: "CollectionPage",
     partOf: "https://example.com/",
@@ -3833,7 +3992,7 @@ test("handleCustomCollection()", async () => {
     "application/activity+json",
   );
   assertEquals(await response.json(), {
-    "@context": CONTEXT,
+    "@context": ITEM_CONTEXT,
     id: "https://example.com/?cursor=2",
     type: "CollectionPage",
     partOf: "https://example.com/",

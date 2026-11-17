@@ -10,7 +10,7 @@ import type {
   Recipient,
   TraverseCollectionOptions,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { CryptoKeyLike, DocumentLoader } from "@fedify/vocab-runtime";
 import type {
   LookupWebFingerOptions,
   ResourceDescriptor,
@@ -239,7 +239,7 @@ export interface Context<TContextData> {
    * @since 0.4.0
    */
   getDocumentLoader(
-    identity: { keyId: URL; privateKey: CryptoKey },
+    identity: { keyId: URL; privateKey: CryptoKeyLike },
   ): DocumentLoader;
 
   /**
@@ -371,8 +371,8 @@ export interface Context<TContextData> {
    */
   sendActivity(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],
@@ -624,8 +624,8 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
    */
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],

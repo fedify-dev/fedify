@@ -12,6 +12,7 @@ import {
   OrderedCollectionPage,
 } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { normalizeAttachmentArrays } from "../compat/attachment-arrays.ts";
 import {
   BodyTooLargeError,
   MAX_BODY_SIZE,
@@ -34,9 +35,10 @@ import {
 } from "../sig/http.ts";
 import {
   compactJsonLd,
+  describeSignatureShape,
   detachSignature,
   getNormalizationContextLoader,
-  hasSignature,
+  hasVerifiableSignature,
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
   isInvalidUrlTypeError,
@@ -194,7 +196,7 @@ export async function handleActor<TContextData>(
       return await onUnauthorized(request);
     }
   }
-  const jsonLd = await actor.toJsonLd(context);
+  const jsonLd = await serializeForResponse(actor, context);
   return new Response(JSON.stringify(jsonLd), {
     headers: {
       "Content-Type": "application/activity+json",
@@ -242,7 +244,7 @@ export async function handleObject<TContextData>(
       return await onUnauthorized(request);
     }
   }
-  const jsonLd = await object.toJsonLd(context);
+  const jsonLd = await serializeForResponse(object, context);
   return new Response(JSON.stringify(jsonLd), {
     headers: {
       "Content-Type": "application/activity+json",
@@ -494,7 +496,7 @@ export async function handleCollection<
       return await onUnauthorized(request);
     }
   }
-  const jsonLd = await collection.toJsonLd(context);
+  const jsonLd = await serializeForResponse(collection, context);
   return new Response(JSON.stringify(jsonLd), {
     headers: {
       "Content-Type": "application/activity+json",
@@ -715,7 +717,17 @@ async function handleInboxInternal<TContextData>(
   }
   const keyCache = new KvKeyCache(kv, kvPrefixes.publicKey, ctx);
   const jsonWithoutSig = detachSignature(json);
-  const hasLdSignature = hasSignature(json);
+  const hasLdSignature = hasVerifiableSignature(json);
+  if (!hasLdSignature) {
+    const shape = describeSignatureShape(json);
+    if (shape != null) {
+      logger.debug(
+        "Linked Data Signature has an unsupported shape: {signatureKind}; " +
+          "properties: {signatureProperties}.",
+        shape,
+      );
+    }
+  }
   const canAttemptAlternateAuthAfterLdSignatureFailure =
     skipSignatureVerification ||
     hasHttpSignatureHeaders(request) ||
@@ -1533,7 +1545,7 @@ class CustomCollectionHandler<
    * @returns A promise that resolves to the JSON-LD representation.
    */
   async toJsonLd() {
-    return (await this.collection).toJsonLd(this.context);
+    return serializeForResponse(await this.collection, this.context);
   }
 
   /**
@@ -1954,7 +1966,7 @@ export async function respondWithObject(
   object: Object,
   options?: RespondWithObjectOptions,
 ): Promise<Response> {
-  const jsonLd = await object.toJsonLd(options);
+  const jsonLd = await serializeForResponse(object, options);
   return new Response(JSON.stringify(jsonLd), {
     headers: {
       "Content-Type": "application/activity+json",
@@ -2098,3 +2110,14 @@ const MIN_COMPONENTS = [
   "@target-uri",
   "@authority",
 ];
+
+/** Applies compatibility changes only after ordinary vocabulary serialization. */
+async function serializeForResponse(
+  object: Object,
+  options?: { contextLoader?: DocumentLoader },
+): Promise<unknown> {
+  return await normalizeAttachmentArrays(
+    await object.toJsonLd(options),
+    options?.contextLoader,
+  );
+}
