@@ -497,6 +497,57 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const declaration of [
+  "const { run } = { run: finish, other: () => [ctx.sendActivity(sender, inbox, activity)] };",
+  "const [run] = [finish, () => [ctx.sendActivity(sender, inbox, activity)]];",
+  "const { run = finish } = { other: () => [ctx.sendActivity(sender, inbox, activity)] };",
+]) {
+  test(
+    `${ruleName}: aggregate binding does not select an unrelated helper: ${declaration}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    ${declaration}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const declaration of [
+  "var deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];",
+  "let deliverAll; deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];",
+]) {
+  for (const shadowed of [true, false]) {
+    test(
+      `${ruleName}: var or assignment helper respects shadowing (${shadowed}): ${declaration}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    ${declaration}
+    await Promise.all(deliverAll());
+    {
+      ${shadowed ? "const deliverAll = external;" : ""}
+      await deliverAll();
+    }
+  });
+`,
+        rule,
+        ruleName,
+        ...(shadowed ? {} : { expectedError: "Delivery is not awaited" }),
+      }),
+    );
+  }
+}
+
 for (const replacement of [
   "deliverAll = finish;",
   "deliverAll = chooseHelper();",

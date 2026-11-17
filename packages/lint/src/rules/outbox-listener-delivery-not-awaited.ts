@@ -240,6 +240,19 @@ function helpersAt(
       declaration = parentOf(declaration)!;
     }
     const declarator = parentOf(declaration);
+    // A function buried in an aggregate initializer may belong to a different
+    // property or tuple element than the identifier being invoked. Only a
+    // directly held callable certifies a named helper here.
+    if (fn.type !== "FunctionDeclaration") {
+      const target =
+        declarator?.type === "VariableDeclarator"
+          ? asNode(get(declarator, "id"))
+          : declarator?.type === "AssignmentExpression" &&
+              get(declarator, "operator") === "="
+            ? asNode(get(declarator, "left"))
+            : null;
+      if (target?.type !== "Identifier" || target.name !== node.name) return [];
+    }
     const variable =
       declarator?.type === "VariableDeclarator" ? parentOf(declarator) : null;
     const region =
@@ -248,8 +261,8 @@ function helpersAt(
         : variable?.type === "VariableDeclaration" &&
             get(variable, "kind") !== "var"
           ? parentOf(variable)
-          : null;
-    if (region == null) continue;
+          : asNode(get(enclosingFunction(fn), "body"));
+    if (region == null) return [];
     let current: Node | null = node;
     while (current != null && current !== region) {
       if (shadowsName(current, node.name)) return [];
