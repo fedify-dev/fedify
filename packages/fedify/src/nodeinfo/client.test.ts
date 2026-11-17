@@ -1,13 +1,21 @@
 import { test } from "@fedify/fixture";
 import { UrlError } from "@fedify/vocab-runtime";
 import {
+  detectRuntime,
   openDirectFetch,
   openPublicFetch,
   type PublicFetchSession,
 } from "@fedify/vocab-runtime/internal";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
-import { assertEquals, assertInstanceOf } from "@std/assert";
+import {
+  assertEquals,
+  assertInstanceOf,
+  assertRejects,
+  assertStrictEquals,
+} from "@std/assert";
 import fetchMock from "fetch-mock";
+import dns from "node:dns/promises";
+import { createServer } from "node:http";
 import {
   getNodeInfo,
   getNodeInfoInternal,
@@ -1150,6 +1158,74 @@ test("getNodeInfo() logs DNS failures as such", async (t) => {
   }
 });
 
+test("getNodeInfo() bounds and cancels default Node.js DNS lookups", {
+  ignore: detectRuntime() !== "node",
+}, async () => {
+  const originalLookup = dns.lookup;
+  const pending: ReturnType<
+    typeof deferred<
+      readonly {
+        address: string;
+        family: number;
+      }[]
+    >
+  >[] = [];
+  const hostnames: string[] = [];
+  const twoStarted = deferred<void>();
+  const records: LogRecord[] = [];
+  dns.lookup = ((hostname: string) => {
+    hostnames.push(hostname);
+    const lookup = deferred<readonly { address: string; family: number }[]>();
+    pending.push(lookup);
+    if (hostnames.length === 2) twoStarted.resolve();
+    return lookup.promise;
+  }) as unknown as typeof dns.lookup;
+  try {
+    await configure({
+      sinks: { buffer: (record) => records.push(record) },
+      loggers: [
+        { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+        { category: ["logtape", "meta"], sinks: [] },
+      ],
+      reset: true,
+    });
+    const first = getNodeInfo("https://first.example/nodeinfo", {
+      direct: true,
+      timeout: 50,
+    });
+    const second = getNodeInfo("https://second.example/nodeinfo", {
+      direct: true,
+      timeout: 50,
+    });
+    await settleWithin(twoStarted.promise, 1000);
+    const queued = getNodeInfo("https://third.example/nodeinfo", {
+      direct: true,
+      timeout: 20,
+    });
+    assertEquals(await settleWithin(queued, 1000), undefined);
+    assertEquals(await settleWithin(first, 1000), undefined);
+    assertEquals(await settleWithin(second, 1000), undefined);
+    assertEquals(hostnames, ["first.example", "second.example"]);
+    for (const lookup of pending) {
+      lookup.resolve([{ address: "93.184.215.14", family: 4 }]);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertEquals(hostnames, ["first.example", "second.example"]);
+    assertEquals(
+      records.some((record) =>
+        String(record.rawMessage).includes("DNS lookup failed")
+      ),
+      false,
+    );
+  } finally {
+    dns.lookup = originalLookup;
+    for (const lookup of pending) {
+      lookup.resolve([{ address: "93.184.215.14", family: 4 }]);
+    }
+    await reset();
+  }
+});
+
 interface FakeResponse {
   readonly status?: number;
   readonly headers?: Record<string, string>;
@@ -1247,6 +1323,441 @@ function recordHops(respond: (url: URL) => FakeResponse): HopRecorder {
   };
 }
 
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+} {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => resolve = done);
+  return { promise, resolve };
+}
+
+function waitForAbort(signal?: AbortSignal | null): Promise<Response> {
+  return new Promise((_, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    signal?.addEventListener("abort", () => reject(signal.reason), {
+      once: true,
+    });
+  });
+}
+
+test("getNodeInfo() times out while waiting for response headers", async () => {
+  const closed = deferred<void>();
+  let fetches = 0;
+  let closes = 0;
+  let signal: AbortSignal | undefined;
+  const records: LogRecord[] = [];
+  await configure({
+    sinks: { buffer: (record) => records.push(record) },
+    loggers: [
+      { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+  try {
+    const result = getNodeInfoInternal(
+      "https://example.com/nodeinfo",
+      { direct: true, timeout: 30 },
+      {
+        // deno-lint-ignore require-await
+        openHop: async (url, hopSignal) => {
+          signal = hopSignal;
+          return {
+            url: new URL(url),
+            fetch(_input, init) {
+              fetches++;
+              assertEquals(init?.signal, hopSignal);
+              return waitForAbort(init?.signal);
+            },
+            // deno-lint-ignore require-await
+            async close() {
+              closes++;
+              closed.resolve();
+            },
+          };
+        },
+      },
+    );
+    assertEquals(await settleWithin(result, 1000), undefined);
+    await settleWithin(closed.promise, 1000);
+    assertEquals(fetches, 1);
+    assertEquals(closes, 1);
+    assertEquals(signal?.aborted, true);
+    assertEquals(
+      records.filter((record) => record.level === "error").length,
+      1,
+    );
+    // The losing fetch continuation must not report a second failure later.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertEquals(
+      records.filter((record) => record.level === "error").length,
+      1,
+    );
+  } finally {
+    await reset();
+  }
+});
+
+test("getNodeInfo() times out while a small response body stalls", async () => {
+  const closed = deferred<void>();
+  let bodyCancelled = false;
+  let signal: AbortSignal | undefined;
+  const result = getNodeInfoInternal(
+    "https://example.com/nodeinfo",
+    { direct: true, timeout: 30 },
+    {
+      // deno-lint-ignore require-await
+      async openHop(url, hopSignal) {
+        signal = hopSignal;
+        return {
+          url: new URL(url),
+          // deno-lint-ignore require-await
+          async fetch(_input, init) {
+            assertEquals(init?.signal, hopSignal);
+            return new Response(
+              new ReadableStream<Uint8Array>({
+                start(controller) {
+                  controller.enqueue(new TextEncoder().encode('{"software":'));
+                },
+                cancel() {
+                  bodyCancelled = true;
+                },
+              }),
+            );
+          },
+          // deno-lint-ignore require-await
+          async close() {
+            closed.resolve();
+          },
+        };
+      },
+    },
+  );
+  assertEquals(await settleWithin(result, 1000), undefined);
+  await settleWithin(closed.promise, 1000);
+  assertEquals(signal?.aborted, true);
+  assertEquals(bodyCancelled, true);
+});
+
+test({
+  name: "getNodeInfo() aborts stalled HTTP responses",
+  ignore: ("navigator" in globalThis &&
+    navigator.userAgent === "Cloudflare-Workers") ||
+    ("Deno" in globalThis &&
+      (await Deno.permissions.query({ name: "net" })).state !== "granted"),
+  async fn(t) {
+    for (const stage of ["headers", "body"] as const) {
+      await t.step(stage, async () => {
+        const disconnected = deferred<void>();
+        const server = createServer((request, response) => {
+          response.on("close", () => disconnected.resolve());
+          request.socket.on("close", () => disconnected.resolve());
+          if (stage === "body") {
+            response.writeHead(200, { "Content-Type": "application/json" });
+            response.write('{"software":');
+          }
+        });
+        try {
+          await new Promise<void>((resolve) =>
+            server.listen(0, "127.0.0.1", resolve)
+          );
+          const address = server.address();
+          if (address == null || typeof address === "string") {
+            throw new Error("Expected a TCP server address.");
+          }
+          const result = getNodeInfoInternal(
+            `http://127.0.0.1:${address.port}/nodeinfo`,
+            { direct: true, timeout: 200 },
+            { openHop: openDirectFetch },
+          );
+          assertEquals(
+            await settleWithin(result, 2000).catch((error) => {
+              throw new Error(`${stage} lookup did not finish`, {
+                cause: error,
+              });
+            }),
+            undefined,
+          );
+          await settleWithin(disconnected.promise, 2000).catch((error) => {
+            throw new Error(`${stage} connection did not close`, {
+              cause: error,
+            });
+          });
+        } finally {
+          server.closeAllConnections();
+          await new Promise<void>((resolve) => server.close(() => resolve()));
+        }
+      });
+    }
+  },
+});
+
+test("getNodeInfo() shares one timeout across discovery and document", async () => {
+  const documentRequested = deferred<void>();
+  const documentClosed = deferred<void>();
+  let discoverySignal: AbortSignal | undefined;
+  let documentSignal: AbortSignal | undefined;
+  const descriptor = JSON.stringify({
+    links: [{
+      rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
+      href: "https://example.com/nodeinfo/2.1",
+    }],
+  });
+  const result = getNodeInfoInternal(
+    "https://example.com/",
+    { timeout: 200 },
+    {
+      // deno-lint-ignore require-await
+      async openHop(url) {
+        const isDocument = url.endsWith("/nodeinfo/2.1");
+        return {
+          url: new URL(url),
+          async fetch(_input, init) {
+            if (isDocument) {
+              documentSignal = init?.signal ?? undefined;
+              documentRequested.resolve();
+              return await waitForAbort(init?.signal);
+            }
+            discoverySignal = init?.signal ?? undefined;
+            return new Response(descriptor);
+          },
+          // deno-lint-ignore require-await
+          async close() {
+            if (isDocument) documentClosed.resolve();
+          },
+        };
+      },
+    },
+  );
+  await settleWithin(documentRequested.promise, 1000);
+  assertStrictEquals(documentSignal, discoverySignal);
+  assertEquals(await settleWithin(result, 1000), undefined);
+  await settleWithin(documentClosed.promise, 1000);
+  assertEquals(discoverySignal?.aborted, true);
+});
+
+test("getNodeInfo() honors caller cancellation without a timeout", async () => {
+  const caller = new AbortController();
+  const closed = deferred<void>();
+  let requestSignal: AbortSignal | undefined;
+  const result = getNodeInfoInternal(
+    "https://example.com/nodeinfo",
+    { direct: true, timeout: null, signal: caller.signal },
+    {
+      // deno-lint-ignore require-await
+      async openHop(url, signal) {
+        requestSignal = signal;
+        return {
+          url: new URL(url),
+          fetch(_input, init) {
+            assertStrictEquals(init?.signal, signal);
+            caller.abort(new Error("Caller stopped waiting"));
+            return waitForAbort(init?.signal);
+          },
+          // deno-lint-ignore require-await
+          async close() {
+            closed.resolve();
+          },
+        };
+      },
+    },
+  );
+  assertEquals(await settleWithin(result, 1000), undefined);
+  await settleWithin(closed.promise, 1000);
+  assertEquals(requestSignal?.aborted, true);
+});
+
+test("getNodeInfo() stops before fetching when caller already aborted", async () => {
+  const caller = new AbortController();
+  caller.abort();
+  let opened = false;
+  assertEquals(
+    await getNodeInfoInternal(
+      "https://example.com/nodeinfo",
+      { direct: true, signal: caller.signal },
+      {
+        // deno-lint-ignore require-await
+        async openHop() {
+          opened = true;
+          throw new Error("Unexpected fetch");
+        },
+      },
+    ),
+    undefined,
+  );
+  assertEquals(opened, false);
+});
+
+test("getNodeInfo() closes a session opened just after its timeout", async () => {
+  const closed = deferred<void>();
+  let fetches = 0;
+  let closes = 0;
+  const result = getNodeInfoInternal(
+    "https://example.com/nodeinfo",
+    { direct: true, timeout: 25 },
+    {
+      async openHop(url) {
+        await new Promise((resolve) => setTimeout(resolve, 55));
+        return {
+          url: new URL(url),
+          // deno-lint-ignore require-await
+          async fetch() {
+            fetches++;
+            return Response.json({ software: { name: "x", version: "1" } });
+          },
+          // deno-lint-ignore require-await
+          async close() {
+            closes++;
+            closed.resolve();
+          },
+        };
+      },
+    },
+  );
+  assertEquals(await settleWithin(result, 1000), undefined);
+  await settleWithin(closed.promise, 1000);
+  assertEquals(fetches, 0);
+  assertEquals(closes, 1);
+});
+
+test("getNodeInfo() does not log a late DNS failure as another error", async () => {
+  const records: LogRecord[] = [];
+  const finished = deferred<void>();
+  await configure({
+    sinks: { buffer: (record) => records.push(record) },
+    loggers: [
+      { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+  try {
+    const result = getNodeInfoInternal(
+      "https://example.com/nodeinfo",
+      { direct: true, timeout: 25 },
+      {
+        async openHop() {
+          try {
+            await new Promise((resolve) => setTimeout(resolve, 55));
+            throw new UrlError("DNS lookup failed", { reason: "dns" });
+          } finally {
+            finished.resolve();
+          }
+        },
+      },
+    );
+    assertEquals(await settleWithin(result, 1000), undefined);
+    await settleWithin(finished.promise, 1000);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertEquals(
+      records.filter((record) => record.level === "error").length,
+      1,
+    );
+  } finally {
+    await reset();
+  }
+});
+
+test("getNodeInfo() cancels a response returned after timeout", async () => {
+  const closed = deferred<void>();
+  let bodyCancelled = false;
+  let closes = 0;
+  const result = getNodeInfoInternal(
+    "https://example.com/nodeinfo",
+    { direct: true, timeout: 25 },
+    {
+      // deno-lint-ignore require-await
+      async openHop(url) {
+        return {
+          url: new URL(url),
+          async fetch() {
+            await new Promise((resolve) => setTimeout(resolve, 55));
+            return new Response(
+              new ReadableStream<Uint8Array>({
+                cancel() {
+                  bodyCancelled = true;
+                },
+              }),
+            );
+          },
+          // deno-lint-ignore require-await
+          async close() {
+            closes++;
+            closed.resolve();
+          },
+        };
+      },
+    },
+  );
+  assertEquals(await settleWithin(result, 1000), undefined);
+  await settleWithin(closed.promise, 1000);
+  assertEquals(closes, 1);
+  assertEquals(bodyCancelled, true);
+});
+
+test("getNodeInfo() validates its timeout", async () => {
+  for (const timeout of [0, -1, NaN, Infinity, 2_147_483_648]) {
+    await assertRejects(
+      () => getNodeInfoInternal("https://example.com/", { timeout }),
+      RangeError,
+    );
+  }
+});
+
+test("getNodeInfo() can disable its timeout", async () => {
+  const value = { software: { name: "x", version: "1" } };
+  const actual = await getNodeInfoInternal(
+    "https://example.com/nodeinfo",
+    { direct: true, parse: "none", timeout: null },
+    {
+      // deno-lint-ignore require-await
+      async openHop(url, signal) {
+        assertEquals(signal, undefined);
+        return {
+          url: new URL(url),
+          // deno-lint-ignore require-await
+          async fetch(_input, init) {
+            assertEquals(init?.signal, undefined);
+            return Response.json(value);
+          },
+          async close() {},
+        };
+      },
+    },
+  );
+  assertEquals(actual, value);
+});
+
+test("getNodeInfo() clears its timer after a successful fetch", async () => {
+  let signal: AbortSignal | undefined;
+  const value = { software: { name: "x", version: "1" } };
+  const actual = await getNodeInfoInternal(
+    "https://example.com/nodeinfo",
+    { direct: true, parse: "none", timeout: 100 },
+    {
+      // deno-lint-ignore require-await
+      async openHop(url, hopSignal) {
+        signal = hopSignal;
+        return {
+          url: new URL(url),
+          // deno-lint-ignore require-await
+          async fetch() {
+            return Response.json(value);
+          },
+          async close() {},
+        };
+      },
+    },
+  );
+  assertEquals(actual, value);
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  assertEquals(signal?.aborted, false);
+});
+
 test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
   const wellKnown = "https://example.com/.well-known/nodeinfo";
   const wellKnown2 = "https://example.com/.well-known/nodeinfo2";
@@ -1332,9 +1843,11 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
   });
 
   await t.step("too many redirections", async () => {
-    const recorder = recordHops(() => ({
+    const recorder = recordHops((url) => ({
       status: 302,
-      headers: { Location: "/.well-known/nodeinfo" },
+      headers: {
+        Location: `?hop=${Number(url.searchParams.get("hop") ?? 0) + 1}`,
+      },
       body: "redirecting",
     }));
     assertEquals(
@@ -1351,6 +1864,50 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
       recorder.events.filter((e) => e.startsWith("cancel ")).length,
       5,
     );
+    recorder.assertInvariants();
+  });
+
+  await t.step("self-redirect cycle", async () => {
+    const recorder = recordHops(() => ({
+      status: 302,
+      headers: { Location: "/.well-known/nodeinfo#another-fragment" },
+      body: "redirecting",
+    }));
+    assertEquals(
+      await getNodeInfoInternal("https://example.com/", {}, {
+        openHop: recorder.openHop,
+      }),
+      undefined,
+    );
+    assertEquals(recorder.events, [
+      `open ${wellKnown}`,
+      `fetch ${wellKnown} #1`,
+      "cancel #1",
+      `close ${wellKnown}`,
+    ]);
+    recorder.assertInvariants();
+  });
+
+  await t.step("two-URL redirect cycle", async () => {
+    const recorder = recordHops((url) => ({
+      status: 302,
+      headers: {
+        Location: url.href === wellKnown
+          ? "/.well-known/nodeinfo2"
+          : "/.well-known/nodeinfo",
+      },
+      body: "redirecting",
+    }));
+    assertEquals(
+      await getNodeInfoInternal("https://example.com/", {}, {
+        openHop: recorder.openHop,
+      }),
+      undefined,
+    );
+    assertEquals(recorder.events.filter((e) => e.startsWith("open ")), [
+      `open ${wellKnown}`,
+      `open ${wellKnown2}`,
+    ]);
     recorder.assertInvariants();
   });
 

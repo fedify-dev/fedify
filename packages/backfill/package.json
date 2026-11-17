@@ -46,7 +46,8 @@
     "README.md"
   ],
   "dependencies": {
-    "@fedify/vocab": "workspace:*"
+    "@fedify/vocab": "workspace:*",
+    "@fedify/vocab-runtime": "workspace:*"
   },
   "devDependencies": {
     "tsdown": "catalog:",

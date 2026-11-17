@@ -12,8 +12,18 @@ const HEURISTICS_CONTEXTS: string[] = [
   "https://w3id.org/fep/ef61",
 ];
 
+// Activities are serialized through the JSON-LD processor rather than the
+// compact fast path, which would embed a separate @context in every nested
+// object and change the wire format of every activity.
+const ACTIVITY_TYPE_URI = "https://www.w3.org/ns/activitystreams#Activity";
+
 interface ScalarType {
   name: string;
+  /**
+   * The type name to use for values accepted by constructors and `clone()`,
+   * when it is wider than {@link name}.  Defaults to {@link name}.
+   */
+  inputName?: string;
   typeGuard(variable: string): string;
   encoder(variable: string): string;
   compactEncoder?: (variable: string) => string;
@@ -215,19 +225,20 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v}.toString()`;
     },
     dataCheck(v) {
+      // Keep in lockstep with hasMalformedExpandedQuestionClosedLiteral() in
+      // packages/fedify/src/federation/temporal.ts.
       return `typeof ${v} === "object" && "@type" in ${v}
         && "@value" in ${v} && typeof ${v}["@value"] === "string"
         && ${v}["@type"] === "http://www.w3.org/2001/XMLSchema#dateTime"
-        // Check if the value is a valid RFC 3339 date-time string
-        && new Date(${v}["@value"]).toString() !== "Invalid Date"
+        // Date rejects a fraction right after the minutes, hence the normalized
+        // form; the raw form keeps other date-like values failing at decoding
+        && (new Date(${v}["@value"]).toString() !== "Invalid Date"
+          || new Date(normalizeDateTimeLiteral(${v}["@value"])).toString()
+            !== "Invalid Date")
         `;
     },
     decoder(v) {
-      return `Temporal.Instant.from(
-        ${v}["@value"].substring(19).match(/[Z+-]/)
-          ? ${v}["@value"]
-          : ${v}["@value"] + "Z"
-      )`;
+      return `Temporal.Instant.from(normalizeDateTimeLiteral(${v}["@value"]))`;
     },
   },
   "http://www.w3.org/2001/XMLSchema#duration": {
@@ -358,6 +369,7 @@ const scalarTypes: Record<string, ScalarType> = {
   },
   "fedify:publicKey": {
     name: "CryptoKey",
+    inputName: "CryptoKeyLike",
     typeGuard(v) {
       return `
         // @ts-ignore: CryptoKey exists in the global scope.
@@ -380,6 +392,7 @@ const scalarTypes: Record<string, ScalarType> = {
   },
   "fedify:multibaseKey": {
     name: "CryptoKey",
+    inputName: "CryptoKeyLike",
     typeGuard(v) {
       return `
         // @ts-ignore: CryptoKey exists in the global scope.
@@ -486,23 +499,50 @@ const scalarTypes: Record<string, ScalarType> = {
   },
 };
 
+/**
+ * Gets the TypeScript type name for a type URI.
+ * @param typeUri The type URI to resolve.
+ * @param types The vocabulary types in scope.
+ * @param forInput Whether to return the type accepted as input by
+ *                 constructors and `clone()`, which can be wider than the type
+ *                 those APIs return.
+ * @returns The TypeScript type name.
+ */
 export function getTypeName(
   typeUri: string,
   types: Record<string, TypeSchema>,
+  forInput = false,
 ): string {
   if (typeUri in types) return types[typeUri].name;
-  if (typeUri in scalarTypes) return scalarTypes[typeUri].name;
+  if (typeUri in scalarTypes) {
+    const scalar = scalarTypes[typeUri];
+    return forInput ? scalar.inputName ?? scalar.name : scalar.name;
+  }
   throw new Error(`Unknown type: ${typeUri}`);
 }
 
+/**
+ * Gets the TypeScript type names for a list of type URIs.
+ * @param typeUris The type URIs to resolve.
+ * @param types The vocabulary types in scope.
+ * @param parentheses Whether to wrap a union in parentheses.
+ * @param forInput Whether to return the types accepted as input by
+ *                 constructors and `clone()`.
+ * @returns The TypeScript type expression.
+ */
 export function getTypeNames(
   typeUris: string[],
   types: Record<string, TypeSchema>,
   parentheses = false,
+  forInput = false,
 ): string {
   if (typeUris.length < 1) return "never";
-  else if (typeUris.length === 1) return getTypeName(typeUris[0], types);
-  let typeNames = typeUris.map((typeUri) => getTypeName(typeUri, types));
+  else if (typeUris.length === 1) {
+    return getTypeName(typeUris[0], types, forInput);
+  }
+  let typeNames = typeUris.map((typeUri) =>
+    getTypeName(typeUri, types, forInput)
+  );
   typeNames = typeNames.filter((t, i) => typeNames.indexOf(t) === i);
   const t = typeNames.join(" | ");
   return parentheses && typeNames.length > 1 ? `(${t})` : t;
@@ -528,6 +568,7 @@ export function isCompactableType(
   typeUri: string,
   types: Record<string, TypeSchema>,
 ): boolean {
+  if (typeUri === ACTIVITY_TYPE_URI) return false;
   if (typeUri in scalarTypes) {
     return scalarTypes[typeUri].compactEncoder != null;
   } else if (typeUri in types) {

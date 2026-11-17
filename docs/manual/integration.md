@@ -959,6 +959,7 @@ export const config = {
     { source: "/.well-known/nodeinfo" },
     { source: "/.well-known/x-nodeinfo2" },
     { source: "/.well-known/apgateway/:path*" },
+    { source: "/nodeinfo/:path*" },
   ],
 };
 ~~~~
@@ -996,6 +997,31 @@ a Next.js route handler.
 > your `matcher` as well as upgrading *@fedify/next*; otherwise, hashlink
 > media requests without the federation media types in their headers never
 > reach Fedify.
+> Requests go through two stages.  First, `config.matcher` decides whether
+> Next.js runs the middleware.  Then, `fedifyWith()` passes requests with
+> federation media types in their `Accept` or `Content-Type` headers, requests
+> to `/.well-known/nodeinfo` and `/.well-known/x-nodeinfo2`, and paths under
+> `/nodeinfo/` to Fedify.  Other requests go
+> to the function you passed to `fedifyWith()`, or to Next.js by default.
+> NodeInfo paths are matched regardless of their headers because clients
+> commonly fetch them with `Accept: application/json`, `*/*`, or no `Accept`
+> header. More details about `matcher` can be found in the official Next.js
+> documentation [`config` in *middleware.js*].
+
+> [!NOTE]
+> When upgrading an existing application, add
+> `{ source: "/nodeinfo/:path*" }` to your `matcher` as well as upgrading
+> *@fedify/next*.  Otherwise, NodeInfo document requests without federation
+> media types in their headers never reach the middleware.
+
+Use a NodeInfo dispatcher path under `/nodeinfo/`, such as `/nodeinfo/2.1`.
+Requests under this prefix go to Fedify even if no dispatcher is registered,
+in which case they get the `onNotFound` response (`404 Not Found` by default).
+For a custom dispatcher path outside this prefix, add that path to
+`config.matcher` and explicitly pass requests for it to `integrateFederation()`
+instead of relying on `fedifyWith()` to recognize it.  Pass the same context
+data factory and error handlers to both functions if you use them.
+Adding a `matcher` entry alone does not change `fedifyWith()`'s path detection.
 
 [Fedify repository]: https://github.com/fedify-dev/fedify
 [Next.js]: https://nextjs.org/

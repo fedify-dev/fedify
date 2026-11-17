@@ -507,9 +507,7 @@ async function* generateProperty(
       }
       yield `
         if (v?.id != null &&
-            ((${
-        type.trustEmbeddedObjects === false ? "" : "this.id != null && "
-      }!isTrustedIriOrigin(options, v.id, ${trustOwner})) ||
+            (!isTrustedIriOrigin(options, v.id, ${trustOwner}) ||
               isUnsecuredPortableObject(this) ||
               mustDereferencePortableObject(
                 this, ${trustOwner}, v.id, options,
@@ -682,9 +680,7 @@ async function* generateProperty(
       }
       yield `
           if (v?.id != null &&
-              ((${
-        type.trustEmbeddedObjects === false ? "" : "this.id != null && "
-      }!isTrustedIriOrigin(options, v.id, ${trustOwner})) ||
+              (!isTrustedIriOrigin(options, v.id, ${trustOwner}) ||
                 isUnsecuredPortableObject(this) ||
                 mustDereferencePortableObject(
                   this, ${trustOwner}, v.id, options,

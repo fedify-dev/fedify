@@ -124,6 +124,10 @@ async function codegen() {
   const scriptsDir = $.path(import.meta.dirname!);
   const packageDir = scriptsDir.parent()!;
   const schemaDir = packageDir.join("src");
+  const generatorMetadata = packageDir.parent()!.join(
+    "vocab-tools",
+    "deno.json",
+  );
   const realPath = schemaDir.join("vocab.ts");
   const lockPath = packageDir.join(".vocab-codegen.lock");
 
@@ -140,6 +144,7 @@ async function codegen() {
         [".ts", ".yaml", ".yml"],
       ),
       await getLatestMtimeUnder(scriptsDir, [".ts"]),
+      (await generatorMetadata.stat())?.mtime?.getTime() ?? 0,
     );
 
     // Check if regeneration is needed (after acquiring lock)

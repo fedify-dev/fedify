@@ -11,6 +11,7 @@ import {
   Document,
   Multikey,
   Note,
+  OrderedCollectionPage,
   Place,
   PUBLIC_COLLECTION,
   Translation,
@@ -46,6 +47,7 @@ import {
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { verifyRequest } from "./http.ts";
 import type { KeyCache } from "./key.ts";
+import { detachSignature, signJsonLd, verifySignature } from "./ld.ts";
 import {
   createProof,
   hasProofLike,
@@ -199,8 +201,8 @@ test("createProof()", async () => {
   assertEquals(
     proof.proofValue,
     decodeHex(
-      "0e63238fdb50a979a7fbd906b471d328a03504de7aa3a0409fad1500b85d6fec" +
-        "afa2223bfde21ba2eac9446d36f6583c45cb55a98017a0a6a275f50262a4ea06",
+      "471e7aefd4ce4be462d1d7e1194ccfe3c177e10986740e47b60330e1655a0242202e" +
+        "47d3fa6599a83bf9f989c05a1507907e3bbea44c6391243a8e5c29d8ba00",
     ),
   );
   assertEquals(proof.created, created);
@@ -521,6 +523,103 @@ test("hasProofLike()", () => {
       proofPurpose: "assertionMethod",
     },
   }));
+});
+
+test("collection serialization preserves cached object integrity proofs", async () => {
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  const signed = await signObject(
+    fep8b32TestVectorActivity,
+    fep8b32TestVectorPrivateKey,
+    fep8b32TestVectorKeyId,
+    { ...options, created: Temporal.Instant.from("2023-02-24T23:36:38Z") },
+  );
+  const source = await signed.toJsonLd(options);
+  assertInstanceOf(await verifyObject(Create, source, options), Create);
+  const cached = await Create.fromJsonLd(source, options);
+  const json = await new OrderedCollectionPage({
+    id: new URL("https://server.example/outbox?page=1"),
+    items: [cached],
+  }).toJsonLd(
+    options,
+  ) as { orderedItems: unknown[] };
+  assertEquals(json.orderedItems[0], source);
+  assertEquals(await cached.toJsonLd(), source);
+  assertInstanceOf(
+    await verifyObject(Create, json.orderedItems[0], options),
+    Create,
+  );
+  const restored = await OrderedCollectionPage.fromJsonLd(json, options);
+  const items = await Array.fromAsync(restored.getItems(options));
+  assertEquals(items.length, 1);
+  assertEquals(await items[0].toJsonLd(), source);
+});
+
+test("signObject() migrates proofs from an older context", async () => {
+  const oldContext = [
+    "https://w3id.org/identity/v1",
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+  ];
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+  const oldSigned = await signObject(
+    activity,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader, context: oldContext },
+  );
+  const oldJson = await oldSigned.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: oldContext,
+  });
+  const restored = await Create.fromJsonLd(oldJson, {
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+  });
+  const resigned = await signObject(
+    restored,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader },
+  );
+  const json = await resigned.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const proofs = Array.isArray(json.proof) ? json.proof : [json.proof];
+  assertEquals(proofs.length, 1);
+  assertEquals(
+    (proofs[0] as Record<string, unknown>).verificationMethod,
+    ed25519Multikey.id!.href,
+  );
+});
+
+test("signObject() skips context comparison for proofless objects", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+  let unformattedSerializations = 0;
+  const originalToJsonLd = activity.toJsonLd.bind(activity);
+  Object.defineProperty(activity, "toJsonLd", {
+    value: async (options?: { format?: "compact" | "expand" }) => {
+      if (options?.format == null) unformattedSerializations++;
+      return await originalToJsonLd(options);
+    },
+  });
+  await signObject(
+    activity,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader },
+  );
+  assertEquals(unformattedSerializations, 0);
 });
 
 test("verifyProof()", async () => {
@@ -2748,6 +2847,48 @@ test("verifyPortableObjectProof()", async (t) => {
       );
     },
   );
+});
+
+test("signJsonLd() does not invalidate an existing proof", async () => {
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  const note = new Note({
+    id: new URL("https://example.com/notes/1"),
+    attribution: new URL("https://example.com/users/alice"),
+    content: "Hello",
+  });
+  const proof = await createProof(
+    note,
+    ed25519PrivateKey,
+    ed25519PublicKey.id!,
+    options,
+  );
+  const jsonLd = await note.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const withProof: Record<string, unknown> = {
+    ...jsonLd,
+    proof: await proof.toJsonLd({
+      format: "compact",
+      contextLoader: mockDocumentLoader,
+      context: jsonLd["@context"] as (string | Record<string, string>)[],
+    }),
+  };
+  const signed = await signJsonLd(
+    withProof,
+    rsaPrivateKey2,
+    rsaPublicKey2.id!,
+    options,
+  ) as Record<string, unknown>;
+  assertEquals(signed["@context"], withProof["@context"]);
+  assertEquals(
+    await verifyProof(detachSignature(signed), proof, options),
+    ed25519Multikey,
+  );
+  assertEquals(await verifySignature(signed, options), rsaPublicKey2);
 });
 
 test("verifyObject()", async () => {

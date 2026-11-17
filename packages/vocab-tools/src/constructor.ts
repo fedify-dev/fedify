@@ -8,6 +8,13 @@ import {
   getTypeNames,
 } from "./type.ts";
 
+/**
+ * Generates the TypeScript type of a property in the `values` object that the
+ * constructor and `clone()` accept.
+ * @param property The property to generate the type for.
+ * @param types The vocabulary types in scope.
+ * @returns The generated type expression.
+ */
 function generateParameterType(
   property: PropertySchema,
   types: Record<string, TypeSchema>,
@@ -18,12 +25,14 @@ function generateParameterType(
   if (hasSingularAccessor(property)) {
     if (scalar) {
       code.push(
-        `${property.singularName}?: ${getTypeNames(range, types)} | null;`,
+        `${property.singularName}?: ${
+          getTypeNames(range, types, false, true)
+        } | null;`,
       );
     } else {
       code.push(
         `${property.singularName}?: ${
-          getTypeNames(range, types)
+          getTypeNames(range, types, false, true)
         } | URL | null;`,
       );
     }
@@ -31,11 +40,15 @@ function generateParameterType(
   if (isNonFunctionalProperty(property)) {
     if (scalar) {
       code.push(
-        `${property.pluralName}?: (${getTypeNames(range, types, true)})[];`,
+        `${property.pluralName}?: (${
+          getTypeNames(range, types, true, true)
+        })[];`,
       );
     } else {
       code.push(
-        `${property.pluralName}?: (${getTypeNames(range, types)} | URL)[];`,
+        `${property.pluralName}?: (${
+          getTypeNames(range, types, false, true)
+        } | URL)[];`,
       );
     }
   }

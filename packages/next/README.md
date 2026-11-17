@@ -66,6 +66,19 @@ export const config = {
     // FEP-ef61 gateway requests such as hashlink media, which clients fetch
     // without the federation media types, e.g., with "Accept: image/*":
     { source: "/.well-known/apgateway/:path*" },
+    { source: "/nodeinfo/:path*" },
   ],
 };
 ~~~~
+
+The `matcher` decides whether Next.js runs the middleware; `fedifyWith()` then
+decides whether Fedify handles the request.  NodeInfo paths under `/nodeinfo/`
+are forwarded regardless of their headers.  When upgrading an existing
+application, add `{ source: "/nodeinfo/:path*" }` to its `matcher` as well as
+upgrading this package.  Requests under this prefix go to Fedify even without
+a dispatcher, returning `404 Not Found` by default.
+
+For a NodeInfo dispatcher outside `/nodeinfo/`, add its path to `matcher` and
+explicitly delegate requests for it to `integrateFederation()` with the same
+context data factory and error handlers you use with `fedifyWith()`.
+A `matcher` entry alone does not make `fedifyWith()` recognize a custom path.

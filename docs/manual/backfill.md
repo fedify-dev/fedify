@@ -71,6 +71,29 @@ for await (
 }
 ~~~~
 
+Custom `BackfillDocumentLoader` implementations must validate the returned
+object's declared ID against the final response URL after redirects.  Pass a
+custom JSON-LD `DocumentLoader` to `lookupObject()` instead of fetching JSON
+and parsing it directly with `fromJsonLd()`.  The JSON-LD loader must set
+`documentUrl` to the final response URL so `lookupObject()` can perform this
+validation. `lookupObject()` checks only the top-level object's origin. Backfill
+dereferences cross-origin embedded objects through the vocabulary accessors,
+which apply this check only to objects decoded with `fromJsonLd()` or
+`lookupObject()`. Objects passed to a constructor are trusted as they are, so a
+loader must not build remote data with constructors.
+
+Backfill also ignores loader results whose ID origin differs from the
+requested IRI's origin, including otherwise valid cross-origin redirects.
+Portable `ap:` and `ap+ef61:` identifiers are compared by DID, including
+valid FEP-ef61 compatible gateway identifiers.  The loader must verify portable
+proofs before returning these objects; matching origins alone do not
+authenticate their content.
+This does not replace the loader's validation: `BackfillDocumentLoader` does
+not expose the final response URL.
+
+Backfilled objects remain unverified remote data.  Applications should
+authenticate them before persisting or otherwise trusting them.
+
 The seed object itself is not yielded.  If the same object appears in a
 discovered collection, it is skipped by ID.
 

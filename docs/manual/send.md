@@ -874,6 +874,10 @@ queue, the `~Context.sendActivity()` method does not throw an error even if
 the delivery fails.  Instead, the delivery failure is reported to the queue
 and retried later.
 
+Each delivery attempt has a 30-second deadline, including redirects and
+HTTP signature retries.  A timeout is reported as a delivery failure and
+follows the queue's retry schedule.
+
 If you want to handle the delivery failure, you can register an error handler
 to the queue:
 
@@ -1438,6 +1442,34 @@ do not otherwise validate a proof created with a single key.
 > To support HTTP Signatures, Linked Data Signatures, and Object Integrity
 > Proofs simultaneously, you need to generate both RSA-PKCS#1-v1.5 and Ed25519
 > key pairs for each actor, and store them in the database.
+
+
+JSON-LD compatibility workarounds
+---------------------------------
+
+Fedify keeps `attachment` values as arrays in locally generated activities and
+in actor, object, collection, and collection page responses, including the
+response helpers.  Mastodon ignores singleton profile fields serialized as
+objects, and Pixelfed rejects singleton media attachments, even though both
+forms are valid JSON-LD.
+
+These internal adjustments run after vocabulary serialization and before new
+activity proofs and signatures are created.  Activity transformers run before
+serialization, so assigning a one-element `attachments` array in a transformer
+cannot prevent JSON-LD compaction from collapsing it.
+
+The compatibility layer leaves the entire serialized document unchanged when
+JSON-LD expansion finds an Object Integrity Proof or Linked Data signature,
+including in an embedded object.  It also skips the adjustment if a context
+cannot be resolved or RDF equivalence cannot be established.  As a result,
+existing signed documents can retain singleton attachments.
+
+Newly normalized deliveries are signed over the exact adjusted JSON, which is
+also retained for queueing and retries.  These workarounds do not change the
+public `createProof()` or `signObject()` behavior, or vocabulary serialization.
+They prevent the compatibility rewrite from invalidating existing signatures;
+they do not repair existing limitations in composing independently signed
+objects under a new parent's JSON-LD context.
 
 
 Activity transformers
