@@ -31,6 +31,7 @@ function validateBodySizeLimit(maxBytes: number): void {
  * @param message The response or request to read.
  * @param maxBytes The maximum number of decoded bytes to read.
  * @param url The URL to include in errors and logs.
+ * @param signal The signal that cancels an in-progress body read.
  * @returns The decoded body text.
  * @throws {BodyTooLargeError} If the body exceeds the limit.
  * @internal
@@ -39,9 +40,14 @@ export async function readBoundedText(
   message: Pick<Request, "body" | "headers">,
   maxBytes: number,
   url: string | URL,
+  signal?: AbortSignal,
 ): Promise<string> {
   validateBodySizeLimit(maxBytes);
   const reader = message.body?.getReader();
+  const cancelOnAbort = () => {
+    if (reader != null) void reader.cancel(signal?.reason).catch(() => {});
+  };
+  signal?.addEventListener("abort", cancelOnAbort, { once: true });
   const tooLarge = (): never => {
     getLogger(["fedify", "runtime", "body"]).warn(
       "Body from {url} exceeds the limit of {maxBytes} bytes.",
@@ -50,6 +56,7 @@ export async function readBoundedText(
     throw new BodyTooLargeError(url, maxBytes);
   };
   try {
+    signal?.throwIfAborted();
     // Content-Length describes the encoded body when compression is used.
     // Only use it as an early rejection for an unencoded body.
     const length = message.headers.get("Content-Length");
@@ -63,6 +70,7 @@ export async function readBoundedText(
     const bounded = new ReadableStream<BufferSource>({
       async pull(controller) {
         const { done, value } = await reader.read();
+        signal?.throwIfAborted();
         if (done) {
           controller.close();
           return;
@@ -77,9 +85,11 @@ export async function readBoundedText(
       const chunks: string[] = [];
       while (true) {
         const { done, value } = await textReader.read();
+        signal?.throwIfAborted();
         if (done) break;
         chunks.push(value);
       }
+      signal?.throwIfAborted();
       return chunks.join("");
     } finally {
       textReader.releaseLock();
@@ -90,6 +100,7 @@ export async function readBoundedText(
     if (reader != null) void reader.cancel(error).catch(() => {});
     throw error;
   } finally {
+    signal?.removeEventListener("abort", cancelOnAbort);
     reader?.releaseLock();
   }
 }

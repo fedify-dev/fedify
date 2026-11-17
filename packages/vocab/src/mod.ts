@@ -49,7 +49,20 @@
  *
  * @module
  */
-export * from "./actor.ts";
+export {
+  getActorClassByTypeName,
+  getActorHandle,
+  getActorTypeName,
+  isActor,
+  normalizeActorHandle,
+} from "./actor.ts";
+export type {
+  Actor,
+  ActorTypeName,
+  GetActorHandleOptions,
+  NormalizeActorHandleOptions,
+  Recipient,
+} from "./actor.ts";
 export * from "./constants.ts";
 export * from "./handle.ts";
 export * from "./lookup.ts";

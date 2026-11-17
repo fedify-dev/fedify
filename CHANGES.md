@@ -89,8 +89,11 @@ To be released.
     nothing.  Both paths now start the fanout worker, and deployments that
     configure only `queue: { fanout: ... }` no longer need to add an unused
     `inbox` or `outbox` queue to make fanout delivery work.  [[#1389], [#1392]]
+ -  Limited WebFinger lookups made through federation contexts to 10 seconds
+    per lookup.  \[[GHSA-9pmv-w936-hj3f]]
 
 [mastodon/mastodon\#41640]: https://github.com/mastodon/mastodon/issues/41640
+[GHSA-9pmv-w936-hj3f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9pmv-w936-hj3f
 [#554]: https://github.com/fedify-dev/fedify/issues/554
 [#664]: https://github.com/fedify-dev/fedify/issues/664
 [#1339]: https://github.com/fedify-dev/fedify/issues/1339
@@ -165,6 +168,11 @@ To be released.
     values in `Question.closed`, such as `2024-02-31T10:00.5Z`, now raise a
     `RangeError` instead of being silently dropped.
     [[#1339], [#1347] by ChanHaeng Lee\]
+ -  Limited WebFinger lookups used by object resolution to 10 seconds each,
+    and actor handle resolution to one 10-second deadline across alias checks.
+    Actor handle resolution now checks at most 100 subject/alias candidates and
+    skips duplicates.
+    [[GHSA-9pmv-w936-hj3f]]
  -  Replaced <https://w3id.org/identity/v1> with
     <https://w3id.org/security/v1> in the default JSON-LD contexts of activity
     types.  The former no longer resolves, and <https://w3id.org/security/v1>
@@ -211,6 +219,13 @@ To be released.
     your vocabulary code to get the fix.  Generated code now imports
     `normalizeDateTimeLiteral()` from `@fedify/vocab-runtime/temporal`.
     [[#1339], [#1347] by ChanHaeng Lee\]
+
+### @fedify/webfinger
+
+ -  Limited WebFinger lookups to 10 seconds across DNS resolution, redirects,
+    and response reading.  A caller's abort signal can end a lookup sooner.
+    This prevents slow endpoints from occupying lookup workers indefinitely.
+    [[GHSA-9pmv-w936-hj3f]]
 
 
 Version 2.0.35
