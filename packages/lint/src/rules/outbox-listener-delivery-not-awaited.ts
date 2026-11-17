@@ -183,7 +183,7 @@ function bindsName(pattern: Node | null, name: string): boolean {
 }
 
 /** A nearer lexical declaration makes a merged outer candidate ambiguous. */
-function shadowsName(region: Node, name: string): boolean {
+function shadowsName(region: Node, name: string, lexicalOnly = false): boolean {
   if (isFunctionLikeNode(region)) {
     return (
       (get(region, "params") as Node[]).some((param) =>
@@ -208,13 +208,27 @@ function shadowsName(region: Node, name: string): boolean {
             : [];
   return declarations.some((declaration) =>
     declaration.type === "VariableDeclaration"
-      ? (get(declaration, "declarations") as Node[]).some((item) =>
+      ? (!lexicalOnly || get(declaration, "kind") !== "var") &&
+        (get(declaration, "declarations") as Node[]).some((item) =>
           bindsName(asNode(get(item, "id")), name),
         )
       : (declaration.type === "FunctionDeclaration" ||
           declaration.type === "ClassDeclaration") &&
         bindsName(asNode(get(declaration, "id")), name),
   );
+}
+
+/** Finds the nearest lexical binding, with function scope as a fallback. */
+function assignmentRegion(assignment: Node, name: string): Node | null {
+  for (
+    let current = parentOf(assignment);
+    current != null;
+    current = parentOf(current)
+  ) {
+    if (isFunctionLikeNode(current)) return asNode(get(current, "body"));
+    if (shadowsName(current, name, true)) return current;
+  }
+  return null;
 }
 
 /**
@@ -261,7 +275,9 @@ function helpersAt(
         : variable?.type === "VariableDeclaration" &&
             get(variable, "kind") !== "var"
           ? parentOf(variable)
-          : asNode(get(enclosingFunction(fn), "body"));
+          : declarator?.type === "AssignmentExpression"
+            ? assignmentRegion(declarator, node.name)
+            : asNode(get(enclosingFunction(fn), "body"));
     if (region == null) return [];
     let current: Node | null = node;
     while (current != null && current !== region) {
@@ -858,7 +874,17 @@ function checkListener(
         get(parent, "right") === statement
       ) {
         const target = asNode(get(parent, "left"));
-        if (target?.type !== "VariableDeclaration") {
+        if (
+          target?.type === "VariableDeclaration" &&
+          get(target, "kind") === "var"
+        ) {
+          for (const item of get(target, "declarations") as Node[]) {
+            for (const name of helperNames) {
+              if (bindsName(asNode(get(item, "id")), name))
+                unknownWrites.add(name);
+            }
+          }
+        } else if (target?.type !== "VariableDeclaration") {
           for (const name of helperNames) {
             if (bindsName(target, name)) unknownWrites.add(name);
           }
@@ -867,6 +893,19 @@ function checkListener(
       visitAll(
         statement,
         (node) => {
+          if (
+            node.type === "VariableDeclarator" &&
+            get(parentOf(node), "kind") === "var"
+          ) {
+            const value = asNode(get(node, "init"));
+            if (value != null && !isFunctionLikeNode(unwrap(value))) {
+              for (const name of helperNames) {
+                if (bindsName(asNode(get(node, "id")), name))
+                  unknownWrites.add(name);
+              }
+            }
+            return;
+          }
           if (
             node.type !== "AssignmentExpression" &&
             node.type !== "UpdateExpression"

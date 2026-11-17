@@ -422,6 +422,57 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const replacement of [
+  "var run = finish;",
+  "{ var run = finish; }",
+  "for (var run of [finish]) {}",
+  "for (var { run } of [{ run: finish }]) {}",
+  "for (var run in {}) {}",
+]) {
+  test(
+    `${ruleName}: initialized var replacement invalidates array inference: ${replacement}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    var run = () => [ctx.sendActivity(sender, inbox, activity)];
+    await Promise.all(run());
+    ${replacement}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const local of [
+  "{ let run; run = () => [ctx.sendActivity(sender, inbox, activity)]; await Promise.all(run()); }",
+  "{ let run; { run = () => [ctx.sendActivity(sender, inbox, activity)]; } await Promise.all(run()); }",
+  "for (let run of [null]) { run = () => [ctx.sendActivity(sender, inbox, activity)]; await Promise.all(run()); }",
+]) {
+  test(
+    `${ruleName}: assignment helper does not escape its binding region: ${local}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    const run = finish;
+    ${local}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
 for (const declaration of [
   "const deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];",
   "function deliverAll() { return [ctx.sendActivity(sender, inbox, activity)]; }",
