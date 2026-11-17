@@ -497,6 +497,33 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const replacement of [
+  "deliverAll = finish;",
+  "deliverAll = chooseHelper();",
+  "({ run: deliverAll } = { run: finish });",
+  "[deliverAll] = [finish];",
+  "const replace = () => { deliverAll = finish; }; replace();",
+]) {
+  test(
+    `${ruleName}: unclassified reassignment invalidates array inference: ${replacement}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(deliverAll());
+    ${replacement}
+    await deliverAll();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
 for (const invocation of [
   "(async () => { await ctx.sendActivity(sender, inbox, activity); })()",
   "(async function () { await ctx.sendActivity(sender, inbox, activity); })()",

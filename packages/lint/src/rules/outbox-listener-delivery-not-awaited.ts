@@ -224,8 +224,12 @@ function shadowsName(region: Node, name: string): boolean {
  * Ambiguous merged candidates remain unclassified rather than filtered down
  * to a possibly incomplete set.
  */
-function helpersAt(node: Node, scope: UsedScope): FunctionLikeNode[] {
-  if (node.type !== "Identifier") return [];
+function helpersAt(
+  node: Node,
+  scope: UsedScope,
+  unknownWrites: ReadonlySet<string>,
+): FunctionLikeNode[] {
+  if (node.type !== "Identifier" || unknownWrites.has(node.name)) return [];
   const helpers = scope.functionsByName.get(node.name) ?? [];
   for (const fn of helpers) {
     let declaration: Node = fn;
@@ -662,6 +666,7 @@ function exitsFunction(node: Node): boolean {
 function helperReturnShapes(
   scopes: readonly UsedScope[],
   isDeliveryCall: (call: CallExpression) => boolean,
+  unknownWrites: ReadonlySet<string>,
 ): {
   shapes: ReadonlyMap<FunctionLikeNode, Shape | null>;
   arrayInvolved: ReadonlySet<FunctionLikeNode>;
@@ -688,7 +693,9 @@ function helperReturnShapes(
 
   const helpersOf = (node: Node, scope: UsedScope): FunctionLikeNode[] => {
     const callee = unwrap(asNode(get(node, "callee")) ?? node);
-    return isFunctionLikeNode(callee) ? [callee] : helpersAt(callee, scope);
+    return isFunctionLikeNode(callee)
+      ? [callee]
+      : helpersAt(callee, scope, unknownWrites);
   };
   // Keep array provenance even when a mixed or unsupported return has no
   // shape. Otherwise legacy promise propagation could revive that helper.
@@ -819,6 +826,46 @@ function checkListener(
   const scopes: UsedScope[] = [];
   walkUsedScopes(listener.body as Node, (scope) => scopes.push(scope));
 
+  // Shared reachability collects function-valued assignments, but not aliases
+  // or unknown replacement values. Without ordered binding data flow, any
+  // such write makes a same-named helper unsafe to infer, including in a
+  // closure. Name-wide invalidation is deliberately conservative.
+  const helperNames = new Set(
+    scopes.flatMap((scope) => [...scope.functionsByName.keys()]),
+  );
+  const unknownWrites = new Set<string>();
+  for (const scope of scopes) {
+    for (const statement of scope.statements) {
+      visitAll(
+        statement,
+        (node) => {
+          if (
+            node.type !== "AssignmentExpression" &&
+            node.type !== "UpdateExpression"
+          )
+            return;
+          const target = asNode(
+            get(
+              node,
+              node.type === "AssignmentExpression" ? "left" : "argument",
+            ),
+          );
+          const value = asNode(get(node, "right"));
+          if (
+            get(node, "operator") === "=" &&
+            value != null &&
+            isFunctionLikeNode(unwrap(value))
+          )
+            return;
+          for (const name of helperNames) {
+            if (bindsName(target, name)) unknownWrites.add(name);
+          }
+        },
+        false,
+      );
+    }
+  }
+
   const targets = findDeliveryTargets(listener, scopes);
   if (targets.contextName == null && targets.aliases.size === 0) return;
 
@@ -838,7 +885,11 @@ function checkListener(
   const mentioned = new Set<string>();
   collectReferencedNames(listener.body, mentioned, true);
   const analysis: Analysis = { listener, mentioned };
-  const { shapes, arrayInvolved } = helperReturnShapes(scopes, isDeliveryCall);
+  const { shapes, arrayInvolved } = helperReturnShapes(
+    scopes,
+    isDeliveryCall,
+    unknownWrites,
+  );
 
   const callsByScope = scopes.map((scope) => {
     const calls: CallExpression[] = [];
@@ -868,7 +919,7 @@ function checkListener(
     const callee = unwrap(call.callee as Node);
     const helpers = isFunctionLikeNode(callee)
       ? [callee]
-      : helpersAt(callee, scope);
+      : helpersAt(callee, scope, unknownWrites);
     if (helpers.length === 0) return null;
     if (carriesCompletion(helpers)) return "promise";
     if (carriesArray(helpers)) return "promises";
@@ -909,7 +960,7 @@ function checkListener(
         }
         for (const arg of call.arguments as Node[]) {
           if (arg.type !== "Identifier") continue;
-          const helpers = helpersAt(arg, scope);
+          const helpers = helpersAt(arg, scope, unknownWrites);
           const shape = carriesCompletion(helpers)
             ? "promise"
             : carriesArray(helpers)
@@ -975,7 +1026,7 @@ function checkListener(
     for (const call of callsByScope[index]) {
       for (const arg of call.arguments as Node[]) {
         if (arg.type !== "Identifier") continue;
-        const held = helpersAt(arg, scope);
+        const held = helpersAt(arg, scope, unknownWrites);
         const shape = carriesCompletion(held)
           ? "promise"
           : carriesArray(held)
