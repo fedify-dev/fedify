@@ -61,6 +61,12 @@ for (const [producer, definition] of [
   for (const [consumer, code, dropped] of [
     ["bare", "deliverAll();", true],
     ["await", "await deliverAll();", true],
+    ["intermediate await", "await Promise.all(await deliverAll());", false],
+    [
+      "stored intermediate await",
+      "const pending = await deliverAll(); await Promise.all(pending);",
+      false,
+    ],
     ["return", "return deliverAll();", true],
     ["forgotten", "const pending = deliverAll();", true],
     ["dropped combinator", "Promise.all(deliverAll());", true],

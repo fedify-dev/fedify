@@ -334,9 +334,16 @@ function fateOf(
       // Awaiting an array of promises, or an object holding one, waits for
       // none of them.
       case "AwaitExpression":
-        return currentShape === "promise"
-          ? { fate: "awaited", owner: enclosingFunction(parent) }
-          : DROPPED;
+        if (currentShape === "promise") {
+          return { fate: "awaited", owner: enclosingFunction(parent) };
+        }
+        // Await preserves an array value; its eventual consumer may still
+        // aggregate the deliveries, store the array, or discard it.
+        if (currentShape === "promises") {
+          current = parent;
+          continue;
+        }
+        return DROPPED;
 
       case "ReturnStatement":
         return currentShape === "promise"

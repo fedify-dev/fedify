@@ -1023,9 +1023,12 @@ When it cannot tell where a promise goes, the rule stays quiet.  In practice:
     call sites, including through other local helpers.  `await deliverAll();`,
     a bare `deliverAll();`, and returning that array from the listener are
     reported; use `await Promise.all(deliverAll())` to wait for the deliveries.
-    Mixed or unclassifiable returns stay quiet.  The rule does not follow
-    arrays returned by `async` helpers, recursive return chains, arrays
-    returned through stored variables, or objects returned by helpers.
+    An intermediate `await` preserves the array:
+    `await Promise.all(await deliverAll())` and storing `await deliverAll()`
+    for later aggregation are accepted. Mixed or unclassifiable returns stay
+    quiet.  The rule does not follow arrays returned by `async` helpers,
+    recursive return chains, arrays returned through stored variables, or
+    objects returned by helpers.
  -  A promise passed to a function the rule does not know, such as
     `queue.push(...)` or `setTimeout(...)`, is left alone, since the rule cannot
     tell what that function does with it.
