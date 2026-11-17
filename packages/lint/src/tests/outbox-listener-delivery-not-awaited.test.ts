@@ -14,6 +14,10 @@ const arrayHelperMap = `inboxes.map((inbox) => ${arrayHelperDelivery})`;
 for (const [producer, definition] of [
   ["map", `const deliverAll = () => ${arrayHelperMap};`],
   [
+    "array IIFE",
+    `const deliverAll = () => (() => [${arrayHelperDelivery}])();`,
+  ],
+  [
     "inline flatMap array",
     `const deliverAll = () => inboxes.flatMap(() => [${arrayHelperDelivery}]);`,
   ],
@@ -195,6 +199,49 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
 }
 
 for (const [scenario, definition, consumer, dropped] of [
+  [
+    "named flatMap aggregate completion",
+    `const deliverOne = () => [${arrayHelperDelivery}]; const deliver = async () => { await Promise.all(inboxes.flatMap(deliverOne)); };`,
+    "deliver();",
+    true,
+  ],
+  [
+    "named flatMap aggregate awaited",
+    `const deliverOne = () => [${arrayHelperDelivery}]; const deliver = async () => { await Promise.all(inboxes.flatMap(deliverOne)); };`,
+    "await deliver();",
+    false,
+  ],
+  [
+    "named flatMap aggregate returned",
+    `const deliverOne = () => [${arrayHelperDelivery}]; const deliver = () => Promise.all(inboxes.flatMap(deliverOne));`,
+    "deliver();",
+    true,
+  ],
+  [
+    "array IIFE directly awaited",
+    "",
+    `await (() => [${arrayHelperDelivery}])();`,
+    true,
+  ],
+  [
+    "array IIFE aggregated",
+    "",
+    `await Promise.all((() => [${arrayHelperDelivery}])());`,
+    false,
+  ],
+  ["array IIFE bare", "", `(() => [${arrayHelperDelivery}])();`, true],
+  [
+    "async array IIFE",
+    "",
+    `await (async () => [${arrayHelperDelivery}])();`,
+    false,
+  ],
+  [
+    "mixed array IIFE",
+    "",
+    `await (() => condition ? [${arrayHelperDelivery}] : ${arrayHelperDelivery})();`,
+    false,
+  ],
   ["named array forEach", "", "inboxes.forEach(deliverAll);", true],
   ["named array flatMap dropped", "", "inboxes.flatMap(deliverAll);", true],
   [

@@ -624,7 +624,7 @@ function helperReturnShapes(
 
   const helpersOf = (node: Node, scope: UsedScope): FunctionLikeNode[] => {
     const callee = unwrap(asNode(get(node, "callee")) ?? node);
-    return helpersAt(callee, scope);
+    return isFunctionLikeNode(callee) ? [callee] : helpersAt(callee, scope);
   };
   // Keep array provenance even when a mixed or unsupported return has no
   // shape. Otherwise legacy promise propagation could revive that helper.
@@ -802,8 +802,9 @@ function checkListener(
   ): Shape | null => {
     if (isDeliveryCall(call)) return "promise";
     const callee = unwrap(call.callee as Node);
-    if (callee.type !== "Identifier") return null;
-    const helpers = helpersAt(callee, scope);
+    const helpers = isFunctionLikeNode(callee)
+      ? [callee]
+      : helpersAt(callee, scope);
     if (helpers.length === 0) return null;
     if (carriesCompletion(helpers)) return "promise";
     if (carriesArray(helpers)) return "promises";
@@ -852,7 +853,7 @@ function checkListener(
               : null;
           if (shape == null) continue;
           const outcome = callbackResultOutcome(call, analysis, arg, shape);
-          if (outcome.shape === "promises" && noteCarrying(outcome)) {
+          if (noteCarrying(outcome)) {
             changed = true;
           }
         }
