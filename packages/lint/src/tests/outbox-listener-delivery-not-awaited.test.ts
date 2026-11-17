@@ -317,6 +317,51 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const declaration of [
+  "const deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];",
+  "function deliverAll() { return [ctx.sendActivity(sender, inbox, activity)]; }",
+]) {
+  for (const outside of [
+    "await deliverAll(ctx, activity);",
+    "inboxes.forEach(deliverAll);",
+    "const outer = () => deliverAll(ctx, activity); await outer();",
+  ]) {
+    test(
+      `${ruleName}: block-local array does not classify ${outside} (${declaration})`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+async function deliverAll(ctx, activity) { await ctx.sendActivity(sender, inbox, activity); }
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    { ${declaration} await Promise.all(deliverAll()); }
+    ${outside}
+  });
+`,
+        rule,
+        ruleName,
+      }),
+    );
+  }
+}
+
+test(
+  `${ruleName}: block-local array helper still reports its own dropped call`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    { const deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];
+      await deliverAll(); }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
 test(`${ruleName}: array helper diagnostics identify only discarded call sites`, () => {
   const code = `import { Activity } from "@fedify/vocab";
 federation.setOutboxListeners("/users/{identifier}/outbox")

@@ -156,6 +156,42 @@ function enclosingFunction(node: Node): FunctionLikeNode | null {
   return null;
 }
 
+/**
+ * The shared reachability map merges block-local functions. Do not use a
+ * candidate outside its lexical declaration region: another binding may be
+ * visible there, including one outside the listener that this rule ignores.
+ * Ambiguous merged candidates remain unclassified rather than filtered down
+ * to a possibly incomplete set.
+ */
+function helpersAt(node: Node, scope: UsedScope): FunctionLikeNode[] {
+  if (node.type !== "Identifier") return [];
+  const helpers = scope.functionsByName.get(node.name) ?? [];
+  for (const fn of helpers) {
+    let declaration: Node = fn;
+    while (
+      parentOf(declaration) != null &&
+      TRANSPARENT_WRAPPERS.has(parentOf(declaration)!.type)
+    ) {
+      declaration = parentOf(declaration)!;
+    }
+    const declarator = parentOf(declaration);
+    const variable =
+      declarator?.type === "VariableDeclarator" ? parentOf(declarator) : null;
+    const region =
+      fn.type === "FunctionDeclaration"
+        ? parentOf(fn)
+        : variable?.type === "VariableDeclaration" &&
+            get(variable, "kind") !== "var"
+          ? parentOf(variable)
+          : null;
+    if (region == null) continue;
+    let current: Node | null = node;
+    while (current != null && current !== region) current = parentOf(current);
+    if (current == null) return [];
+  }
+  return helpers;
+}
+
 /** The names an object pattern binds the delivery methods to. */
 function deliveryAliasesOf(pattern: Node, out: Set<string>): void {
   if (pattern.type !== "ObjectPattern") return;
@@ -573,9 +609,7 @@ function helperReturnShapes(
 
   const helpersOf = (node: Node, scope: UsedScope): FunctionLikeNode[] => {
     const callee = unwrap(asNode(get(node, "callee")) ?? node);
-    return callee.type === "Identifier"
-      ? (scope.functionsByName.get(callee.name) ?? [])
-      : [];
+    return helpersAt(callee, scope);
   };
   // Keep array provenance even when a mixed or unsupported return has no
   // shape. Otherwise legacy promise propagation could revive that helper.
@@ -751,8 +785,8 @@ function checkListener(
     if (isDeliveryCall(call)) return "promise";
     const callee = unwrap(call.callee as Node);
     if (callee.type !== "Identifier") return null;
-    const helpers = scope.functionsByName.get(callee.name);
-    if (helpers == null || helpers.length === 0) return null;
+    const helpers = helpersAt(callee, scope);
+    if (helpers.length === 0) return null;
     if (carriesCompletion(helpers)) return "promise";
     if (helpers.some((fn) => arrayInvolved.has(fn))) {
       if (!helpers.every((fn) => shapes.get(fn) === "promises")) return null;
@@ -795,8 +829,8 @@ function checkListener(
         }
         for (const arg of call.arguments as Node[]) {
           if (arg.type !== "Identifier") continue;
-          const helpers = scope.functionsByName.get(arg.name);
-          if (helpers == null || !carriesCompletion(helpers)) continue;
+          const helpers = helpersAt(arg, scope);
+          if (!carriesCompletion(helpers)) continue;
           const outcome = callbackResultOutcome(call, analysis, arg);
           if (outcome.shape === "promises" && noteCarrying(outcome)) {
             changed = true;
@@ -849,8 +883,8 @@ function checkListener(
     for (const call of callsByScope[index]) {
       for (const arg of call.arguments as Node[]) {
         if (arg.type !== "Identifier") continue;
-        const held = scope.functionsByName.get(arg.name);
-        if (held == null || !carriesCompletion(held)) continue;
+        const held = helpersAt(arg, scope);
+        if (!carriesCompletion(held)) continue;
         if (callbackResultOutcome(call, analysis, arg).fate === "dropped") {
           flag(arg);
         }
