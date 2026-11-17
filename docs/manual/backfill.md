@@ -12,7 +12,8 @@ Conversation backfill
 Fedify provides the *@fedify/backfill* package for reconstructing ActivityPub
 conversations that may be incomplete on the local server.  It can retrieve
 post-like objects from [FEP-f228] context collections and optionally crawl
-`inReplyTo` ancestors and `replies` descendants.
+`inReplyTo` ancestors and `replies` descendants. Choose `backfill()` to retrieve
+posts or `backfillActivities()` to retrieve original conversation activities.
 
 [FEP-f228]: https://w3id.org/fep/f228
 
@@ -119,7 +120,7 @@ is empty, has no supported items, or later item or page loads fail. Backfill
 does not try later history values or merge history with `context`. The selected
 source is reused across context strategies within the same traversal.
 
-Backfill does not unwrap `Add` activities. Histories containing only
+`backfill()` does not unwrap `Add` activities. Histories containing only
 `Add(Create(...))` activities yield nothing and do not trigger `context`
 fallback.
 
@@ -140,6 +141,9 @@ explicitly configured strategies, including `"reply-tree"`, can still run.
 By itself, it does not discover history on ancestors. It does not unwrap `Add`
 activities or replay updates and deletions. Omitting the option preserves
 existing source selection.
+
+These collection selection rules also apply to `backfillActivities()`. Source
+selection does not change which item types each function yields.
 
 ### Discovering collections through ancestors
 
@@ -196,13 +200,90 @@ memory use and copying time independently of `maxDepth`. Objects yielded by
 `reply-tree` may be copies rather than the caller's original instances.
 
 
+Reading original activities
+---------------------------
+
+*This API is available since Fedify 2.5.0.*
+
+Use `backfillActivities()` to read original activities, including `Create`,
+`Update`, `Delete`, and `Like`, instead of extracting posts. Choose this
+function directly when restoring conversation state; it does not require
+first calling `backfill()` or reading the collection twice:
+
+~~~~ typescript twoslash
+import { backfillActivities, type BackfillContext } from "@fedify/backfill";
+import { Delete, Note } from "@fedify/vocab";
+
+declare const context: BackfillContext;
+declare const seed: Note;
+// ---cut-before---
+for await (const item of backfillActivities(context, seed, {
+  contextSource: "history-first",
+  maxItems: 100,
+  maxRequests: 200,
+})) {
+  const activity = item.object;
+  console.log(item.id, activity.actorId);
+  if (activity instanceof Delete) {
+    console.log(activity.objectId); // Reads the reference without fetching it.
+  }
+}
+~~~~
+
+The result is `BackfillItem<Activity>` regardless of the seed's type. The
+stream preserves each activity's type, actor, ID, and object reference. It
+does not require target dereferencing: a deleted post does not need to resolve
+for its `Delete` activity to be yielded. Direct posts in mixed collections
+are skipped, and wrapper activities such as `Add` are yielded intact.
+A collection containing only posts produces an empty activity stream, which
+does not mean the conversation is empty.
+
+Activities follow collection traversal order, including pagination through
+`first` and `next`, without local sorting. Results are not necessarily
+latest-first, and unordered collections provide no chronological guarantee.
+
+| Item field | Activity output                                         |
+| ---------- | ------------------------------------------------------- |
+| `object`   | The original activity, including `Create` itself        |
+| `id`       | The activity's ID when present, not its target's ID     |
+| `strategy` | `"context-activities"`                                  |
+| `origin`   | `"collection"`                                          |
+| `depth`    | `0`, including collections discovered through ancestors |
+
+Deduplication uses activity IDs independently of post IDs. Distinct `Create`,
+`Update`, and `Delete` activities for the same post are retained; repeating
+an activity ID yields it once. Anonymous activities are yielded per occurrence.
+`maxItems` counts yielded activities; duplicates and failed or unresolved
+item loads do not consume that limit.
+
+`BackfillActivityOptions` select existing collection and traversal controls:
+`contextSource`, `contextDiscovery`, `maxDepth`, `maxItems`, `maxRequests`,
+`interval`, and `signal`. Source selection defaults to `context`; opt into
+`contextSource: "history-first"` for the history selection and fallback rules
+[described above](#selecting-conversation-history). Set
+`contextDiscovery: "ancestors"` to search ancestors for a collection, bounded
+by `maxDepth`. Ancestor discovery does not yield ancestor posts. The options
+do not expose post extraction strategies or an `output` mode, and the activity
+function does not perform reply-tree output.
+
+The request budget, interval, cancellation, cache, and failure rules below
+apply to both APIs. Each invocation owns its budget and cache. Activity
+discovery is not verified inbox delivery: applications choose which activities
+to apply and perform their own authorization checks before changing local
+state. This function does not replay activities or authorize them for you.
+
+Existing `backfill()` behavior remains unchanged. In particular, its
+`context-activities` strategy still extracts posts from supported `Create`
+activities and skips other activity types.
+
+
 Strategies
 ----------
 
-Strategies run in the configured order.  They share request and item budgets,
-abort state, document caching, and object ID deduplication.  If multiple
-strategies discover the same object, the first one keeps its `BackfillItem`
-metadata.
+`backfill()` strategies run in the configured order. They share request and
+item budgets, abort state, document caching, and object ID deduplication.  If
+multiple strategies discover the same object, the first one keeps its
+`BackfillItem` metadata.
 
 `"context-auto"`
 :   Handles both direct post-like objects and supported `Create` activities
@@ -279,7 +360,8 @@ Traversal controls
 ------------------
 
 `maxItems`
-:   Limits the number of yielded objects.  Skipped duplicates do not count.
+:   Limits yielded posts for `backfill()` or yielded activities for
+    `backfillActivities()`. Duplicates and skipped loads do not count.
 
 `maxRequests`
 :   Limits calls to `documentLoader`. Embedded objects and collections accepted
@@ -290,6 +372,7 @@ Traversal controls
     to 10. Immediate parents and direct replies have depth 1; their next-level
     parents or replies have depth 2, and so on. Context collection items have
     depth 0 and are not limited by this option.
+    For `backfillActivities()`, this option bounds only ancestor discovery.
 
 `interval`
 :   Adds a delay between `documentLoader` requests.  A callback receives the
@@ -305,7 +388,8 @@ Traversal controls
 Caching and failures
 --------------------
 
-Dereferenced documents are cached in memory for one `backfill()` traversal.
+Dereferenced documents are cached in memory for one invocation of either
+`backfill()` or `backfillActivities()`.
 Applications that need persistent or shared caching can implement it in the
 provided `documentLoader`.
 
@@ -314,6 +398,15 @@ be discovered. Thrown loader errors are not retained in the traversal cache,
 allowing the same IRI to be retried if another traversal path reaches it.
 A returned `null` is cached for the rest of the traversal. Aborting the
 provided signal stops traversal instead of skipping the request.
+
+Vocabulary collection objects also cache resolved items independently of the
+traversal cache. If the loader returns a previously traversed collection
+instance, its cached items and skipped-load placeholders can survive into a
+later invocation. A failed item may therefore remain skipped even after it
+becomes available. Return a freshly parsed collection when retrying failed
+item loads through that collection; starting another backfill call alone
+does not reset the collection object's item cache. This applies to both APIs.
+
 Errors cloning embedded history and errors in interval configuration during
 collection source resolution also propagate. Neither these errors nor
 cancellation trigger source fallback or allow later strategies to continue.

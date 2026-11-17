@@ -119,7 +119,7 @@ describe("backfillActivities", () => {
         if (iri.href === collectionId.href) {
           return Promise.resolve(
             new OrderedCollection({
-              items: [missingId, failedId, activityId],
+              items: [missingId, failedId, activityId, new Like({})],
             }),
           );
         }
@@ -129,7 +129,9 @@ describe("backfillActivities", () => {
       },
     };
     const items = await Array.fromAsync(
-      backfillActivities(context, new Note({ contexts: [collectionId] })),
+      backfillActivities(context, new Note({ contexts: [collectionId] }), {
+        maxItems: 1,
+      }),
     );
     strictEqual(items.length, 1);
     strictEqual(items[0].object.constructor, Delete);
