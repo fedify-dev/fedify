@@ -76,8 +76,11 @@ object's declared ID against the final response URL after redirects.  Pass a
 custom JSON-LD `DocumentLoader` to `lookupObject()` instead of fetching JSON
 and parsing it directly with `fromJsonLd()`.  The JSON-LD loader must set
 `documentUrl` to the final response URL so `lookupObject()` can perform this
-validation.  `lookupObject()` checks only the top-level object's origin;
-backfill dereferences cross-origin embedded objects separately.
+validation. `lookupObject()` checks only the top-level object's origin. Backfill
+dereferences cross-origin embedded objects through the vocabulary accessors,
+which apply this check only to objects decoded with `fromJsonLd()` or
+`lookupObject()`. Objects passed to a constructor are trusted as they are, so a
+loader must not build remote data with constructors.
 
 Backfill also ignores loader results whose ID origin differs from the
 requested IRI's origin, including otherwise valid cross-origin redirects.

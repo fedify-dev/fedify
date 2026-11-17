@@ -82,10 +82,16 @@ const documentLoader = (iri: URL, options?: { signal?: AbortSignal }) =>
 
 The JSON-LD loader must set `documentUrl` to the final response URL so
 `lookupObject()` can check its origin against the object's declared ID.
-This validates only the top-level object; backfill dereferences cross-origin
-embedded objects separately.
+`lookupObject()` checks only the top-level object's origin.  Backfill
+dereferences cross-origin embedded objects through the vocabulary accessors,
+which apply this check only to objects decoded with `fromJsonLd()` or
+`lookupObject()`.  Objects passed to a constructor are trusted as they are, so
+a loader must not build remote data with constructors.
+
 Backfill additionally ignores loader results whose ID origin differs from the
 requested IRI's origin, including otherwise valid cross-origin redirects.
+An ID with an opaque origin, such as a `did:` IRI, matches the requested IRI
+only when the two IRIs are identical.
 This does not replace the loader's validation: `BackfillDocumentLoader` does
 not expose the final response URL.
 
