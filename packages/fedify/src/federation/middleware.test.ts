@@ -33,6 +33,7 @@ import person2Fixture from "../../../fixture/src/fixtures/example.com/person2.js
 import { signRequest, verifyRequest } from "../sig/http.ts";
 import type { KeyCache } from "../sig/key.ts";
 import {
+  attachSignature,
   compactJsonLd,
   detachSignature,
   signJsonLd,
@@ -40,6 +41,7 @@ import {
 } from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import { signObject, verifyObject } from "../sig/proof.ts";
+import { ldSignatureWithoutCreated } from "../testing/ld-signature.ts";
 import {
   ed25519Multikey,
   ed25519PrivateKey,
@@ -65,6 +67,7 @@ import {
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
 import { RouterError } from "./router.ts";
+import { SendActivityError } from "./send.ts";
 
 type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -211,6 +214,132 @@ test("createFederation()", async (t) => {
       TypeError,
     );
   });
+});
+
+test("FederationImpl.startQueue()", async (t) => {
+  function createCountingQueue() {
+    const messages: Message[] = [];
+    let listenCount = 0;
+    const queue: MessageQueue & {
+      messages: Message[];
+      readonly listenCount: number;
+    } = {
+      messages,
+      get listenCount() {
+        return listenCount;
+      },
+      enqueue(message: Message) {
+        messages.push(message);
+        return Promise.resolve();
+      },
+      listen() {
+        listenCount++;
+        return Promise.resolve();
+      },
+    };
+    return queue;
+  }
+
+  await t.step(
+    "starts a fanout-only queue with an explicit selector",
+    async () => {
+      const queue = createCountingQueue();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue: { fanout: queue },
+        manuallyStartQueue: true,
+      });
+      await federation.startQueue(undefined, { queue: "fanout" });
+      assertEquals(queue.listenCount, 1);
+      await federation.startQueue(undefined, { queue: "fanout" });
+      assertEquals(queue.listenCount, 1);
+    },
+  );
+
+  await t.step(
+    "starts a fanout-only queue without a selector",
+    async () => {
+      const queue = createCountingQueue();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue: { fanout: queue },
+        manuallyStartQueue: true,
+      });
+      await federation.startQueue(undefined);
+      assertEquals(queue.listenCount, 1);
+    },
+  );
+
+  await t.step(
+    "starts a fanout-only queue after a fanout enqueue",
+    async () => {
+      const queue = createCountingQueue();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        contextLoaderFactory: () => mockDocumentLoader,
+        queue: { fanout: queue },
+      });
+      const ctx = new ContextImpl<void>({
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      const activity = new vocab.Create({
+        id: new URL("https://example.com/activity/1"),
+        actor: new URL("https://example.com/person"),
+      });
+      await ctx.sendActivity(
+        [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        {
+          id: new URL("https://example.com/recipient"),
+          inboxId: new URL("https://example.com/inbox"),
+        },
+        activity,
+        { fanout: "force" },
+      );
+      assertEquals(queue.listenCount, 1);
+      assertEquals(queue.messages.length, 1);
+      assertEquals(queue.messages[0].type, "fanout");
+    },
+  );
+
+  await t.step(
+    "does not start a fanout-only queue automatically when manually started",
+    async () => {
+      const queue = createCountingQueue();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        contextLoaderFactory: () => mockDocumentLoader,
+        queue: { fanout: queue },
+        manuallyStartQueue: true,
+      });
+      const ctx = new ContextImpl<void>({
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      const activity = new vocab.Create({
+        id: new URL("https://example.com/activity/1"),
+        actor: new URL("https://example.com/person"),
+      });
+      await ctx.sendActivity(
+        [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        {
+          id: new URL("https://example.com/recipient"),
+          inboxId: new URL("https://example.com/inbox"),
+        },
+        activity,
+        { fanout: "force" },
+      );
+      assertEquals(queue.listenCount, 0);
+      assertEquals(queue.messages.length, 1);
+      assertEquals(queue.messages[0].type, "fanout");
+    },
+  );
 });
 
 test({
@@ -877,6 +1006,36 @@ test({
         protocols: ["activitypub", "diaspora"],
         usage: { users: {}, localPosts: 123, localComments: 456 },
       });
+
+      await assertRejects(
+        () => ctx.lookupNodeInfo("https://example.com/", { timeout: 0 }),
+        RangeError,
+      );
+      const caller = new AbortController();
+      caller.abort();
+      assertEquals(
+        await ctx.lookupNodeInfo("https://example.com/", {
+          signal: caller.signal,
+          timeout: null,
+        }),
+        undefined,
+      );
+      assertEquals(
+        await ctx.lookupNodeInfo("https://example.com/", {
+          parse: "none",
+          signal: caller.signal,
+          timeout: null,
+        }),
+        undefined,
+      );
+      await assertRejects(
+        () =>
+          ctx.lookupNodeInfo("https://example.com/", {
+            parse: "none",
+            timeout: 0,
+          }),
+        RangeError,
+      );
     });
 
     await t.step("RequestContext", async () => {
@@ -3624,6 +3783,473 @@ test("FederationImpl.sendActivity()", async (t) => {
   });
 
   fetchMock.hardReset();
+});
+
+const QUEUE_STARTUP_WARNING =
+  "Failed to start queue workers automatically: {error}";
+
+interface UnhandledRejectionCapture {
+  reasons: unknown[];
+  settle(): Promise<void>;
+  stop(): void;
+}
+
+/**
+ * Captures unhandled promise rejections for the duration of a test step.
+ *
+ * Deno dispatches `unhandledrejection` on `globalThis`, while Node.js and Bun
+ * dispatch `unhandledRejection` on `process`.  Bun's test runner currently
+ * fires neither, so there the native runner's own unhandled-rejection failure
+ * remains the signal; the assertion is harmless otherwise.
+ */
+function captureUnhandledRejections(): UnhandledRejectionCapture {
+  const reasons: unknown[] = [];
+  const isDeno = "Deno" in globalThis;
+  interface RejectionEvent {
+    reason: unknown;
+    preventDefault(): void;
+  }
+  const onRejectionEvent = (event: RejectionEvent): void => {
+    // Keep Deno from treating a deliberate pre-fix failure as a fatal error
+    // that cancels the remaining tests in this file.
+    event.preventDefault();
+    reasons.push(event.reason);
+  };
+  const onProcessRejection = (reason: unknown): void => {
+    reasons.push(reason);
+  };
+  const globalTarget = globalThis as unknown as {
+    addEventListener?(
+      type: string,
+      listener: (event: RejectionEvent) => void,
+    ): void;
+    removeEventListener?(
+      type: string,
+      listener: (event: RejectionEvent) => void,
+    ): void;
+  };
+  const proc = (globalThis as unknown as {
+    process?: {
+      on?(type: string, listener: (reason: unknown) => void): void;
+      off?(type: string, listener: (reason: unknown) => void): void;
+    };
+  }).process;
+  if (isDeno) {
+    globalTarget.addEventListener?.("unhandledrejection", onRejectionEvent);
+  } else {
+    proc?.on?.("unhandledRejection", onProcessRejection);
+  }
+  async function settle(): Promise<void> {
+    // Deno dispatches `unhandledrejection` only after two timer turns.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  return {
+    reasons,
+    settle,
+    stop() {
+      if (isDeno) {
+        globalTarget.removeEventListener?.(
+          "unhandledrejection",
+          onRejectionEvent,
+        );
+      } else {
+        proc?.off?.("unhandledRejection", onProcessRejection);
+      }
+    },
+  };
+}
+
+async function configureQueueStartupWarningCapture(
+  records: LogRecord[],
+): Promise<void> {
+  await configure({
+    sinks: {
+      buffer(record: LogRecord): void {
+        records.push(record);
+      },
+    },
+    loggers: [
+      { category: "fedify", sinks: ["buffer"], lowestLevel: "warning" },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+}
+
+function queueStartupWarnings(
+  records: LogRecord[],
+  error: unknown,
+): LogRecord[] {
+  return records.filter((record) =>
+    record.level === "warning" &&
+    record.category.length === 3 &&
+    record.category[0] === "fedify" &&
+    record.category[1] === "federation" &&
+    record.category[2] === "queue" &&
+    record.rawMessage === QUEUE_STARTUP_WARNING &&
+    record.properties.error === error
+  );
+}
+
+test("Federation.fetch() reports automatic queue startup failures", async (t) => {
+  const listenError = new TypeError("simulated listen() failure");
+  const queue: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      throw listenError;
+    },
+  };
+  const capture = captureUnhandledRejections();
+  const records: LogRecord[] = [];
+  await configureQueueStartupWarningCapture(records);
+  try {
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      queue,
+      skipSignatureVerification: true,
+      documentLoaderFactory: () => mockDocumentLoader,
+      contextLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/actors/{identifier}",
+      () => new Person({ id: new URL("https://example.com/actor") }),
+    );
+    federation.setInboxListeners("/actors/{identifier}/inbox", "/inbox")
+      .on(Create, () => {});
+    const post = (id: string) =>
+      federation.fetch(
+        new Request("https://example.com/inbox", {
+          method: "POST",
+          headers: { "Content-Type": "application/activity+json" },
+          body: JSON.stringify({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id,
+            type: "Create",
+            actor: "https://example.com/actor",
+          }),
+        }),
+        { contextData: undefined },
+      );
+
+    await t.step("synchronous failure", async () => {
+      const response = await post("https://example.com/activities/queued-1");
+      assertEquals(response.status, 202);
+      await capture.settle();
+      assertEquals(queueStartupWarnings(records, listenError).length, 1);
+      assertEquals(capture.reasons, []);
+
+      const second = await post("https://example.com/activities/queued-2");
+      assertEquals(second.status, 202);
+      await capture.settle();
+      assertEquals(
+        queueStartupWarnings(records, listenError).length,
+        1,
+        "the warning must be logged only once per federation instance",
+      );
+      assertEquals(capture.reasons, []);
+    });
+
+    await t.step("asynchronous failure", async () => {
+      const asyncError = new TypeError("simulated async listen() failure");
+      let rejectListen: ((error: unknown) => void) | undefined;
+      const asyncQueue: MessageQueue = {
+        enqueue() {
+          return Promise.resolve();
+        },
+        listen() {
+          return new Promise<void>((_resolve, reject) => {
+            rejectListen = reject;
+          });
+        },
+      };
+      const asyncFederation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        queue: asyncQueue,
+        skipSignatureVerification: true,
+        documentLoaderFactory: () => mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+      });
+      asyncFederation.setActorDispatcher(
+        "/actors/{identifier}",
+        () => new Person({ id: new URL("https://example.com/actor") }),
+      );
+      asyncFederation.setInboxListeners(
+        "/actors/{identifier}/inbox",
+        "/inbox",
+      ).on(Create, () => {});
+      const response = await asyncFederation.fetch(
+        new Request("https://example.com/inbox", {
+          method: "POST",
+          headers: { "Content-Type": "application/activity+json" },
+          body: JSON.stringify({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: "https://example.com/activities/queued-async",
+            type: "Create",
+            actor: "https://example.com/actor",
+          }),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      await capture.settle();
+      assertEquals(queueStartupWarnings(records, asyncError).length, 0);
+      assert(rejectListen != null);
+      rejectListen(asyncError);
+      await capture.settle();
+      assertEquals(
+        queueStartupWarnings(records, asyncError).length,
+        1,
+        "a listener that rejects after startup must still be reported",
+      );
+      assertEquals(capture.reasons, []);
+    });
+  } finally {
+    await capture.settle();
+    capture.stop();
+    await reset();
+  }
+});
+
+test("Federation.startQueue() rejects when a queue cannot listen", async () => {
+  const listenError = new TypeError("simulated listen() failure");
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    queue: {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        throw listenError;
+      },
+    },
+    manuallyStartQueue: true,
+  });
+  const error = await assertRejects(() => federation.startQueue(undefined));
+  assertStrictEquals(error, listenError);
+});
+
+test("Federation.startQueue() keeps other queue workers running", async () => {
+  const outboxError = new TypeError("simulated outbox listen() failure");
+  const lateInboxError = new TypeError("simulated late inbox failure");
+  let rejectInbox: ((error: unknown) => void) | undefined;
+  let fanoutStarted = false;
+  const inbox: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      return new Promise<void>((_resolve, reject) => {
+        rejectInbox = reject;
+      });
+    },
+  };
+  const outbox: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      throw outboxError;
+    },
+  };
+  const fanout: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      fanoutStarted = true;
+      return new Promise<void>(() => {});
+    },
+  };
+  const capture = captureUnhandledRejections();
+  try {
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      queue: { inbox, outbox, fanout },
+      manuallyStartQueue: true,
+    });
+    const error = await assertRejects(() => federation.startQueue(undefined));
+    assertStrictEquals(error, outboxError);
+    assert(
+      fanoutStarted,
+      "a synchronous throw from one queue must not prevent later queues from starting",
+    );
+    assert(rejectInbox != null);
+    rejectInbox(lateInboxError);
+    await capture.settle();
+    assertEquals(
+      capture.reasons,
+      [],
+      "an earlier listener rejection must remain handled after startup fails",
+    );
+  } finally {
+    await capture.settle();
+    capture.stop();
+  }
+});
+
+test("ContextImpl.sendActivity() reports automatic queue startup failures", async (t) => {
+  const sender = [{
+    privateKey: ed25519PrivateKey,
+    keyId: ed25519Multikey.id!,
+  }];
+  const recipient = {
+    id: new URL("https://example.com/recipient"),
+    inboxId: new URL("https://example.com/inbox"),
+  };
+  const createActivity = () =>
+    new Create({
+      id: new URL("https://example.com/activities/queue-startup-send"),
+      actor: new URL("https://example.com/actor"),
+    });
+
+  await t.step("outbox", async () => {
+    const listenError = new TypeError("simulated outbox listen() failure");
+    const messages: Message[] = [];
+    const queue: MessageQueue = {
+      enqueue(message) {
+        messages.push(message as Message);
+        return Promise.resolve();
+      },
+      listen() {
+        throw listenError;
+      },
+    };
+    const capture = captureUnhandledRejections();
+    const records: LogRecord[] = [];
+    await configureQueueStartupWarningCapture(records);
+    try {
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue: { outbox: queue },
+        documentLoaderFactory: () => mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+      });
+      const ctx = new ContextImpl({
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      await ctx.sendActivity(sender, recipient, createActivity());
+      assertEquals(messages.map((message) => message.type), ["outbox"]);
+      await capture.settle();
+      assertEquals(queueStartupWarnings(records, listenError).length, 1);
+      assertEquals(capture.reasons, []);
+    } finally {
+      await capture.settle();
+      capture.stop();
+      await reset();
+    }
+  });
+
+  await t.step("fanout", async () => {
+    const listenError = new TypeError("simulated fanout listen() failure");
+    const messages: Message[] = [];
+    const outbox: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+    };
+    const fanout: MessageQueue = {
+      enqueue(message) {
+        messages.push(message as Message);
+        return Promise.resolve();
+      },
+      listen() {
+        throw listenError;
+      },
+    };
+    const capture = captureUnhandledRejections();
+    const records: LogRecord[] = [];
+    await configureQueueStartupWarningCapture(records);
+    try {
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue: { outbox, fanout },
+        documentLoaderFactory: () => mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+      });
+      const ctx = new ContextImpl({
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      await ctx.sendActivity(sender, recipient, createActivity(), {
+        fanout: "force",
+      });
+      assertEquals(messages.map((message) => message.type), ["fanout"]);
+      await capture.settle();
+      assertEquals(queueStartupWarnings(records, listenError).length, 1);
+      assertEquals(capture.reasons, []);
+    } finally {
+      await capture.settle();
+      capture.stop();
+      await reset();
+    }
+  });
+});
+
+test("queued Linked Data signatures without created use normalization contexts", async (t) => {
+  for (const legacy of [false, true]) {
+    await t.step(
+      legacy ? "legacy compacted payload" : "verified normalized cache",
+      async () => {
+        const normalized = await compactJsonLd(
+          ldSignatureWithoutCreated,
+          mockDocumentLoader,
+        );
+        const raw = legacy
+          ? normalized
+          : structuredClone(ldSignatureWithoutCreated);
+        const federation = new FederationImpl<void>({
+          kv: new MemoryKvStore(),
+          contextLoaderFactory: () => async (url) => {
+            if (
+              url === "https://www.w3.org/ns/activitystreams" ||
+              url === "https://w3id.org/identity/v1"
+            ) return await mockDocumentLoader(url);
+            throw new Error(`Unexpected context: ${url}`);
+          },
+        });
+        let deliveries = 0;
+        let receivedRaw: unknown;
+        federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+          .on(Create, (ctx, activity) => {
+            deliveries++;
+            receivedRaw = (ctx as unknown as { activity: unknown }).activity;
+            assertEquals(activity.id?.href, ldSignatureWithoutCreated.id);
+          });
+        await federation.processQueuedTask(
+          undefined,
+          {
+            type: "inbox",
+            id: crypto.randomUUID(),
+            baseUrl: "https://example.com",
+            activity: raw,
+            ...(legacy ? {} : {
+              normalizedActivity: normalized,
+              ldSignatureVerified: true,
+            }),
+            started: new Date().toISOString(),
+            attempt: 0,
+            identifier: null,
+            traceContext: {},
+          } satisfies InboxMessage,
+        );
+        assertEquals(deliveries, 1);
+        assertEquals(receivedRaw, raw);
+      },
+    );
+  }
 });
 
 test("FederationImpl.processQueuedTask()", async (t) => {
@@ -6515,16 +7141,21 @@ test("ContextImpl.sendActivity()", async (t) => {
   });
   federation2
     .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
-      if (identifier !== "john") return null;
+      if (identifier !== "john" && identifier !== "rsa-only") return null;
       const keys = await ctx.getActorKeyPairs(identifier);
       return new vocab.Person({
         id: ctx.getActorUri(identifier),
-        preferredUsername: "john",
+        preferredUsername: identifier,
         publicKey: keys[0].cryptographicKey,
         assertionMethods: keys.map((k) => k.multikey),
       });
     })
     .setKeyPairsDispatcher((_ctx, identifier) => {
+      if (identifier === "rsa-only") {
+        return [
+          { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+        ];
+      }
       if (identifier !== "john") return [];
       return [
         { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
@@ -6595,6 +7226,550 @@ test("ContextImpl.sendActivity()", async (t) => {
       proofCount++;
     }
     assertEquals(proofCount, 1);
+
+    // Replaying a fanout message created before the context change must keep
+    // the proof-covered context when it is queued for delivery.
+    const oldContext = [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ];
+    const oldActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/1"),
+      actor: new URL("https://example.com/john"),
+    });
+    const oldSigned = await signObject(
+      oldActivity,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const oldJson = await oldSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    queue.clear();
+    await federation2.processQueuedTask(undefined, {
+      ...fanoutMsg,
+      id: crypto.randomUUID(),
+      activity: oldJson,
+    });
+    const replayed = queue.messages.at(-1);
+    assert(replayed != null && replayed.type === "outbox");
+    assertEquals(detachSignature(replayed.activity), oldJson);
+
+    const proofless = { ...oldJson };
+    delete proofless.proof;
+    queue.clear();
+    await federation2.processQueuedTask(undefined, {
+      ...fanoutMsg,
+      id: crypto.randomUUID(),
+      activity: proofless,
+    });
+    const signedReplay = queue.messages.at(-1);
+    assert(signedReplay != null && signedReplay.type === "outbox");
+    assert(
+      typeof signedReplay.activity === "object" &&
+        signedReplay.activity != null &&
+        "proof" in signedReplay.activity,
+    );
+
+    // The public direct-send path must also keep a pre-upgrade proof covered.
+    const actorKeys = await ctx2.getActorKeyPairs("john");
+    const edKey = actorKeys.find((key) =>
+      key.privateKey.algorithm.name === "Ed25519"
+    );
+    assert(edKey != null && edKey.multikey.id != null);
+    const restoredActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/old"),
+      actor: ctx2.getActorUri("john"),
+    });
+    const restoredSigned = await signObject(
+      restoredActivity,
+      edKey.privateKey,
+      edKey.multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const restoredJson = await restoredSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const restored = await vocab.Create.fromJsonLd(restoredJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+    );
+    const resent = queue.messages.at(-1);
+    assert(resent != null && resent.type === "outbox");
+    assertEquals(detachSignature(resent.activity), restoredJson);
+
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+      { fanout: "force" },
+    );
+    const queuedFanout = queue.messages.at(-1);
+    assert(queuedFanout != null && queuedFanout.type === "fanout");
+    assertEquals(queuedFanout.activity, restoredJson);
+
+    const oldSignature = {
+      "@context": "https://w3id.org/identity/v1",
+      type: "RsaSignature2017",
+      creator: "https://example.com/person2#key4",
+      created: "2026-01-01T00:00:00Z",
+      signatureValue: "abc",
+    } as const;
+    const restoredWithSignature = await vocab.Create.fromJsonLd(
+      attachSignature(restoredJson, oldSignature),
+      { contextLoader: documentLoader, documentLoader },
+    );
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restoredWithSignature,
+    );
+    const resigned = queue.messages.at(-1);
+    assert(resigned != null && resigned.type === "outbox");
+    assertEquals(detachSignature(resigned.activity), restoredJson);
+
+    const rsaOnlyActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/rsa-only"),
+      actor: new URL("https://example.com/rsa-only"),
+    });
+    const rsaOnlySigned = await signObject(
+      rsaOnlyActivity,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const rsaOnlyJson = await rsaOnlySigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const rsaOnlyRestored = await vocab.Create.fromJsonLd(rsaOnlyJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      rsaOnlyRestored,
+      { fanout: "force" },
+    );
+    const rsaOnlyMessage = queue.messages.at(-1);
+    assert(rsaOnlyMessage != null && rsaOnlyMessage.type === "fanout");
+    assertEquals(rsaOnlyMessage.activity, rsaOnlyJson);
+
+    queue.clear();
+    await ctx2.sendActivity(
+      { username: "john" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+      { fanout: "force" },
+    );
+    const namedFanout = queue.messages.at(-1);
+    assert(namedFanout != null && namedFanout.type === "fanout");
+    const namedJson = detachSignature(namedFanout.activity) as Record<
+      string,
+      unknown
+    >;
+    const namedProofs = Array.isArray(namedJson.proof)
+      ? namedJson.proof
+      : [namedJson.proof];
+    assertEquals(namedProofs.length, 1);
+    assert(
+      (namedJson["@context"] as string[]).includes(
+        "https://w3id.org/security/v1",
+      ),
+    );
+
+    const noIdActivity = new vocab.Create({
+      actor: ctx2.getActorUri("john"),
+    });
+    const noIdSigned = await signObject(
+      noIdActivity,
+      edKey.privateKey,
+      edKey.multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const noIdJson = await noIdSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const noIdRestored = await vocab.Create.fromJsonLd(noIdJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      noIdRestored,
+    );
+    const noIdQueued = queue.messages.at(-1);
+    assert(noIdQueued != null && noIdQueued.type === "outbox");
+    const noIdQueuedJson = detachSignature(noIdQueued.activity) as Record<
+      string,
+      unknown
+    >;
+    assert(typeof noIdQueuedJson.id === "string");
+
+    const currentActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/current"),
+      actor: ctx2.getActorUri("john"),
+    });
+    const currentSigned = await signObject(
+      currentActivity,
+      edKey.privateKey,
+      edKey.multikey.id!,
+      { contextLoader: documentLoader },
+    );
+    const currentJson = await currentSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+    }) as Record<string, unknown>;
+    const currentRestored = await vocab.Create.fromJsonLd(currentJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      { username: "john" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      currentRestored,
+      { fanout: "force" },
+    );
+    const currentFanout = queue.messages.at(-1);
+    assert(currentFanout != null && currentFanout.type === "fanout");
+    const currentQueued = detachSignature(currentFanout.activity) as Record<
+      string,
+      unknown
+    >;
+    const currentProofs = Array.isArray(currentQueued.proof)
+      ? currentQueued.proof
+      : [currentQueued.proof];
+    assertEquals(currentProofs.length, 2);
+  });
+
+  queue.clear();
+
+  await t.step("activity transformers preserve proofs", async () => {
+    const originalProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([1, 2, 3, 4]),
+      created: Temporal.Instant.from("2026-01-01T00:00:00Z"),
+    });
+    const addedProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([5, 6, 7, 8]),
+      created: Temporal.Instant.from("2026-01-02T00:00:00Z"),
+    });
+    const replacementProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([9, 10, 11, 12]),
+      created: Temporal.Instant.from("2026-01-03T00:00:00Z"),
+    });
+    const restoredProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([13, 14, 15, 16]),
+      created: Temporal.Instant.from("2026-01-04T00:00:00Z"),
+    });
+    const restoredProofHolder: { old?: vocab.DataIntegrityProof } = {};
+    const federation3 = new FederationImpl<void>({
+      kv,
+      allowPrivateAddress: true,
+      queue,
+      activityTransformers: [
+        (activity) => {
+          if (
+            activity.id?.href ===
+              "https://example.com/activity/transformed-proof"
+          ) {
+            return activity.clone({ proofs: [originalProof, addedProof] });
+          }
+          if (
+            activity.id?.href ===
+              "https://example.com/activity/replaced-proof"
+          ) {
+            return new vocab.Create({
+              id: activity.id,
+              actor: new URL("https://example.com/rsa-only"),
+              object: new URL("https://example.com/note/replaced"),
+              proofs: [replacementProof],
+            });
+          }
+          if (
+            activity.id?.href === "https://example.com/activity/restored-proof"
+          ) {
+            return activity.clone({
+              proofs: [restoredProofHolder.old!, restoredProof],
+            });
+          }
+          return activity;
+        },
+      ],
+    });
+    federation3
+      .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
+        if (identifier !== "rsa-only") return null;
+        const keys = await ctx.getActorKeyPairs(identifier);
+        return new vocab.Person({
+          id: ctx.getActorUri(identifier),
+          preferredUsername: identifier,
+          publicKey: keys[0].cryptographicKey,
+          assertionMethods: keys.map((k) => k.multikey),
+        });
+      })
+      .setKeyPairsDispatcher((_ctx, identifier) =>
+        identifier === "rsa-only"
+          ? [
+            {
+              privateKey: rsaPrivateKey2,
+              publicKey: rsaPublicKey2.publicKey!,
+            },
+          ]
+          : []
+      );
+    const ctx3 = new ContextImpl({
+      data: undefined,
+      federation: federation3,
+      url: new URL("https://example.com/"),
+      documentLoader: documentLoader,
+      contextLoader: documentLoader,
+    });
+    const activity = new vocab.Create({
+      id: new URL("https://example.com/activity/transformed-proof"),
+      actor: ctx3.getActorUri("rsa-only"),
+      proofs: [originalProof],
+    });
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      activity,
+      { fanout: "force" },
+    );
+    const fanout = queue.messages.at(-1);
+    assert(fanout != null && fanout.type === "fanout");
+    const fanoutJson = detachSignature(fanout.activity) as Record<
+      string,
+      unknown
+    >;
+    const fanoutProofs = Array.isArray(fanoutJson.proof)
+      ? fanoutJson.proof
+      : [fanoutJson.proof];
+    assertEquals(fanoutProofs.length, 2);
+
+    // A transformer may also replace the content and supply a new proof.
+    const replacedActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/replaced-proof"),
+      actor: ctx3.getActorUri("rsa-only"),
+      proofs: [originalProof],
+    });
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      replacedActivity,
+      { fanout: "force" },
+    );
+    const replacedFanout = queue.messages.at(-1);
+    assert(replacedFanout != null && replacedFanout.type === "fanout");
+    const replacedJson = detachSignature(replacedFanout.activity) as Record<
+      string,
+      unknown
+    >;
+    assertEquals(
+      replacedJson.object,
+      "https://example.com/note/replaced",
+    );
+    const replacedProofs = Array.isArray(replacedJson.proof)
+      ? replacedJson.proof
+      : [replacedJson.proof];
+    assertEquals(replacedProofs.length, 1);
+    const [keptProof] = replacedProofs as Record<string, unknown>[];
+    assertEquals(keptProof.created, "2026-01-03T00:00:00Z");
+
+    // A restored activity with an old context must still use proof changes
+    // made by a transformer instead of the captured old-context snapshot.
+    const oldContext = [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ];
+    const restoredBase = new vocab.Create({
+      id: new URL("https://example.com/activity/restored-proof"),
+      actor: ctx3.getActorUri("rsa-only"),
+    });
+    const restoredSigned = await signObject(
+      restoredBase,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const restoredJson = await restoredSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const restored = await vocab.Create.fromJsonLd(restoredJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    for await (
+      const proof of restored.getProofs({ contextLoader: documentLoader })
+    ) {
+      restoredProofHolder.old = proof;
+      break;
+    }
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+      { fanout: "force" },
+    );
+    const restoredFanout = queue.messages.at(-1);
+    assert(restoredFanout != null && restoredFanout.type === "fanout");
+    const restoredFanoutJson = detachSignature(
+      restoredFanout.activity,
+    ) as Record<
+      string,
+      unknown
+    >;
+    const restoredProofs = Array.isArray(restoredFanoutJson.proof)
+      ? restoredFanoutJson.proof
+      : [restoredFanoutJson.proof];
+    assertEquals(restoredProofs.length, 1);
+    const [transformedProof] = restoredProofs as Record<string, unknown>[];
+    assertEquals(transformedProof.created, "2026-01-04T00:00:00Z");
+    assert(
+      Array.isArray(restoredFanoutJson["@context"]) &&
+        restoredFanoutJson["@context"].includes(
+          "https://w3id.org/security/v1",
+        ),
+    );
+
+    // Equivalent timestamps with a different lexical form must not make the
+    // captured proof look newly supplied by a transformer.
+    const staleTimestampBase = new vocab.Create({
+      id: new URL("https://example.com/activity/stale-timestamp"),
+      actor: ctx3.getActorUri("rsa-only"),
+    });
+    const staleTimestampSigned = await signObject(
+      staleTimestampBase,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const staleTimestampJson = await staleTimestampSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const staleTimestampProof = (
+      Array.isArray(staleTimestampJson.proof)
+        ? staleTimestampJson.proof[0]
+        : staleTimestampJson.proof
+    ) as Record<string, unknown>;
+    staleTimestampProof.created = "2026-01-01T00:00:00+00:00";
+    const staleTimestamp = await vocab.Create.fromJsonLd(staleTimestampJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      staleTimestamp,
+      { fanout: "force" },
+    );
+    const staleTimestampFanout = queue.messages.at(-1);
+    assert(
+      staleTimestampFanout != null && staleTimestampFanout.type === "fanout",
+    );
+    assertEquals(
+      detachSignature(staleTimestampFanout.activity),
+      staleTimestampJson,
+    );
+
+    // A proofless activity should not be serialized just to look for proofs.
+    const proofless = new vocab.Create({
+      id: new URL("https://example.com/activity/proofless"),
+      actor: ctx3.getActorUri("rsa-only"),
+    });
+    let unformattedSerializations = 0;
+    const originalToJsonLd = proofless.toJsonLd.bind(proofless);
+    Object.defineProperty(proofless, "toJsonLd", {
+      value: async (options?: { format?: "compact" | "expand" }) => {
+        if (options?.format == null) unformattedSerializations++;
+        return await originalToJsonLd(options);
+      },
+    });
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      proofless,
+      { fanout: "skip" },
+    );
+    assertEquals(unformattedSerializations, 0);
   });
 
   queue.clear();
@@ -7790,6 +8965,78 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
   fetchMock.hardReset();
 });
 
+test("InboxContextImpl.forwardActivity() without created", async (t) => {
+  for (const immediate of [true, false]) {
+    await t.step(
+      immediate ? "immediate delivery" : "queued delivery",
+      async () => {
+        const delivered: unknown[] = [];
+        const queued: Message[] = [];
+        fetchMock.spyGlobal();
+        fetchMock.post("https://example.com/inbox", async (call) => {
+          delivered.push(await call.request!.json());
+          return new Response(null, { status: 202 });
+        });
+        try {
+          const federation = new FederationImpl<void>({
+            kv: new MemoryKvStore(),
+            allowPrivateAddress: true,
+            manuallyStartQueue: true,
+            queue: {
+              outbox: {
+                enqueue(message) {
+                  queued.push(message);
+                  return Promise.resolve();
+                },
+                async listen() {},
+              },
+            },
+          });
+          const activity = structuredClone(ldSignatureWithoutCreated);
+          assert(
+            await verifyJsonLd(activity, {
+              documentLoader: mockDocumentLoader,
+              contextLoader: mockDocumentLoader,
+            }),
+          );
+          const ctx = new InboxContextImpl(
+            null,
+            activity,
+            activity.id,
+            "https://www.w3.org/ns/activitystreams#Create",
+            {
+              data: undefined,
+              federation,
+              url: new URL("https://example.com/"),
+              documentLoader: mockDocumentLoader,
+              contextLoader: mockDocumentLoader,
+            },
+          );
+          await ctx.forwardActivity(
+            [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+            {
+              id: new URL("https://example.com/recipient"),
+              inboxId: new URL("https://example.com/inbox"),
+            },
+            { skipIfUnsigned: true, immediate },
+          );
+          if (immediate) {
+            assertEquals(delivered, [activity]);
+            assertEquals(queued, []);
+          } else {
+            assertEquals(delivered, []);
+            assertEquals(queued.length, 1);
+            assertEquals(queued[0].type, "outbox");
+            assertEquals((queued[0] as OutboxMessage).activity, activity);
+          }
+        } finally {
+          fetchMock.hardReset();
+        }
+      },
+    );
+  }
+});
+
 test("KvSpecDeterminer", async (t) => {
   await t.step("should use default spec when not found in KV", async () => {
     const kv = new MemoryKvStore();
@@ -7890,6 +9137,348 @@ test("ContextImpl.sendActivity() honors the private-address policy", async (t) =
         fetchMock.hardReset();
       }
     });
+  }
+});
+
+interface DeferredSignal {
+  readonly promise: Promise<void>;
+  readonly resolve: () => void;
+}
+
+function deferredSignal(): DeferredSignal {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => resolve = r);
+  return { promise, resolve };
+}
+
+test("ContextImpl.sendActivity() waits for sibling deliveries on failure", async () => {
+  const failingInbox = "http://127.0.0.1:3001/inbox/fail";
+  const slowInbox = "http://127.0.0.1:3002/inbox/slow";
+  const failingEntered = deferredSignal();
+  const slowEntered = deferredSignal();
+  const slowCompleted = deferredSignal();
+  let releaseSlow!: () => void;
+  const slowGate = new Promise<void>((resolve) => releaseSlow = resolve);
+  let slowStarted = false;
+  let slowSettled = false;
+
+  fetchMock.spyGlobal();
+  fetchMock.post(failingInbox, () => {
+    failingEntered.resolve();
+    return new Response(null, { status: 500 });
+  });
+  fetchMock.post(slowInbox, async () => {
+    slowStarted = true;
+    slowEntered.resolve();
+    await slowGate;
+    slowSettled = true;
+    slowCompleted.resolve();
+    return new Response(null, { status: 202 });
+  });
+
+  let observed: Promise<void> | undefined;
+  let released = false;
+  try {
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      allowPrivateAddress: true,
+    });
+    const ctx = federation.createContext(new URL("https://example.com/"));
+    const activity = new Create({
+      id: new URL("https://example.com/activity/fanout"),
+      actor: new URL("https://example.com/person"),
+    });
+    let outerSettled = false;
+    let outerError: unknown;
+    const sending = ctx.sendActivity(
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
+      [
+        new Person({
+          id: new URL("https://example.com/recipients/failing"),
+          inbox: new URL(failingInbox),
+        }),
+        new Person({
+          id: new URL("https://example.com/recipients/slow"),
+          inbox: new URL(slowInbox),
+        }),
+      ],
+      activity,
+      { immediate: true },
+    );
+    observed = sending.then(
+      () => {
+        outerSettled = true;
+      },
+      (error) => {
+        outerSettled = true;
+        outerError = error;
+      },
+    );
+    await Promise.all([failingEntered.promise, slowEntered.promise]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertFalse(
+      outerSettled,
+      "sendActivity() must wait for sibling deliveries before rejecting",
+    );
+    releaseSlow();
+    released = true;
+    await observed;
+    assert(slowSettled, "the delayed delivery should have settled");
+    assertInstanceOf(outerError, SendActivityError);
+  } finally {
+    if (!released) releaseSlow();
+    if (slowStarted) await slowCompleted.promise;
+    await observed;
+    fetchMock.hardReset();
+  }
+});
+
+test("InboxContextImpl.forwardActivity() waits for sibling deliveries on failure", async () => {
+  const failingInbox = "http://127.0.0.1:3003/inbox/fail";
+  const slowInbox = "http://127.0.0.1:3004/inbox/slow";
+  const failingEntered = deferredSignal();
+  const slowEntered = deferredSignal();
+  const slowCompleted = deferredSignal();
+  let releaseSlow!: () => void;
+  const slowGate = new Promise<void>((resolve) => releaseSlow = resolve);
+  let slowStarted = false;
+  let slowSettled = false;
+
+  fetchMock.spyGlobal();
+  fetchMock.post(failingInbox, () => {
+    failingEntered.resolve();
+    return new Response(null, { status: 500 });
+  });
+  fetchMock.post(slowInbox, async () => {
+    slowStarted = true;
+    slowEntered.resolve();
+    await slowGate;
+    slowSettled = true;
+    slowCompleted.resolve();
+    return new Response(null, { status: 202 });
+  });
+
+  let observed: Promise<void> | undefined;
+  let released = false;
+  try {
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      allowPrivateAddress: true,
+    });
+    const activity = await signObject(
+      new vocab.Create({
+        id: new URL("https://example.com/activity/forward"),
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: mockDocumentLoader, documentLoader: mockDocumentLoader },
+    );
+    const ctx = new InboxContextImpl(
+      null,
+      await activity.toJsonLd({ contextLoader: mockDocumentLoader }),
+      activity.id?.href,
+      getTypeId(activity).href,
+      {
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      },
+    );
+    let outerSettled = false;
+    let outerError: unknown;
+    const sending = ctx.forwardActivity(
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
+      [
+        {
+          id: new URL("https://example.com/recipients/failing"),
+          inboxId: new URL(failingInbox),
+        },
+        {
+          id: new URL("https://example.com/recipients/slow"),
+          inboxId: new URL(slowInbox),
+        },
+      ],
+      { immediate: true, skipIfUnsigned: true },
+    );
+    observed = sending.then(
+      () => {
+        outerSettled = true;
+      },
+      (error) => {
+        outerSettled = true;
+        outerError = error;
+      },
+    );
+    await Promise.all([failingEntered.promise, slowEntered.promise]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertFalse(
+      outerSettled,
+      "forwardActivity() must wait for sibling deliveries before rejecting",
+    );
+    releaseSlow();
+    released = true;
+    await observed;
+    assert(slowSettled, "the delayed delivery should have settled");
+    assertInstanceOf(outerError, SendActivityError);
+  } finally {
+    if (!released) releaseSlow();
+    if (slowStarted) await slowCompleted.promise;
+    await observed;
+    fetchMock.hardReset();
+  }
+});
+
+test("FederationImpl.sendActivity() drains deliveries when fan-out setup fails", async () => {
+  const slowInbox = "http://127.0.0.1:3005/inbox/slow";
+  const slowEntered = deferredSignal();
+  const slowCompleted = deferredSignal();
+  let releaseSlow!: () => void;
+  const slowGate = new Promise<void>((resolve) => releaseSlow = resolve);
+  let slowStarted = false;
+  let slowSettled = false;
+
+  fetchMock.spyGlobal();
+  fetchMock.post(slowInbox, async () => {
+    slowStarted = true;
+    slowEntered.resolve();
+    await slowGate;
+    slowSettled = true;
+    slowCompleted.resolve();
+    return new Response(null, { status: 202 });
+  });
+
+  let observed: Promise<void> | undefined;
+  let released = false;
+  try {
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      allowPrivateAddress: true,
+    });
+    const context = federation.createContext(new URL("https://example.com/"));
+    const activity = new Create({
+      id: new URL("https://example.com/activity/setup-failure"),
+      actor: new URL("https://example.com/person"),
+    });
+    let outerSettled = false;
+    let outerError: unknown;
+    const sending = federation.sendActivity(
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
+      {
+        [slowInbox]: {
+          actorIds: ["https://example.com/recipients/slow"],
+          sharedInbox: false,
+        },
+        // Synthetic invalid input: the fan-out fails while preparing the
+        // second recipient, after the first delivery has already started.
+        "not a url": {
+          actorIds: ["https://example.com/recipients/invalid"],
+          sharedInbox: false,
+        },
+      },
+      activity,
+      { context, immediate: true },
+    );
+    observed = sending.then(
+      () => {
+        outerSettled = true;
+      },
+      (error) => {
+        outerSettled = true;
+        outerError = error;
+      },
+    );
+    await slowEntered.promise;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertFalse(
+      outerSettled,
+      "sendActivity() must drain started deliveries when fan-out setup fails",
+    );
+    releaseSlow();
+    released = true;
+    await observed;
+    assert(slowSettled, "the started delivery should have settled");
+    assertInstanceOf(outerError, TypeError);
+  } finally {
+    if (!released) releaseSlow();
+    if (slowStarted) await slowCompleted.promise;
+    await observed;
+    fetchMock.hardReset();
+  }
+});
+
+test("FederationImpl.sendActivity() handles rejections while building headers", async () => {
+  const federation = new FederationImpl<void>({
+    kv: new MemoryKvStore(),
+  });
+  const context = federation.createContext(new URL("https://example.com/"));
+  const activity = await signObject(
+    new Create({
+      id: new URL("https://example.com/activity/header-failure"),
+      actor: new URL("https://example.com/person"),
+    }),
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader, documentLoader: mockDocumentLoader },
+  );
+  const subtle = crypto.subtle;
+  const originalDigest = subtle.digest;
+  let digestCalls = 0;
+  let releaseSecondDigest!: () => void;
+  const secondDigestGate = new Promise<void>((resolve) => {
+    releaseSecondDigest = resolve;
+  });
+  let secondDigestStarted!: () => void;
+  const secondDigestEntered = new Promise<void>((resolve) => {
+    secondDigestStarted = resolve;
+  });
+  subtle.digest = async (algorithm, data) => {
+    digestCalls++;
+    if (digestCalls === 2) {
+      secondDigestStarted();
+      await secondDigestGate;
+    }
+    return await originalDigest.call(subtle, algorithm, data);
+  };
+  const capture = captureUnhandledRejections();
+  let released = false;
+  try {
+    const sending = federation.sendActivity(
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
+      {
+        "ftp://example.com/fail": {
+          actorIds: ["https://example.com/recipients/failing"],
+          sharedInbox: false,
+        },
+        "http://127.0.0.1:3006/inbox": {
+          actorIds: ["https://example.com/recipients/slow"],
+          sharedInbox: false,
+        },
+      },
+      activity,
+      {
+        context,
+        immediate: true,
+        collectionSync: "https://example.com/followers",
+      },
+    );
+    const observed = sending.catch((error) => error);
+    await secondDigestEntered;
+    await capture.settle();
+    assertEquals(
+      capture.reasons,
+      [],
+      "an early rejection must not surface as an unhandled rejection",
+    );
+    releaseSecondDigest();
+    released = true;
+    await observed;
+  } finally {
+    if (!released) releaseSecondDigest();
+    subtle.digest = originalDigest;
+    capture.stop();
   }
 });
 

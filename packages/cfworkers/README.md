@@ -19,35 +19,41 @@ implementations for [Cloudflare Workers]:
 import { createFederation, type Message } from "@fedify/fedify";
 import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
 
+type Env = {
+  KV_BINDING: KVNamespace<string>;
+  QUEUE_BINDING: Queue;
+};
+
 export default {
-  async fetch(request, env, ctx) {
-    const federation = createFederation({
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const federation = createFederation<Env>({
       kv: new WorkersKvStore(env.KV_BINDING),
       queue: new WorkersMessageQueue(env.QUEUE_BINDING),
+      // Cloudflare Queues cannot be polled, so the queue() handler below
+      // consumes the messages instead of Federation.startQueue():
+      manuallyStartQueue: true,
       // ... other options
     });
 
-    return federation.fetch(request, { contextData: env });
+    return await federation.fetch(request, { contextData: env });
   },
 
-  async queue(batch, env, ctx) {
-    const federation = createFederation({
+  async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
+    const federation = createFederation<Env>({
       kv: new WorkersKvStore(env.KV_BINDING),
       queue: new WorkersMessageQueue(env.QUEUE_BINDING),
+      // Inbox listeners run inside processQueuedTask() and may call
+      // ctx.sendActivity(), which would otherwise start the queue workers
+      // automatically:
+      manuallyStartQueue: true,
       // ... other options
     });
 
     for (const message of batch.messages) {
-      await federation.processQueuedTask(
-        env,
-        message.body as unknown as Message,
-      );
+      await federation.processQueuedTask(env, message.body as Message);
     }
-  }
-} satisfies ExportedHandler<{
-  KV_BINDING: KVNamespace<string>;
-  QUEUE_BINDING: Queue;
-}>;
+  },
+} satisfies ExportedHandler<Env>;
 ~~~~
 
 [JSR badge]: https://jsr.io/badges/@fedify/cfworkers
@@ -102,7 +108,9 @@ management.
 > API when new messages are available in the queue.  Inside the `queue()`
 > method, you need to call `Federation.processQueuedTask()` method to manually
 > process the messages.  The `queue()` method is the only way to consume
-> messages from the queue in Cloudflare Workers.
+> messages from the queue in Cloudflare Workers.  Set `manuallyStartQueue` to
+> `true` as well; otherwise Fedify tries to start the workers automatically,
+> and since `listen()` throws, it logs a warning that they could not be started.
 
 > [!NOTE]
 > If you use `orderingKey` when enqueueing messages, construct

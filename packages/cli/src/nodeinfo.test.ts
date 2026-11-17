@@ -1,14 +1,113 @@
 import assert from "node:assert/strict";
+import process from "node:process";
 import { test } from "node:test";
+import { run } from "@optique/run";
+import { parse } from "@optique/core/parser";
 import { Chalk } from "chalk";
 import fetchMock from "fetch-mock";
+import { configContext } from "./config.ts";
 import {
+  describeNodeInfoFailure,
   getAsciiArt,
   getFaviconUrl,
   Jimp,
+  nodeInfoCommand,
   rgbTo256Color,
   runNodeInfo,
+  withNodeInfoTimeout,
 } from "./nodeinfo.ts";
+
+test("nodeinfo parses a timeout in seconds", async () => {
+  const result = await run(nodeInfoCommand, {
+    contexts: [configContext],
+    contextOptions: { load: () => ({ config: {}, meta: undefined }) },
+    args: ["nodeinfo", "example.com", "-T", "2.5"],
+  });
+  assert.equal(result.timeout, 2.5);
+  const invalid = parse(nodeInfoCommand, [
+    "nodeinfo",
+    "example.com",
+    "--timeout",
+    "-1",
+  ]);
+  assert.equal(invalid.success, false);
+  const zero = parse(nodeInfoCommand, [
+    "nodeinfo",
+    "example.com",
+    "--timeout",
+    "0",
+  ]);
+  assert.equal(zero.success, false);
+});
+
+test("nodeinfo uses its default timeout through the config context", async () => {
+  const command = await run(nodeInfoCommand, {
+    contexts: [configContext],
+    contextOptions: { load: () => ({ config: {}, meta: undefined }) },
+    args: ["nodeinfo", "example.com"],
+  });
+  assert.equal(command.timeout, 10);
+});
+
+test("nodeinfo reads its timeout from configuration", async () => {
+  const result = await run(nodeInfoCommand, {
+    contexts: [configContext],
+    contextOptions: {
+      load: () => ({ config: { nodeinfo: { timeout: 25 } }, meta: undefined }),
+    },
+    args: ["nodeinfo", "example.com"],
+  });
+  assert.equal(result.timeout, 25);
+});
+
+test("nodeinfo distinguishes timeout from missing and invalid documents", async () => {
+  const missing = await withNodeInfoTimeout(
+    0.01,
+    () => Promise.resolve(undefined),
+  );
+  assert.equal(missing.timedOut, false);
+  assert.equal(
+    describeNodeInfoFailure(missing.timedOut, true, 0.01),
+    "No NodeInfo document found.",
+  );
+  assert.equal(
+    describeNodeInfoFailure(missing.timedOut, false, 0.01),
+    "No NodeInfo document found or it is invalid.",
+  );
+
+  const stalled = await withNodeInfoTimeout(
+    0.01,
+    (signal) =>
+      new Promise<undefined>((resolve) => {
+        signal.addEventListener("abort", () => resolve(undefined), {
+          once: true,
+        });
+      }),
+  );
+  assert.equal(stalled.value, undefined);
+  assert.equal(stalled.timedOut, true);
+  assert.equal(
+    describeNodeInfoFailure(stalled.timedOut, false, 0.01),
+    "NodeInfo request timed out after 0.01 seconds.",
+  );
+  assert.equal(
+    describeNodeInfoFailure(stalled.timedOut, true, 0.01),
+    "NodeInfo request timed out after 0.01 seconds.",
+  );
+});
+
+test("nodeinfo rejects a zero-second timeout before lookup", async () => {
+  let called = false;
+  await assert.rejects(
+    () =>
+      withNodeInfoTimeout(0, () => {
+        called = true;
+        return Promise.resolve(undefined);
+      }),
+    { name: "RangeError", message: /positive/ },
+  );
+  assert.equal(called, false);
+});
 
 const HTML_WITH_SMALL_ICON = `
 <!DOCTYPE html>
@@ -287,12 +386,12 @@ test("getAsciiArt - Brightest Letter with true color support", async () => {
 type FetchCall = { url: string; redirect: string | undefined };
 
 async function withMockFetch(
-  routes: Record<string, () => Response>,
+  routes: Record<string, (init?: RequestInit) => Response | Promise<Response>>,
   run: (calls: FetchCall[]) => Promise<void>,
 ): Promise<void> {
   const originalFetch = globalThis.fetch;
   const calls: FetchCall[] = [];
-  globalThis.fetch = (input, init) => {
+  globalThis.fetch = async (input, init) => {
     let url = typeof input === "string"
       ? input
       : input instanceof URL
@@ -302,7 +401,7 @@ async function withMockFetch(
       calls.push({ url, redirect: init?.redirect });
       const route = routes[url];
       if (route == null) throw new Error("Unexpected fetch: " + url);
-      const response = route();
+      const response = await route(init as RequestInit | undefined);
       const location = response.headers.get("Location");
       if (
         init?.redirect !== "manual" && location != null &&
@@ -311,7 +410,7 @@ async function withMockFetch(
         url = new URL(location, url).href;
         continue;
       }
-      return Promise.resolve(response);
+      return response;
     }
     throw new Error("Too many mocked redirects");
   };
@@ -343,6 +442,79 @@ function nodeInfoRoutes(
   };
 }
 
+async function captureNodeInfoFailure(
+  routes: Record<string, (init?: RequestInit) => Response | Promise<Response>>,
+  raw: boolean,
+): Promise<string> {
+  const originalExit = process.exit;
+  const originalWrite = process.stderr.write;
+  const originalConsoleError = console.error;
+  const output: string[] = [];
+  process.exit = ((code?: number) => {
+    throw new Error(`NodeInfo exit ${code}`);
+  }) as typeof process.exit;
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    output.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write;
+  console.error = (...values: unknown[]) => output.push(values.join(" "));
+  try {
+    await withMockFetch(routes, async () => {
+      await assert.rejects(
+        () =>
+          runNodeInfo({
+            command: "nodeinfo",
+            host: "https://8.8.8.8/",
+            raw,
+            noFavicon: true,
+            metadata: false,
+            bestEffort: false,
+            userAgent: "Fedify test",
+            timeout: 0.02,
+          }),
+        /NodeInfo exit 1/,
+      );
+    });
+    return output.join("\n");
+  } finally {
+    process.exit = originalExit;
+    process.stderr.write = originalWrite;
+    console.error = originalConsoleError;
+  }
+}
+
+test("nodeinfo reports timeouts distinctly in raw and parsed modes", async () => {
+  for (const raw of [true, false]) {
+    const output = await captureNodeInfoFailure({
+      "https://8.8.8.8/.well-known/nodeinfo": (init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => reject(init.signal?.reason),
+            { once: true },
+          );
+        }),
+    }, raw);
+    assert.match(output, /NodeInfo request timed out after 0\.02 seconds/);
+    assert.doesNotMatch(output, /No NodeInfo document found/);
+  }
+});
+
+test("nodeinfo retains missing and invalid document diagnostics", async () => {
+  const missing = await captureNodeInfoFailure({
+    "https://8.8.8.8/.well-known/nodeinfo": () =>
+      new Response(null, { status: 404 }),
+  }, true);
+  assert.match(missing, /No NodeInfo document found\./);
+  assert.doesNotMatch(missing, /timed out/);
+
+  const routes = nodeInfoRoutes("");
+  routes["https://8.8.8.8/nodeinfo/2.1"] = () => Response.json({});
+  const invalid = await captureNodeInfoFailure(routes, false);
+  assert.match(invalid, /No NodeInfo document found or it is invalid\./);
+  assert.doesNotMatch(invalid, /timed out/);
+});
+
 async function runNodeInfoWithFavicon(): Promise<void> {
   await runNodeInfo({
     command: "nodeinfo",
@@ -352,6 +524,7 @@ async function runNodeInfoWithFavicon(): Promise<void> {
     metadata: false,
     bestEffort: false,
     userAgent: "Fedify test",
+    timeout: undefined,
   });
 }
 

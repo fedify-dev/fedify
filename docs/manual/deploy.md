@@ -1018,6 +1018,10 @@ export default {
     const federation = await builder.build({
       kv: new WorkersKvStore(env.KV_NAMESPACE),
       queue: new WorkersMessageQueue(env.QUEUE),
+      // Cloudflare Queues cannot be polled, so the queue() handler below
+      // consumes the messages instead of Federation.startQueue():
+      manuallyStartQueue: true,
+      // Other options...
     });
     return federation.fetch(request, { contextData: env });
   },
@@ -1029,10 +1033,16 @@ export default {
 Cloudflare Queues deliver messages by invoking your Worker's `queue()`
 export rather than via a polling API, so `WorkersMessageQueue` cannot
 implement `~MessageQueue.listen()` the traditional way.  Wire the handler
-manually:
+manually.
+
+Because `WorkersMessageQueue.listen()` throws a `TypeError`, set
+`~FederationOptions.manuallyStartQueue` to `true` as well.  Otherwise Fedify
+tries to start the queue workers automatically the first time an activity is
+received or sent, and logs a warning through [LogTape](./log.md) that the
+workers could not be started.  The `queue()` handler below is what actually
+processes the messages, so the option only prevents that unsuccessful attempt:
 
 ~~~~ typescript twoslash
-// @noErrors: 2345
 import { createFederationBuilder, type Message } from "@fedify/fedify";
 import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
 
@@ -1050,6 +1060,7 @@ export default {
     const federation = await builder.build({
       kv: new WorkersKvStore(env.KV_NAMESPACE),
       queue: new WorkersMessageQueue(env.QUEUE),
+      manuallyStartQueue: true,
     });
 
     for (const message of batch.messages) {

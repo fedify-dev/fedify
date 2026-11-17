@@ -1,10 +1,16 @@
 import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
 import { lookupWebFinger } from "@fedify/webfinger";
+import { getLogger } from "@logtape/logtape";
 import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
 import { domainToASCII, domainToUnicode } from "node:url";
 import metadata from "../deno.json" with { type: "json" };
 import { getTypeId } from "./type.ts";
 import { Application, Group, Organization, Person, Service } from "./vocab.ts";
+
+const ACTOR_HANDLE_TIMEOUT_MS = 10_000;
+// Limit raw candidates so repeated aliases cannot monopolize the event loop.
+const MAX_ACTOR_HANDLE_ALIASES = 100;
+const logger = getLogger(["fedify", "vocab", "actor"]);
 
 /**
  * Actor types are {@link Object} types that are capable of performing
@@ -120,6 +126,9 @@ export interface GetActorHandleOptions extends NormalizeActorHandleOptions {
  *
  * @param actor The actor or actor URI to get the handle from.
  * @param options The extra options for getting the actor handle.
+ * @remarks WebFinger lookups made to resolve the handle share a 10-second
+ *          deadline, including cross-origin alias verification.  At most the
+ *          first 100 subject and alias candidates are examined.
  * @returns The actor handle.  It starts with `@` and is followed by the
  *          username and domain, separated by `@` by default (it can be
  *          customized with the options).
@@ -160,33 +169,96 @@ export async function getActorHandle(
   );
 }
 
-async function getActorHandleInternal(
+/** The test-only dependencies are not exported from the package entry point. @internal */
+export async function getActorHandleInternal(
   actor: Actor | URL,
   options: GetActorHandleOptions = {},
+  deps: {
+    readonly timeoutMs?: number;
+    readonly now?: () => number;
+    readonly lookupWebFinger?: typeof lookupWebFinger;
+  } = {},
+): Promise<`@${string}@${string}` | `${string}@${string}`> {
+  const timeoutMs = deps.timeoutMs ?? ACTOR_HANDLE_TIMEOUT_MS;
+  const now = deps.now ?? (() => performance.now());
+  const deadline = now() + timeoutMs;
+  const controller = new AbortController();
+  const actorId = actor instanceof URL ? actor : actor.id;
+  const expire = () => {
+    if (controller.signal.aborted) return;
+    controller.abort(
+      new DOMException("Actor handle lookup timed out", "TimeoutError"),
+    );
+    logger.warn(
+      "Actor handle lookup timed out for {actorId} after {timeoutMs} ms.",
+      { actorId: actorId?.href, timeoutMs },
+    );
+  };
+  const isExpired = () => {
+    if (controller.signal.aborted) return true;
+    if (now() < deadline) return false;
+    expire();
+    return true;
+  };
+  const timeout = setTimeout(expire, timeoutMs);
+  try {
+    return await getActorHandleWithSignal(
+      actor,
+      options,
+      controller.signal,
+      isExpired,
+      deps.lookupWebFinger ?? lookupWebFinger,
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function getActorHandleWithSignal(
+  actor: Actor | URL,
+  options: GetActorHandleOptions,
+  signal: AbortSignal,
+  isExpired: () => boolean,
+  lookup: typeof lookupWebFinger,
 ): Promise<`@${string}@${string}` | `${string}@${string}`> {
   const actorId = actor instanceof URL ? actor : actor.id;
   if (actorId != null) {
-    const result = await lookupWebFinger(actorId, {
+    const result = await lookup(actorId, {
       userAgent: options.userAgent,
       tracerProvider: options.tracerProvider,
+      signal,
     });
-    if (result != null) {
-      const aliases = [...(result.aliases ?? [])];
-      if (result.subject != null) aliases.unshift(result.subject);
-      for (const alias of aliases) {
+    if (result != null && !isExpired()) {
+      const aliases = result.aliases ?? [];
+      const seen = new Set<string>();
+      const count = Math.min(
+        aliases.length + (result.subject == null ? 0 : 1),
+        MAX_ACTOR_HANDLE_ALIASES,
+      );
+      for (let i = 0; i < count; i++) {
+        if (isExpired()) break;
+        const alias = result.subject == null
+          ? aliases[i]
+          : i === 0
+          ? result.subject
+          : aliases[i - 1];
+        if (seen.has(alias)) continue;
+        seen.add(alias);
         const match = alias.match(/^acct:([^@]+)@([^@]+)$/);
         if (match != null) {
           const hostname = new URL(`https://${match[2]}/`).hostname;
-          if (
-            hostname !== actorId.hostname &&
-            !await verifyCrossOriginActorHandle(
+          if (hostname !== actorId.hostname) {
+            const verified = await verifyCrossOriginActorHandle(
               actorId.href,
               alias,
               options.userAgent,
               options.tracerProvider,
-            )
-          ) {
-            continue;
+              signal,
+              isExpired,
+              lookup,
+            );
+            if (isExpired()) break;
+            if (!verified) continue;
           }
           return normalizeActorHandle(`@${match[1]}@${match[2]}`, options);
         }
@@ -212,11 +284,20 @@ async function verifyCrossOriginActorHandle(
   alias: string,
   userAgent: GetUserAgentOptions | string | undefined,
   tracerProvider: TracerProvider | undefined,
+  signal: AbortSignal,
+  isExpired: () => boolean,
+  lookup: typeof lookupWebFinger,
 ): Promise<boolean> {
-  const response = await lookupWebFinger(alias, { userAgent, tracerProvider });
-  if (response == null) return false;
-  for (const alias of response.aliases ?? []) {
-    if (new URL(alias).href === actorId) return true;
+  const response = await lookup(alias, {
+    userAgent,
+    tracerProvider,
+    signal,
+  });
+  if (response == null || isExpired()) return false;
+  const aliases = response.aliases ?? [];
+  for (let i = 0; i < Math.min(aliases.length, MAX_ACTOR_HANDLE_ALIASES); i++) {
+    if (isExpired()) return false;
+    if (new URL(aliases[i]).href === actorId) return true;
   }
   return false;
 }
