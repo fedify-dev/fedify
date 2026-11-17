@@ -467,6 +467,36 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   }),
 );
 
+for (const consumer of [
+  "{ const deliverAll = finish; await deliverAll(); }",
+  "{ let deliverAll = finish; await deliverAll(); }",
+  "{ const { run: deliverAll } = { run: finish }; await deliverAll(); }",
+  "{ const [deliverAll] = [finish]; await deliverAll(); }",
+  "for (const deliverAll of [finish]) { await deliverAll(); }",
+  "for (let deliverAll = finish; condition;) { await deliverAll(); }",
+  "try { throw finish; } catch (deliverAll) { await deliverAll(); }",
+  "switch (condition) { case true: { const deliverAll = finish; await deliverAll(); } }",
+  "{ const deliverAll = finish; inboxes.forEach(deliverAll); }",
+]) {
+  test(
+    `${ruleName}: shadow binding does not use outer array helper: ${consumer}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(deliverAll());
+    ${consumer}
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
 test(`${ruleName}: array helper diagnostics identify only discarded call sites`, () => {
   const code = `import { Activity } from "@fedify/vocab";
 federation.setOutboxListeners("/users/{identifier}/outbox")

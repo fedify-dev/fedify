@@ -156,6 +156,67 @@ function enclosingFunction(node: Node): FunctionLikeNode | null {
   return null;
 }
 
+/** Checks binding patterns without treating property keys as bindings. */
+function bindsName(pattern: Node | null, name: string): boolean {
+  if (pattern == null) return false;
+  switch (pattern.type) {
+    case "Identifier":
+      return pattern.name === name;
+    case "RestElement":
+      return bindsName(asNode(get(pattern, "argument")), name);
+    case "AssignmentPattern":
+      return bindsName(asNode(get(pattern, "left")), name);
+    case "ArrayPattern":
+      return (get(pattern, "elements") as (Node | null)[]).some((item) =>
+        bindsName(item, name),
+      );
+    case "ObjectPattern":
+      return (get(pattern, "properties") as Node[]).some((prop) =>
+        bindsName(
+          asNode(get(prop, prop.type === "RestElement" ? "argument" : "value")),
+          name,
+        ),
+      );
+    default:
+      return false;
+  }
+}
+
+/** A nearer lexical declaration makes a merged outer candidate ambiguous. */
+function shadowsName(region: Node, name: string): boolean {
+  if (isFunctionLikeNode(region)) {
+    return (
+      (get(region, "params") as Node[]).some((param) =>
+        bindsName(param, name),
+      ) || bindsName(asNode(get(region, "id")), name)
+    );
+  }
+  if (region.type === "CatchClause") {
+    return bindsName(asNode(get(region, "param")), name);
+  }
+  const declarations: Node[] =
+    region.type === "BlockStatement"
+      ? (get(region, "body") as Node[])
+      : region.type === "SwitchStatement"
+        ? (get(region, "cases") as Node[]).flatMap(
+            (clause) => get(clause, "consequent") as Node[],
+          )
+        : region.type === "ForStatement"
+          ? ([asNode(get(region, "init"))].filter(isNode) as Node[])
+          : region.type === "ForInStatement" || region.type === "ForOfStatement"
+            ? ([asNode(get(region, "left"))].filter(isNode) as Node[])
+            : [];
+  return declarations.some((declaration) =>
+    declaration.type === "VariableDeclaration"
+      ? (get(declaration, "declarations") as Node[]).some((item) =>
+          bindsName(asNode(get(item, "id")), name),
+        )
+      : (declaration.type === "FunctionDeclaration" ||
+          declaration.type === "ClassDeclaration") &&
+        bindsName(asNode(get(declaration, "id")), name),
+  );
+}
+
 /**
  * The shared reachability map merges block-local functions. Do not use a
  * candidate outside its lexical declaration region: another binding may be
@@ -186,7 +247,10 @@ function helpersAt(node: Node, scope: UsedScope): FunctionLikeNode[] {
           : null;
     if (region == null) continue;
     let current: Node | null = node;
-    while (current != null && current !== region) current = parentOf(current);
+    while (current != null && current !== region) {
+      if (shadowsName(current, node.name)) return [];
+      current = parentOf(current);
+    }
     if (current == null) return [];
   }
   return helpers;
