@@ -503,6 +503,11 @@ for (const replacement of [
   "({ run: deliverAll } = { run: finish });",
   "[deliverAll] = [finish];",
   "const replace = () => { deliverAll = finish; }; replace();",
+  "for (deliverAll of [finish]) {}",
+  "for ({ run: deliverAll } of [{ run: finish }]) {}",
+  "for ([deliverAll] of [[finish]]) {}",
+  "for (deliverAll in {}) {} deliverAll = finish;",
+  "for (deliverAll in {}) {}",
 ]) {
   test(
     `${ruleName}: unclassified reassignment invalidates array inference: ${replacement}`,

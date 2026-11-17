@@ -836,6 +836,21 @@ function checkListener(
   const unknownWrites = new Set<string>();
   for (const scope of scopes) {
     for (const statement of scope.statements) {
+      // Reachability emits the iterable expression, not the loop statement.
+      // Its left-hand target writes an existing binding on each iteration.
+      const parent = parentOf(statement);
+      if (
+        (parent?.type === "ForOfStatement" ||
+          parent?.type === "ForInStatement") &&
+        get(parent, "right") === statement
+      ) {
+        const target = asNode(get(parent, "left"));
+        if (target?.type !== "VariableDeclaration") {
+          for (const name of helperNames) {
+            if (bindsName(target, name)) unknownWrites.add(name);
+          }
+        }
+      }
       visitAll(
         statement,
         (node) => {
