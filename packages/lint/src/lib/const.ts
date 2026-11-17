@@ -187,6 +187,9 @@ export const RULE_IDS = {
 
   rawPropertyIriInvalid: "raw-property-iri-invalid",
 
+  // Vocabulary rules
+  vocabCloneVerifier: "vocab-clone-verifier",
+
   // Deprecation rules
   denoKvStoreDeprecated: "deno-kv-store-deprecated",
   denoKvMessageQueueDeprecated: "deno-kv-message-queue-deprecated",
