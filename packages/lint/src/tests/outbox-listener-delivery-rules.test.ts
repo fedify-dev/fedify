@@ -16,6 +16,17 @@ const NOT_AWAITED_MESSAGE = "Delivery is not awaited";
 // Every listener the not-awaited rule reports has a delivery call.
 const UNAWAITED: [title: string, code: string][] = [
   [
+    "awaiting a local helper's delivery array",
+    `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];
+    await deliverAll();
+  });
+`,
+  ],
+  [
     "bare sendActivity call",
     `
 import { Activity } from "@fedify/vocab";
