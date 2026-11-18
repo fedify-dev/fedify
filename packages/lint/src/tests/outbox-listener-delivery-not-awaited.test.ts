@@ -422,6 +422,55 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const mutation of [
+  "const replace = () => { run = finish; }; const { value = replace() } = {};",
+  "const replace = () => { run = finish; }; const [value = replace()] = [];",
+  "const replace = () => { run = finish; return 'value'; }; const { [replace()]: value } = {};",
+  "const { value = (run = () => ctx.sendActivity(sender, inbox, activity)) } = {};",
+  "try { throw {}; } catch ({ value = (run = finish) }) {}",
+  "const replace = () => { run = finish; }; try { throw {}; } catch ({ value = replace() }) {}",
+  "const replace = () => { run = finish; return 'value'; }; try { throw {}; } catch ({ [replace()]: value }) {}",
+]) {
+  test(
+    `${ruleName}: executable binding patterns invalidate helper shapes: ${mutation}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let run = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(run());
+    ${mutation}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+test(
+  `${ruleName}: declaration self-write invalidates enclosing helper shape`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    function run() {
+      run = () => ctx.sendActivity(sender, inbox, activity);
+      return [ctx.sendActivity(sender, inbox, activity)];
+    }
+    await Promise.all(run());
+    await run();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
 for (const replacement of [
   "([run!] = [finish]);",
   "({ run: run! } = { run: finish });",

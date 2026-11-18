@@ -189,7 +189,9 @@ function shadowsName(region: Node, name: string, lexicalOnly = false): boolean {
     return (
       (get(region, "params") as Node[]).some((param) =>
         bindsName(param, name),
-      ) || bindsName(asNode(get(region, "id")), name)
+      ) ||
+      (region.type !== "FunctionDeclaration" &&
+        bindsName(asNode(get(region, "id")), name))
     );
   }
   if (region.type === "CatchClause") {
@@ -866,13 +868,44 @@ function checkListener(
   const scopes: UsedScope[] = [];
   walkUsedScopes(listener.body as Node, (scope) => scopes.push(scope));
 
+  const invalidationExpressions = (scope: UsedScope): Node[] => {
+    const expressions = [
+      ...scope.statements,
+      ...(scope.fn == null ? [] : (get(scope.fn, "params") as Node[])),
+    ];
+    // Catch patterns can execute even when the catch body is empty. They are
+    // absent from the shared statement list, so scan them conservatively.
+    visitAll(
+      scope.fn?.body ?? listener.body,
+      (node) => {
+        if (node.type === "CatchClause") {
+          const param = asNode(get(node, "param"));
+          if (param != null) expressions.push(param);
+        }
+      },
+      false,
+    );
+    return expressions;
+  };
   // Parameter defaults are not part of shared body reachability. Follow their
   // possible local callees only for invalidation, not delivery diagnostics.
   const invalidationScopes = [...scopes];
   const invalidationFunctions = new Set(scopes.map((scope) => scope.fn));
   for (const [index, scope] of invalidationScopes.entries()) {
     const names = new Set<string>();
-    collectReferencedNames(get(scope.fn, "params"), names);
+    const expressions = invalidationExpressions(scope);
+    for (const expression of expressions) {
+      // Declaration ids contain executable defaults and computed keys that
+      // collectReferencedNames intentionally omits from body reachability.
+      visitAll(
+        expression,
+        (node) => {
+          if (node.type === "CallExpression")
+            collectReferencedNames(node, names);
+        },
+        false,
+      );
+    }
     if (index >= scopes.length) {
       for (const statement of scope.statements)
         collectReferencedNames(statement, names);
@@ -930,10 +963,7 @@ function checkListener(
         );
       }
     }
-    const expressions = [
-      ...scope.statements,
-      ...(scope.fn == null ? [] : (get(scope.fn, "params") as Node[])),
-    ];
+    const expressions = invalidationExpressions(scope);
     for (const statement of expressions) {
       // Reachability emits the iterable expression, not the loop statement.
       // Its left-hand target writes an existing binding on each iteration.
@@ -995,6 +1025,9 @@ function checkListener(
             // Nested scope maps do not update the enclosing caller's map.
             // Exempt a literal write only when its target is local.
             target?.type === "Identifier" &&
+            scope.functionsByName
+              .get(target.name)
+              ?.includes(unwrap(value) as FunctionLikeNode) &&
             (scope.fn == null ||
               localFunctionNames.has(target.name) ||
               shadowsName(
