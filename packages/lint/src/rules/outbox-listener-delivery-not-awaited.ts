@@ -159,6 +159,7 @@ function enclosingFunction(node: Node): FunctionLikeNode | null {
 /** Checks binding patterns without treating property keys as bindings. */
 function bindsName(pattern: Node | null, name: string): boolean {
   if (pattern == null) return false;
+  pattern = unwrap(pattern);
   switch (pattern.type) {
     case "Identifier":
       return pattern.name === name;
@@ -865,15 +866,46 @@ function checkListener(
   const scopes: UsedScope[] = [];
   walkUsedScopes(listener.body as Node, (scope) => scopes.push(scope));
 
+  // Parameter defaults are not part of shared body reachability. Follow their
+  // possible local callees only for invalidation, not delivery diagnostics.
+  const invalidationScopes = [...scopes];
+  const invalidationFunctions = new Set(scopes.map((scope) => scope.fn));
+  for (const [index, scope] of invalidationScopes.entries()) {
+    const names = new Set<string>();
+    collectReferencedNames(get(scope.fn, "params"), names);
+    if (index >= scopes.length) {
+      for (const statement of scope.statements)
+        collectReferencedNames(statement, names);
+    }
+    for (const name of names) {
+      for (const fn of scope.functionsByName.get(name) ?? []) {
+        if (invalidationFunctions.has(fn)) continue;
+        walkUsedScopes(fn.body as Node, (nested) => {
+          const nestedFn = nested.fn ?? fn;
+          if (invalidationFunctions.has(nestedFn)) return;
+          invalidationFunctions.add(nestedFn);
+          invalidationScopes.push({
+            ...nested,
+            fn: nestedFn,
+            functionsByName: new Map([
+              ...scope.functionsByName,
+              ...nested.functionsByName,
+            ]),
+          });
+        });
+      }
+    }
+  }
+
   // Shared reachability collects function-valued assignments, but not aliases
   // or unknown replacement values. Without ordered binding data flow, any
   // such write makes a same-named helper unsafe to infer, including in a
   // closure. Name-wide invalidation is deliberately conservative.
   const helperNames = new Set(
-    scopes.flatMap((scope) => [...scope.functionsByName.keys()]),
+    invalidationScopes.flatMap((scope) => [...scope.functionsByName.keys()]),
   );
   const unknownWrites = new Set<string>();
-  for (const scope of scopes) {
+  for (const scope of invalidationScopes) {
     const localFunctionNames = new Set<string>();
     if (scope.fn != null) {
       for (const name of helperNames) {
@@ -962,14 +994,14 @@ function checkListener(
             isFunctionLikeNode(unwrap(value)) &&
             // Nested scope maps do not update the enclosing caller's map.
             // Exempt a literal write only when its target is local.
+            target?.type === "Identifier" &&
             (scope.fn == null ||
-              (target?.type === "Identifier" &&
-                (localFunctionNames.has(target.name) ||
-                  shadowsName(
-                    assignmentRegion(node, target.name) ?? node,
-                    target.name,
-                    true,
-                  ))))
+              localFunctionNames.has(target.name) ||
+              shadowsName(
+                assignmentRegion(node, target.name) ?? node,
+                target.name,
+                true,
+              ))
           )
             return;
           for (const name of helperNames) {

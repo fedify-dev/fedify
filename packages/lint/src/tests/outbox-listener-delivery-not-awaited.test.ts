@@ -423,6 +423,38 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
 }
 
 for (const replace of [
+  "run! = finish;",
+  "(run as Runner) = finish;",
+  "([run!] = [finish]);",
+  "({ run: run! } = { run: finish });",
+  "run! = () => ctx.sendActivity(sender, inbox, activity);",
+  "const replace = () => { run = finish; }; const invoke = (value = replace()) => value; invoke();",
+  "const replace = () => { run = () => ctx.sendActivity(sender, inbox, activity); }; const invoke = (value = replace()) => value; invoke();",
+  "const replace = () => { run = finish; }; const middle = () => replace(); const invoke = (value = middle()) => value; invoke();",
+  "const replace = () => { run = finish; }; const invoke = ({ value = replace() } = {}) => value; invoke();",
+  "const replace = () => { run = finish; }; const middle = (value = replace()) => value; const invoke = (value = middle()) => value; invoke();",
+]) {
+  test(
+    `${ruleName}: wrapped writes and default-invoked helpers invalidate arrays: ${replace}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let run = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(run());
+    ${replace}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const replace of [
   "const replace = () => { run = () => ctx.sendActivity(sender, inbox, activity); }; replace();",
   "const replace = () => { run = async () => { await ctx.sendActivity(sender, inbox, activity); }; }; replace();",
   "const replace = () => { const inner = () => { run = () => ctx.sendActivity(sender, inbox, activity); }; inner(); }; replace();",
