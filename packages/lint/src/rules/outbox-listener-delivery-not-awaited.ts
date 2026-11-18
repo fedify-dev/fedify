@@ -902,6 +902,8 @@ function checkListener(
         (node) => {
           if (node.type === "CallExpression")
             collectReferencedNames(node, names);
+          else if (node.type === "AssignmentPattern")
+            collectReferencedNames(get(node, "right"), names);
         },
         false,
       );
