@@ -10,7 +10,7 @@ interface RetryOptions {
   warn?: (message: string) => void;
 }
 
-/** Retry interrupted npm downloads without masking deterministic compile errors. */
+/** Retry interrupted compiler downloads without masking deterministic errors. */
 export async function compileWithDownloadRetries(
   compile: () => Promise<CompileResult>,
   target: string,
@@ -36,9 +36,12 @@ export async function compileWithDownloadRetries(
     const diagnostic = lastError < 0 ? "" : lines.slice(lastError).join("\n");
     const interruptedDownload =
       !result.signal &&
-      /^error: Failed caching npm package[^\r\n]*\r?\n\s*0: error reading a body from connection/.test(
+      (/^error: Failed caching npm package[^\r\n]*\r?\n\s*0: error reading a body from connection/.test(
         diagnostic,
-      );
+      ) ||
+        /^error: Writing deno compile executable to temporary file [^\r\n]*\r?\n\s*Caused by:\s*\r?\n\s*0: Setting up base binary\.\r?\n\s*1: error reading a body from connection/.test(
+          diagnostic,
+        ));
     if (!interruptedDownload || attempt === attempts) {
       throw new Error(
         `CLI compilation for ${target} failed with exit code ${result.code}`,
@@ -46,7 +49,7 @@ export async function compileWithDownloadRetries(
     }
     const delay = attempt * 2_000;
     warn(
-      `npm download interrupted for ${target}; retrying compilation in ${delay}ms (${attempt + 1}/${attempts}).`,
+      `Compiler download interrupted for ${target}; retrying compilation in ${delay}ms (${attempt + 1}/${attempts}).`,
     );
     await sleep(delay);
   }
