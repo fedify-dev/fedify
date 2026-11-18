@@ -334,6 +334,22 @@ for (const [scenario, definition, consumer, dropped] of [
     "deliver();",
     true,
   ],
+  ...["return", "return await"].flatMap((returnSyntax) =>
+    [
+      ["dropped", "deliver();", true],
+      ["awaited", "await deliver();", false],
+      ["callback", "inboxes.forEach(deliver);", true],
+      ["chain", "const forward = () => deliver(); forward();", true],
+    ].map(
+      ([label, use, reports]) =>
+        [
+          `async mixed array adopts delivery: ${returnSyntax} ${label}`,
+          `async function deliver() { if (skip) return []; ${returnSyntax} ${arrayHelperDelivery}; }`,
+          use,
+          reports,
+        ] as const,
+    ),
+  ),
   [
     "async completion through a sync helper",
     `const inner = async () => { await ${arrayHelperDelivery}; return []; }; const deliver = () => inner();`,

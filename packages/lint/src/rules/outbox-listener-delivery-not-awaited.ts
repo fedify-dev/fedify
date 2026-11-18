@@ -1114,11 +1114,11 @@ function checkListener(
   }: Outcome): boolean => {
     if (owner == null || owner === listener) return false;
     if (fate !== "awaited" && fate !== "returned") return false;
-    // An independently awaited delivery still makes an async helper's own
-    // completion promise significant, even if it later returns an array.
+    // Awaiting or adopting a delivery makes an async helper's own completion
+    // promise significant, even if another branch returns an array.
     if (
       arrayInvolved.has(owner) &&
-      !(fate === "awaited" && get(owner, "async") === true)
+      !(shape === "promise" && get(owner, "async") === true)
     ) {
       if (shape !== "promises" || shapes.get(owner) !== "promises")
         return false;
