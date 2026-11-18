@@ -156,6 +156,19 @@ function enclosingFunction(node: Node): FunctionLikeNode | null {
   return null;
 }
 
+/** A static block, like a function body, owns its var bindings. */
+function variableRegion(node: Node): Node | null {
+  for (
+    let current = parentOf(node);
+    current != null;
+    current = parentOf(current)
+  ) {
+    if (current.type === "StaticBlock") return current;
+    if (isFunctionLikeNode(current)) return asNode(get(current, "body"));
+  }
+  return null;
+}
+
 /** Checks binding patterns without treating property keys as bindings. */
 function bindsName(pattern: Node | null, name: string): boolean {
   if (pattern == null) return false;
@@ -198,7 +211,7 @@ function shadowsName(region: Node, name: string, lexicalOnly = false): boolean {
     return bindsName(asNode(get(region, "param")), name);
   }
   const declarations: Node[] =
-    region.type === "BlockStatement"
+    region.type === "BlockStatement" || region.type === "StaticBlock"
       ? (get(region, "body") as Node[])
       : region.type === "SwitchStatement"
         ? (get(region, "cases") as Node[]).flatMap(
@@ -229,6 +242,7 @@ function assignmentRegion(assignment: Node, name: string): Node | null {
     current = parentOf(current)
   ) {
     if (isFunctionLikeNode(current)) return asNode(get(current, "body"));
+    if (current.type === "StaticBlock") return current;
     if (shadowsName(current, name, true)) return current;
   }
   return null;
@@ -280,7 +294,7 @@ function helpersAt(
           ? parentOf(variable)
           : declarator?.type === "AssignmentExpression"
             ? assignmentRegion(declarator, node.name)
-            : asNode(get(enclosingFunction(fn), "body"));
+            : variableRegion(fn);
     if (region == null) return [];
     const functionScope = enclosingFunction(fn);
     let current: Node | null = node;

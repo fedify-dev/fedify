@@ -438,6 +438,37 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const declaration of [
+  "var run = () => [ctx.sendActivity(sender, inbox, activity)];",
+  "var run; run = () => [ctx.sendActivity(sender, inbox, activity)];",
+  "var run; { run = () => [ctx.sendActivity(sender, inbox, activity)]; }",
+]) {
+  test(
+    `${ruleName}: static block var helpers do not escape: ${declaration}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    const run = finish;
+    const pending = [];
+    const Holder = class {
+      static {
+        ${declaration}
+        pending.push(...run());
+      }
+    };
+    await Promise.all(pending);
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
 for (const mutation of [
   "const invoke = (callback = () => { run = finish; }) => callback(); invoke();",
   "const invoke = (callback = function () { run = finish; }) => callback(); invoke();",
