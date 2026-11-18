@@ -439,6 +439,13 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
 }
 
 for (const mutation of [
+  "const invoke = (callback = () => { run = finish; }) => callback(); invoke();",
+  "const invoke = (callback = function () { run = finish; }) => callback(); invoke();",
+  "const { callback = () => { run = finish; } } = {}; callback();",
+  "const [callback = () => { run = finish; }] = []; callback();",
+  "try { throw {}; } catch ({ callback = () => { run = finish; } }) { callback(); }",
+  "const holder = { set current(value) { run = value; } }; holder.current = finish;",
+  "const holder = { set current(value) { run = value; } }; holder['current'] = finish;",
   "const replace = () => { run = finish; }; const invoke = (callback = replace) => callback(); invoke();",
   "const replace = () => { run = finish; }; const { callback = replace } = {}; callback();",
   "const replace = () => { run = finish; }; const [callback = replace] = []; callback();",

@@ -893,6 +893,7 @@ function checkListener(
   const invalidationFunctions = new Set(scopes.map((scope) => scope.fn));
   for (const [index, scope] of invalidationScopes.entries()) {
     const names = new Set<string>();
+    const inlineDefaults = new Set<FunctionLikeNode>();
     const expressions = invalidationExpressions(scope);
     for (const expression of expressions) {
       // Declaration ids contain executable defaults and computed keys that
@@ -902,8 +903,26 @@ function checkListener(
         (node) => {
           if (node.type === "CallExpression")
             collectReferencedNames(node, names);
-          else if (node.type === "AssignmentPattern")
+          else if (node.type === "AssignmentPattern") {
             collectReferencedNames(get(node, "right"), names);
+            // Default values can supply inline callbacks for a later call.
+            // Scan them only for invalidation, never for delivery diagnostics.
+            visitAll(get(node, "right"), (value) => {
+              if (isFunctionLikeNode(value)) inlineDefaults.add(value);
+            });
+          } else if (
+            node.type === "AssignmentExpression" ||
+            node.type === "UpdateExpression"
+          ) {
+            const target = asNode(
+              get(
+                node,
+                node.type === "AssignmentExpression" ? "left" : "argument",
+              ),
+            );
+            if (target != null && unwrap(target).type === "MemberExpression")
+              collectReferencedNames(unwrap(target), names);
+          }
         },
         false,
       );
@@ -912,23 +931,25 @@ function checkListener(
       for (const statement of scope.statements)
         collectReferencedNames(statement, names);
     }
-    for (const name of names) {
-      for (const fn of scope.functionsByName.get(name) ?? []) {
-        if (invalidationFunctions.has(fn)) continue;
-        walkUsedScopes(fn.body as Node, (nested) => {
-          const nestedFn = nested.fn ?? fn;
-          if (invalidationFunctions.has(nestedFn)) return;
-          invalidationFunctions.add(nestedFn);
-          invalidationScopes.push({
-            ...nested,
-            fn: nestedFn,
-            functionsByName: new Map([
-              ...scope.functionsByName,
-              ...nested.functionsByName,
-            ]),
-          });
+    const candidates = new Set([
+      ...inlineDefaults,
+      ...[...names].flatMap((name) => scope.functionsByName.get(name) ?? []),
+    ]);
+    for (const fn of candidates) {
+      if (invalidationFunctions.has(fn)) continue;
+      walkUsedScopes(fn.body as Node, (nested) => {
+        const nestedFn = nested.fn ?? fn;
+        if (invalidationFunctions.has(nestedFn)) return;
+        invalidationFunctions.add(nestedFn);
+        invalidationScopes.push({
+          ...nested,
+          fn: nestedFn,
+          functionsByName: new Map([
+            ...scope.functionsByName,
+            ...nested.functionsByName,
+          ]),
         });
-      }
+      });
     }
   }
 
