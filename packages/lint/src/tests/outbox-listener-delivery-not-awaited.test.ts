@@ -422,11 +422,41 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const replacement of [
+  "([run!] = [finish]);",
+  "({ run: run! } = { run: finish });",
+]) {
+  // Deno's AST omits these asserted destructuring targets. Exercise them
+  // explicitly through ESLint, whose parser preserves the target nodes.
+  test(`${ruleName}: ESLint wrapped destructuring write: ${replacement}`, () => {
+    const code = `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let run = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(run());
+    ${replacement}
+    await run();
+  });`;
+    const messages = new Linter().verify(
+      `${FEDERATION_SETUP}\n\n${code}`,
+      [
+        {
+          files: ["**/*.ts"],
+          languageOptions: { parser: tsParser },
+          plugins: { fedify: { rules: { [ruleName]: rule.eslint } } },
+          rules: { [`fedify/${ruleName}`]: "error" },
+        },
+      ],
+      "listener.ts",
+    );
+    deepStrictEqual(messages, []);
+  });
+}
 for (const replace of [
   "run! = finish;",
   "(run as Runner) = finish;",
-  "([run!] = [finish]);",
-  "({ run: run! } = { run: finish });",
   "run! = () => ctx.sendActivity(sender, inbox, activity);",
   "const replace = () => { run = finish; }; const invoke = (value = replace()) => value; invoke();",
   "const replace = () => { run = () => ctx.sendActivity(sender, inbox, activity); }; const invoke = (value = replace()) => value; invoke();",
