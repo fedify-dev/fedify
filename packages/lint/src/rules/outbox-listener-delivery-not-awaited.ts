@@ -1008,7 +1008,8 @@ function checkListener(
           (node) => {
             if (
               node.type !== "VariableDeclarator" ||
-              get(parentOf(node), "kind") !== "var"
+              get(parentOf(node), "kind") !== "var" ||
+              variableRegion(node) !== scope.fn?.body
             )
               return;
             for (const name of helperNames) {

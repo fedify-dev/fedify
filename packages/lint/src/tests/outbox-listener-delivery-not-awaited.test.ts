@@ -529,6 +529,7 @@ for (const mutation of [
   "const replace = ({ [(function () { run = finish; return 'key'; })()]: value }) => value; replace({});",
   "const { [(() => { run = finish; return 'key'; })()]: value } = {};",
   "try { throw {}; } catch ({ [(() => { run = finish; return 'key'; })()]: value }) {}",
+  "const replace = () => { class Holder { static { var run; } } run = async () => { await ctx.sendActivity(sender, inbox, activity); }; }; replace();",
   "const invoke = (callback = () => { run = finish; }) => callback(); invoke();",
   "const invoke = (callback = function () { run = finish; }) => callback(); invoke();",
   "const { callback = () => { run = finish; } } = {}; callback();",
