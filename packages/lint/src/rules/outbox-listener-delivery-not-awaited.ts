@@ -973,6 +973,26 @@ function checkListener(
       ...inlineFunctions,
       ...[...names].flatMap((name) => scope.functionsByName.get(name) ?? []),
     ]);
+    // Parameter defaults cannot see declarations in their own function body.
+    // Retain enclosing candidates as well as the merged body-scope candidates.
+    const parameterNames = new Set<string>();
+    collectReferencedNames(scope.fn?.params, parameterNames);
+    const enclosingFunctions = new Set<FunctionLikeNode>();
+    for (
+      let outer = scope.fn == null ? null : enclosingFunction(scope.fn);
+      outer != null;
+      outer = enclosingFunction(outer)
+    ) {
+      enclosingFunctions.add(outer);
+    }
+    for (const enclosing of invalidationScopes) {
+      if (enclosing.fn != null && !enclosingFunctions.has(enclosing.fn))
+        continue;
+      for (const name of parameterNames) {
+        for (const fn of enclosing.functionsByName.get(name) ?? [])
+          candidates.add(fn);
+      }
+    }
     for (const fn of candidates) {
       if (invalidationFunctions.has(fn)) continue;
       walkUsedScopes(fn.body as Node, (nested) => {
