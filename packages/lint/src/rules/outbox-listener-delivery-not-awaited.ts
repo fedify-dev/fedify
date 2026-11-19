@@ -910,6 +910,22 @@ function checkListener(
     const inlineDefaults = new Set<FunctionLikeNode>();
     const expressions = invalidationExpressions(scope);
     for (const expression of expressions) {
+      const parent = parentOf(expression);
+      if (
+        (parent?.type === "ForOfStatement" ||
+          parent?.type === "ForInStatement") &&
+        get(parent, "right") === expression
+      ) {
+        // Loop member targets can invoke setters without an assignment node.
+        visitAll(
+          get(parent, "left"),
+          (target) => {
+            if (target.type === "MemberExpression")
+              collectReferencedNames(target, names);
+          },
+          false,
+        );
+      }
       // Declaration ids contain executable defaults and computed keys that
       // collectReferencedNames intentionally omits from body reachability.
       visitAll(
@@ -1011,17 +1027,14 @@ function checkListener(
         get(parent, "right") === statement
       ) {
         const target = asNode(get(parent, "left"));
-        if (
-          target?.type === "VariableDeclaration" &&
-          get(target, "kind") === "var"
-        ) {
+        if (target?.type === "VariableDeclaration") {
           for (const item of get(target, "declarations") as Node[]) {
             for (const name of helperNames) {
               if (bindsName(asNode(get(item, "id")), name))
                 unknownWrites.add(name);
             }
           }
-        } else if (target?.type !== "VariableDeclaration") {
+        } else {
           for (const name of helperNames) {
             if (bindsName(target, name)) unknownWrites.add(name);
           }

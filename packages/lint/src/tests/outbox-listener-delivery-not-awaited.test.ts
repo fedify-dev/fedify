@@ -438,6 +438,33 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const loop of [
+  "for (let run of [finish])",
+  "for (let [run] of [[finish]])",
+  "for (let { run } of [{ run: finish }])",
+  "for (let run in { key: true })",
+]) {
+  test(
+    `${ruleName}: lexical loop inputs invalidate later helper shapes: ${loop}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    ${loop} {
+      await run();
+      run = () => [ctx.sendActivity(sender, inbox, activity)];
+      await Promise.all(run());
+    }
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
 for (const binding of [
   "let run = finish",
   "let { run } = { run: finish }",
@@ -495,6 +522,9 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
 }
 
 for (const mutation of [
+  "const holder = { set current(value) { run = value; } }; for (holder.current of [finish]) {}",
+  "const holder = { set current(value) { run = finish; } }; for (holder.current in { key: true }) {}",
+  "const holder = { set current(value) { run = value; } }; for ([holder.current] of [[finish]]) {}",
   "const invoke = (callback = () => { run = finish; }) => callback(); invoke();",
   "const invoke = (callback = function () { run = finish; }) => callback(); invoke();",
   "const { callback = () => { run = finish; } } = {}; callback();",
