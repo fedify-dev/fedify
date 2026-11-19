@@ -438,6 +438,31 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const binding of [
+  "let run = finish",
+  "let { run } = { run: finish }",
+  "let [run] = [finish]",
+]) {
+  test(
+    `${ruleName}: initial lexical alias invalidates later helper inference: ${binding}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    ${binding};
+    await run();
+    run = () => [ctx.sendActivity(sender, inbox, activity)];
+    await Promise.all(run());
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
 for (const declaration of [
   "var run = () => [ctx.sendActivity(sender, inbox, activity)];",
   "var run; run = () => [ctx.sendActivity(sender, inbox, activity)];",

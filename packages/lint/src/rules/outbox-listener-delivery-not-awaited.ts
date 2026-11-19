@@ -1030,10 +1030,7 @@ function checkListener(
       visitAll(
         statement,
         (node) => {
-          if (
-            node.type === "VariableDeclarator" &&
-            get(parentOf(node), "kind") === "var"
-          ) {
+          if (node.type === "VariableDeclarator") {
             const value = asNode(get(node, "init"));
             if (value != null && !isFunctionLikeNode(unwrap(value))) {
               for (const name of helperNames) {
