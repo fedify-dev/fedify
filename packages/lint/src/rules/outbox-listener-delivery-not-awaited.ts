@@ -907,7 +907,7 @@ function checkListener(
   const invalidationFunctions = new Set(scopes.map((scope) => scope.fn));
   for (const [index, scope] of invalidationScopes.entries()) {
     const names = new Set<string>();
-    const inlineDefaults = new Set<FunctionLikeNode>();
+    const inlineFunctions = new Set<FunctionLikeNode>();
     const expressions = invalidationExpressions(scope);
     for (const expression of expressions) {
       const parent = parentOf(expression);
@@ -931,14 +931,18 @@ function checkListener(
       visitAll(
         expression,
         (node) => {
-          if (node.type === "CallExpression")
+          if (node.type === "CallExpression") {
             collectReferencedNames(node, names);
-          else if (node.type === "AssignmentPattern") {
+            // An executable binding key can invoke an inline function.
+            visitAll(node, (value) => {
+              if (isFunctionLikeNode(value)) inlineFunctions.add(value);
+            });
+          } else if (node.type === "AssignmentPattern") {
             collectReferencedNames(get(node, "right"), names);
             // Default values can supply inline callbacks for a later call.
             // Scan them only for invalidation, never for delivery diagnostics.
             visitAll(get(node, "right"), (value) => {
-              if (isFunctionLikeNode(value)) inlineDefaults.add(value);
+              if (isFunctionLikeNode(value)) inlineFunctions.add(value);
             });
           } else if (
             node.type === "AssignmentExpression" ||
@@ -962,7 +966,7 @@ function checkListener(
         collectReferencedNames(statement, names);
     }
     const candidates = new Set([
-      ...inlineDefaults,
+      ...inlineFunctions,
       ...[...names].flatMap((name) => scope.functionsByName.get(name) ?? []),
     ]);
     for (const fn of candidates) {
