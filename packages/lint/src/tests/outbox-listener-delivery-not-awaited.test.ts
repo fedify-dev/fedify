@@ -438,6 +438,60 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const [parameters, argument] of [
+  ["run", "finish"],
+  ["{ run }", "{ run: finish }"],
+  ["[run]", "[finish]"],
+  ["run = finish", "undefined"],
+] as const) {
+  test(
+    `${ruleName}: incoming parameter values invalidate helper shapes: ${parameters}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    async function invoke(${parameters}) {
+      await run();
+      run = () => [ctx.sendActivity(sender, inbox, activity)];
+      await Promise.all(run());
+    }
+    await invoke(${argument});
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const [binding, thrown] of [
+  ["run", "finish"],
+  ["{ run }", "{ run: finish }"],
+  ["[run]", "[finish]"],
+] as const) {
+  test(
+    `${ruleName}: incoming catch values invalidate helper shapes: ${binding}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    try { throw ${thrown}; } catch (${binding}) {
+      await run();
+      run = () => [ctx.sendActivity(sender, inbox, activity)];
+      await Promise.all(run());
+    }
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
 for (const [returned, consumer, dropped] of [
   ["ctx.sendActivity(sender, inbox, activity)", "deliver();", true],
   ["ctx.sendActivity(sender, inbox, activity)", "await deliver();", false],

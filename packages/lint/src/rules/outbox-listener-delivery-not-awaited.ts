@@ -1021,6 +1021,22 @@ function checkListener(
   );
   const unknownWrites = new Set<string>();
   for (const scope of invalidationScopes) {
+    const invalidateIncoming = (pattern: Node): void => {
+      for (const name of helperNames) {
+        if (bindsName(pattern, name)) unknownWrites.add(name);
+      }
+    };
+    for (const param of scope.fn?.params ?? [])
+      invalidateIncoming(param as Node);
+    visitAll(
+      scope.fn?.body ?? listener.body,
+      (node) => {
+        if (node.type !== "CatchClause") return;
+        const param = asNode(get(node, "param"));
+        if (param != null) invalidateIncoming(param);
+      },
+      false,
+    );
     const localFunctionNames = new Set<string>();
     if (scope.fn != null) {
       for (const name of helperNames) {
