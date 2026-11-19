@@ -608,6 +608,9 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
 }
 
 for (const mutation of [
+  "const replace = () => { run = finish; }; function invoke() { { const replace = () => {}; } replace(); } invoke();",
+  "const replace = () => { run = finish; }; function invoke() { { let replace = () => {}; } replace(); } invoke();",
+  "const replace = () => { run = finish; }; function invoke() { { function replace() {} } replace(); } invoke();",
   "const holder = { get key() { run = finish; return 'key'; } }; const value = holder.key;",
   "const holder = { get key() { run = finish; return 'key'; } }; const { [holder.key]: value } = {};",
   "const holder = { get key() { run = finish; return 'key'; } }; const invoke = ({ [holder.key]: value }) => value; invoke({});",

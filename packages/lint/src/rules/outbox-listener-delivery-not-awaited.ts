@@ -974,10 +974,11 @@ function checkListener(
       ...inlineFunctions,
       ...[...names].flatMap((name) => scope.functionsByName.get(name) ?? []),
     ]);
-    // Parameter defaults cannot see declarations in their own function body.
-    // Retain enclosing candidates as well as the merged body-scope candidates.
-    const parameterNames = new Set<string>();
-    collectReferencedNames(scope.fn?.params, parameterNames);
+    // Flattened block bindings can hide enclosing callees, and parameter
+    // defaults cannot see declarations in their own function body. Retain
+    // enclosing candidates for both body and parameter references.
+    const enclosingNames = new Set(names);
+    collectReferencedNames(scope.fn?.params, enclosingNames);
     const enclosingFunctions = new Set<FunctionLikeNode>();
     for (
       let outer = scope.fn == null ? null : enclosingFunction(scope.fn);
@@ -989,7 +990,7 @@ function checkListener(
     for (const enclosing of invalidationScopes) {
       if (enclosing.fn != null && !enclosingFunctions.has(enclosing.fn))
         continue;
-      for (const name of parameterNames) {
+      for (const name of enclosingNames) {
         for (const fn of enclosing.functionsByName.get(name) ?? [])
           candidates.add(fn);
       }
