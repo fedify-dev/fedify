@@ -522,6 +522,11 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
 }
 
 for (const mutation of [
+  "const holder = { get key() { run = finish; return 'key'; } }; const value = holder.key;",
+  "const holder = { get key() { run = finish; return 'key'; } }; const { [holder.key]: value } = {};",
+  "const holder = { get key() { run = finish; return 'key'; } }; const invoke = ({ [holder.key]: value }) => value; invoke({});",
+  "const holder = { set current(value) { run = value; } }; ({ current: holder.current = finish } = {});",
+  "const holder = { set current(value) { run = value; } }; [holder.current = finish] = [];",
   "const holder = { set current(value) { run = value; } }; for (holder.current of [finish]) {}",
   "const holder = { set current(value) { run = finish; } }; for (holder.current in { key: true }) {}",
   "const holder = { set current(value) { run = value; } }; for ([holder.current] of [[finish]]) {}",

@@ -937,6 +937,10 @@ function checkListener(
             visitAll(node, (value) => {
               if (isFunctionLikeNode(value)) inlineFunctions.add(value);
             });
+          } else if (node.type === "MemberExpression") {
+            // Reads can invoke getters; destructuring targets can invoke
+            // setters even without an AssignmentExpression at the member.
+            collectReferencedNames(node, names);
           } else if (node.type === "AssignmentPattern") {
             collectReferencedNames(get(node, "right"), names);
             // Default values can supply inline callbacks for a later call.
