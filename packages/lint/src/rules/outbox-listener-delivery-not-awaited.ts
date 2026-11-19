@@ -286,7 +286,7 @@ function helpersAt(
     }
     const variable =
       declarator?.type === "VariableDeclarator" ? parentOf(declarator) : null;
-    const region =
+    let region =
       fn.type === "FunctionDeclaration"
         ? parentOf(fn)
         : variable?.type === "VariableDeclaration" &&
@@ -295,6 +295,7 @@ function helpersAt(
           : declarator?.type === "AssignmentExpression"
             ? assignmentRegion(declarator, node.name)
             : variableRegion(fn);
+    if (region?.type === "SwitchCase") region = parentOf(region);
     if (region == null) return [];
     const functionScope = enclosingFunction(fn);
     let current: Node | null = node;

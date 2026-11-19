@@ -438,6 +438,38 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const [returned, consumer, dropped] of [
+  ["ctx.sendActivity(sender, inbox, activity)", "deliver();", true],
+  ["ctx.sendActivity(sender, inbox, activity)", "await deliver();", false],
+  ["[ctx.sendActivity(sender, inbox, activity)]", "await deliver();", true],
+  [
+    "[ctx.sendActivity(sender, inbox, activity)]",
+    "await Promise.all(deliver());",
+    false,
+  ],
+] as const) {
+  test(
+    `${ruleName}: helpers share switch case scope: ${returned} ${consumer}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    switch (kind) {
+      case 0:
+        function deliver() { return ${returned}; }
+      case 1:
+        ${consumer}
+    }
+  });
+`,
+      rule,
+      ruleName,
+      ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+    }),
+  );
+}
+
 for (const loop of [
   "for (let run of [finish])",
   "for (let [run] of [[finish]])",
@@ -522,14 +554,14 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
 }
 
 for (const mutation of [
-  "const replace = () => { run = finish; }; function invoke(value = replace()) { const replace = () => {}; } invoke();",
-  "const replace = () => { run = finish; }; function invoke(callback = replace) { const replace = () => {}; callback(); } invoke();",
-  "const replace = () => { run = finish; }; function invoke({ [replace()]: value }) { const replace = () => {}; } invoke({});",
   "const holder = { get key() { run = finish; return 'key'; } }; const value = holder.key;",
   "const holder = { get key() { run = finish; return 'key'; } }; const { [holder.key]: value } = {};",
   "const holder = { get key() { run = finish; return 'key'; } }; const invoke = ({ [holder.key]: value }) => value; invoke({});",
   "const holder = { set current(value) { run = value; } }; ({ current: holder.current = finish } = {});",
   "const holder = { set current(value) { run = value; } }; [holder.current = finish] = [];",
+  "const replace = () => { run = finish; }; function invoke(value = replace()) { const replace = () => {}; } invoke();",
+  "const replace = () => { run = finish; }; function invoke(callback = replace) { const replace = () => {}; callback(); } invoke();",
+  "const replace = () => { run = finish; }; function invoke({ [replace()]: value }) { const replace = () => {}; } invoke({});",
   "const holder = { set current(value) { run = value; } }; for (holder.current of [finish]) {}",
   "const holder = { set current(value) { run = finish; } }; for (holder.current in { key: true }) {}",
   "const holder = { set current(value) { run = value; } }; for ([holder.current] of [[finish]]) {}",
