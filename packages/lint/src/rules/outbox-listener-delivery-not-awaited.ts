@@ -954,7 +954,7 @@ function checkListener(
       visitAll(
         expression,
         (node) => {
-          if (node.type === "CallExpression") {
+          if (node.type === "CallExpression" || node.type === "NewExpression") {
             collectReferencedNames(node, names);
             // An executable binding key can invoke an inline function.
             visitAll(node, (value) => {
