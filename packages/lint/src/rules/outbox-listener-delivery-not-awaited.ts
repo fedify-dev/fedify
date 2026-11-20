@@ -261,7 +261,23 @@ function helpersAt(
   unknownWrites: ReadonlySet<string>,
 ): FunctionLikeNode[] {
   if (node.type !== "Identifier" || unknownWrites.has(node.name)) return [];
-  const helpers = scope.functionsByName.get(node.name) ?? [];
+  const helpers = (scope.functionsByName.get(node.name) ?? []).filter((fn) => {
+    // Shared reachability also records functions stored on a callable's
+    // properties. Those writes do not replace the callable itself.
+    for (
+      let current = parentOf(fn);
+      current != null;
+      current = parentOf(current)
+    ) {
+      if (isFunctionLikeNode(current) || current.type === "VariableDeclarator")
+        break;
+      if (current.type === "AssignmentExpression") {
+        const target = asNode(get(current, "left"));
+        return target == null || unwrap(target).type !== "MemberExpression";
+      }
+    }
+    return true;
+  });
   for (const fn of helpers) {
     let declaration: Node = fn;
     while (

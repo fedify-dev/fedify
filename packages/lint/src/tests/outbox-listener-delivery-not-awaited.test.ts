@@ -438,6 +438,41 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   );
 }
 
+for (const [returned, consumer, dropped] of [
+  ["ctx.sendActivity(sender, inbox, activity)", "deliver();", true],
+  ["ctx.sendActivity(sender, inbox, activity)", "await deliver();", false],
+  ["[ctx.sendActivity(sender, inbox, activity)]", "await deliver();", true],
+  [
+    "[ctx.sendActivity(sender, inbox, activity)]",
+    "await Promise.all(deliver());",
+    false,
+  ],
+] as const) {
+  for (const property of [
+    "deliver.extra = () => {};",
+    "deliver['extra'] = () => {};",
+    "deliver.extra = { nested: () => {} };",
+  ]) {
+    test(
+      `${ruleName}: function properties preserve helper evidence: ${returned} ${property} ${consumer}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliver = () => ${returned};
+    ${property}
+    ${consumer}
+  });
+`,
+        rule,
+        ruleName,
+        ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+      }),
+    );
+  }
+}
+
 for (const [parameters, argument] of [
   ["run", "finish"],
   ["{ run }", "{ run: finish }"],
