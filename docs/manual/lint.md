@@ -1017,13 +1017,22 @@ When it cannot tell where a promise goes, the rule stays quiet.  In practice:
     reported.  A callback that is invoked immediately, or given to `map()` or
     `then()`, is only as safe as the result of that call.  The same holds for a
     function passed by name, as in `inboxes.forEach(deliver)`.
- -  A local helper that delivers is judged by how it is called: `deliver();` is
-    reported when `deliver()` awaits or returns a delivery, and
-    `await deliver();` is not.  An array of promises, or an object holding one,
-    that a helper returns is not followed to where the helper is called, since
-    the caller may pass it to `Promise.all()`.  So `await deliverAll();` and a
-    bare `deliverAll();` are not reported when `deliverAll()` returns the
-    result of `map()`.
+ -  For a local helper that awaits or returns a delivery, the rule reports a
+    bare `deliver();` call but not `await deliver();`.  A synchronous helper
+    that consistently returns an array of delivery promises is followed to its
+    call sites, including through other local helpers.  `await deliverAll();`,
+    a bare `deliverAll();`, and returning that array from the listener are
+    reported; use `await Promise.all(deliverAll())` to wait for the deliveries.
+    An intermediate `await` preserves the array:
+    `await Promise.all(await deliverAll())` and storing `await deliverAll()`
+    for later aggregation are accepted. Arrays returned by synchronous
+    `flatMap()` callbacks are followed through the flattened result. A named
+    `forEach()` callback returning a delivery array is reported because
+    `forEach()` discards it; a helper passed as `thisArg` is not invoked.
+    Mixed or unclassifiable returns stay
+    quiet.  The rule does not follow arrays returned by `async` helpers,
+    recursive return chains, arrays returned through stored variables, or
+    objects returned by helpers.
  -  A promise passed to a function the rule does not know, such as
     `queue.push(...)` or `setTimeout(...)`, is left alone, since the rule cannot
     tell what that function does with it.

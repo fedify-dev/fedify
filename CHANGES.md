@@ -443,17 +443,24 @@ To be released.
     failures, and in Oxlint, where it has to be enabled by name.  It is not
     registered in Deno Lint, which reports every plugin rule as an error.
     [[#1401], [#1443]]
+ -  Changed `outbox-listener-delivery-not-awaited` to follow arrays of delivery
+    promises returned by synchronous local helpers.  Awaiting or discarding
+    such an array now produces a warning; use `Promise.all()` to wait for its
+    deliveries.  Mixed or unknown helper returns remain unreported.
+    [[#1070], [#1446]]
  -  Extended `raw-property-iri-invalid` to check `withRawProperty()` and
     static record and tuple keys passed to `withRawProperties()`.  The rule
     reports invalid property IRIs and compact prefixes such as `as:content`
     across Deno Lint, ESLint, and Oxlint.  [[#1355], [#1420]]
 
+[#1070]: https://github.com/fedify-dev/fedify/issues/1070
 [#1272]: https://github.com/fedify-dev/fedify/issues/1272
 [#1355]: https://github.com/fedify-dev/fedify/issues/1355
 [#1356]: https://github.com/fedify-dev/fedify/pull/1356
 [#1401]: https://github.com/fedify-dev/fedify/issues/1401
 [#1420]: https://github.com/fedify-dev/fedify/pull/1420
 [#1443]: https://github.com/fedify-dev/fedify/pull/1443
+[#1446]: https://github.com/fedify-dev/fedify/pull/1446
 
 ### @fedify/mysql
 
