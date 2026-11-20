@@ -316,6 +316,12 @@ function helpersAt(
     const functionScope = enclosingFunction(fn);
     let current: Node | null = node;
     while (current != null && current !== region) {
+      // The discriminant executes before the switch's case bindings exist.
+      if (
+        region.type === "SwitchStatement" &&
+        get(region, "discriminant") === current
+      )
+        return [];
       // A var declaration in this function initializes the same binding,
       // even inside a block or loop head. In another function it can shadow.
       if (

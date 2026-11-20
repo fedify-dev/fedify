@@ -473,6 +473,26 @@ federation.setOutboxListeners("/users/{identifier}/outbox")
   }
 }
 
+test(
+  `${ruleName}: switch discriminant excludes case-local helpers`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function run(ctx, activity) { await ctx.sendActivity(sender, inbox, activity); }
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    switch (!await run(ctx, activity)) {
+      case false:
+        function run() { return [ctx.sendActivity(sender, inbox, activity)]; }
+        await Promise.all(run());
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
 for (const [parameters, argument] of [
   ["run", "finish"],
   ["{ run }", "{ run: finish }"],
