@@ -29,7 +29,7 @@ Sponsors
 Supporters
 ----------
 
-- [tkgka](https://opencollective.com/tkgka)
+- [tkgka](https://app.xenon.social/)
 - [Blaine](https://opencollective.com/blaine)
 - [Erick González Aguilar](https://opencollective.com/erick-gonzalez-aguilar)
 - [Daniel Supernault](https://pixelfed.org/)
