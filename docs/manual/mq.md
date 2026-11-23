@@ -44,6 +44,17 @@ Cons
 :   Not suitable for production, doesn't persist messages between restarts,
     no native retry mechanism.
 
+> [!WARNING]
+> `InProcessMessageQueue` cannot run on [Cloudflare Workers].  A delayed
+> `enqueue()` schedules a `setTimeout()` and resolves immediately, but a
+> Worker isolate can terminate after the response, so the timer may never
+> run and the message may never enter the queue.  `listen()` only polls
+> in-memory state, which is not guaranteed to survive or be shared across
+> requests.  Use
+> [`WorkersMessageQueue`](#workersmessagequeue-cloudflare-workers-only) with
+> a `queue()` handler, or another durable queue.  Do not treat a delayed
+> enqueue as reliable on Workers.
+
 ~~~~ typescript twoslash
 import type { KvStore } from "@fedify/fedify";
 // ---cut-before---
