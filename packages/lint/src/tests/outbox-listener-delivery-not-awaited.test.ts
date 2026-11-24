@@ -1,9 +1,1503 @@
+import * as tsParser from "@typescript-eslint/parser";
+import { Linter } from "eslint";
+import { deepStrictEqual } from "node:assert/strict";
 import { test } from "node:test";
-import { RULE_IDS } from "../lib/const.ts";
+import { FEDERATION_SETUP, RULE_IDS } from "../lib/const.ts";
 import lintTest from "../lib/test.ts";
 import * as rule from "../rules/outbox-listener-delivery-not-awaited.ts";
 
 const ruleName = RULE_IDS.outboxListenerDeliveryNotAwaited;
+
+const arrayHelperDelivery = "ctx.sendActivity(sender, inbox, activity)";
+const arrayHelperMap = `inboxes.map((inbox) => ${arrayHelperDelivery})`;
+
+for (const wrapped of [
+  "run as typeof run",
+  "run!",
+  "run satisfies typeof run",
+]) {
+  for (const [consumer, dropped] of [
+    [`inboxes.forEach(${wrapped});`, true],
+    [`const outer = () => inboxes.forEach(${wrapped}); outer();`, true],
+    [`await Promise.all(inboxes.flatMap(${wrapped}));`, false],
+    [`inboxes.forEach(() => {}, ${wrapped});`, false],
+  ] as const) {
+    test(
+      `${ruleName}: wrapped callback consumer: ${consumer}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const run = () => [${arrayHelperDelivery}];
+    ${consumer}
+  });
+`,
+        rule,
+        ruleName,
+        ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+      }),
+    );
+  }
+}
+
+for (const combinator of ["all", "allSettled", "race", "any"]) {
+  for (const [args, dropped] of [
+    ["run()", false],
+    ["[], run()", true],
+    ["...unknown, run()", false],
+    ["[], ...unknown, run()", true],
+    ["...unknown, [], run()", true],
+  ] as const) {
+    test(
+      `${ruleName}: combinator iterable slot: ${combinator}(${args})`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const run = () => [${arrayHelperDelivery}];
+    await Promise.${combinator}(${args});
+  });
+`,
+        rule,
+        ruleName,
+        ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+      }),
+    );
+  }
+}
+
+for (const [result, dropped] of [
+  [`({ pending: [${arrayHelperDelivery}] })`, false],
+  [`({ pending: [${arrayHelperDelivery}] } as const)`, false],
+  [`[${arrayHelperDelivery}]`, true],
+] as const) {
+  test(
+    `${ruleName}: flatMap result container: ${result}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const run = () => inboxes.flatMap(() => ${result});
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+      ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+    }),
+  );
+}
+
+for (const [label, body, dropped] of [
+  [
+    "overload completion",
+    `function run(): Promise<void>; function run() { return ${arrayHelperDelivery}; } run();`,
+    true,
+  ],
+  [
+    "bare var after initializer",
+    `var run = () => ${arrayHelperDelivery}; var run; run();`,
+    true,
+  ],
+  [
+    "bare var before initializer",
+    `var run; var run = () => ${arrayHelperDelivery}; run();`,
+    true,
+  ],
+  [
+    "competing var initializers",
+    `var run = () => ${arrayHelperDelivery}; var run = external; run();`,
+    false,
+  ],
+  [
+    "parameter var incoming value",
+    `async function invoke(run) { await run(); var run = () => [${arrayHelperDelivery}]; await Promise.all(run()); } await invoke(() => {});`,
+    false,
+  ],
+  [
+    "constructor parameter property",
+    `const run = () => [${arrayHelperDelivery}]; await Promise.all(run()); class Runner { constructor(private run: () => void = () => {}) { run(); } } new Runner();`,
+    false,
+  ],
+  [
+    "iterator supplied value",
+    `for (let run of [() => {}]) { run(); run = () => ${arrayHelperDelivery}; await run(); }`,
+    false,
+  ],
+  [
+    "key supplied value",
+    `for (let run in values) { run(); run = () => ${arrayHelperDelivery}; await run(); }`,
+    false,
+  ],
+  [
+    "standalone assignment completion",
+    `let run; run = () => ${arrayHelperDelivery}; run();`,
+    true,
+  ],
+] as const) {
+  test(
+    `${ruleName}: declaration binding regression: ${label}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => { ${body} });
+`,
+      rule,
+      ruleName,
+      ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+    }),
+  );
+}
+
+for (const [producer, definition] of [
+  ["map", `const deliverAll = () => ${arrayHelperMap};`],
+  [
+    "array IIFE",
+    `const deliverAll = () => (() => [${arrayHelperDelivery}])();`,
+  ],
+  [
+    "inline flatMap array",
+    `const deliverAll = () => inboxes.flatMap(() => [${arrayHelperDelivery}]);`,
+  ],
+  [
+    "named flatMap array",
+    `const deliverOne = () => [${arrayHelperDelivery}]; const deliverAll = () => inboxes.flatMap(deliverOne);`,
+  ],
+  [
+    "async map callback",
+    `const deliverAll = () => inboxes.map(async () => { await ${arrayHelperDelivery}; });`,
+  ],
+  [
+    "named map callback",
+    `const deliverOne = () => ${arrayHelperDelivery}; const deliverAll = () => inboxes.map(deliverOne);`,
+  ],
+  [
+    "named async map callback",
+    `const deliverOne = async () => { await ${arrayHelperDelivery}; }; const deliverAll = () => inboxes.map(deliverOne);`,
+  ],
+  [
+    "flatMap",
+    `const deliverAll = () => inboxes.flatMap(() => ${arrayHelperDelivery});`,
+  ],
+  ["literal", `const deliverAll = () => [${arrayHelperDelivery}];`],
+  ["block", `function deliverAll() { return ${arrayHelperMap}; }`],
+  ["wrapper", `const deliverAll = () => ([${arrayHelperDelivery}] as const)!;`],
+  [
+    "conditional",
+    `const deliverAll = () => condition ? [${arrayHelperDelivery}] : ${arrayHelperMap};`,
+  ],
+  [
+    "branches",
+    `function deliverAll() { if (condition) return [${arrayHelperDelivery}]; else return ${arrayHelperMap}; }`,
+  ],
+  [
+    "chain",
+    `const deliverAll = () => inner(); const inner = () => [${arrayHelperDelivery}];`,
+  ],
+  [
+    "reverse chain",
+    `const inner = () => [${arrayHelperDelivery}]; const deliverAll = () => inner();`,
+  ],
+  [
+    "spread",
+    `const inner = () => [${arrayHelperDelivery}]; const deliverAll = () => [...inner()];`,
+  ],
+  ["sequence", `const deliverAll = () => (log(), [${arrayHelperDelivery}]);`],
+  [
+    "empty branch",
+    `const deliverAll = () => condition ? [] : [${arrayHelperDelivery}];`,
+  ],
+] as const) {
+  for (const [consumer, code, dropped] of [
+    ["bare", "deliverAll();", true],
+    ["await", "await deliverAll();", true],
+    ["intermediate await", "await Promise.all(await deliverAll());", false],
+    [
+      "stored intermediate await",
+      "const pending = await deliverAll(); await Promise.all(pending);",
+      false,
+    ],
+    ["return", "return deliverAll();", true],
+    ["forgotten", "const pending = deliverAll();", true],
+    ["dropped combinator", "Promise.all(deliverAll());", true],
+    [
+      "stored",
+      "const pending = deliverAll(); await Promise.all(pending);",
+      false,
+    ],
+    ["void", "void deliverAll();", false],
+    ["unknown consumer", "own(deliverAll());", false],
+    ...["all", "allSettled", "race", "any"].map(
+      (method) =>
+        [method, `await Promise.${method}(deliverAll());`, false] as const,
+    ),
+  ] as const) {
+    test(
+      `${ruleName}: array helper ${producer}, ${consumer}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    ${definition}
+    ${code}
+  });
+`,
+        rule,
+        ruleName,
+        ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+      }),
+    );
+  }
+}
+
+for (const [scenario, definition] of [
+  [
+    "mixed array first",
+    `function deliverAll() { if (condition) return [${arrayHelperDelivery}]; return ${arrayHelperDelivery}; }`,
+  ],
+  [
+    "mixed promise first",
+    `function deliverAll() { if (condition) return ${arrayHelperDelivery}; return [${arrayHelperDelivery}]; }`,
+  ],
+  [
+    "mixed conditional",
+    `const deliverAll = () => condition ? [${arrayHelperDelivery}] : ${arrayHelperDelivery};`,
+  ],
+  [
+    "unknown first",
+    `function deliverAll() { if (condition) return unknown(); return [${arrayHelperDelivery}]; }`,
+  ],
+  [
+    "unknown last",
+    `function deliverAll() { if (condition) return [${arrayHelperDelivery}]; return unknown(); }`,
+  ],
+  [
+    "bare return",
+    `function deliverAll() { if (condition) return; return [${arrayHelperDelivery}]; }`,
+  ],
+  [
+    "fallthrough",
+    `function deliverAll() { if (condition) return [${arrayHelperDelivery}]; }`,
+  ],
+  ["async array", `const deliverAll = async () => [${arrayHelperDelivery}];`],
+  ["object", `const deliverAll = () => ({ pending: ${arrayHelperMap} });`],
+  [
+    "stored identifier",
+    `const deliverAll = () => { const pending = [${arrayHelperDelivery}]; return pending; };`,
+  ],
+  [
+    "named thisArg",
+    `const deliverOne = () => ${arrayHelperDelivery}; const deliverAll = () => inboxes.map((inbox) => inbox, deliverOne);`,
+  ],
+  [
+    "inline async thisArg",
+    `const deliverAll = () => inboxes.map((inbox) => inbox, async () => { await ${arrayHelperDelivery}; });`,
+  ],
+  [
+    "inline returning thisArg",
+    `const deliverAll = () => inboxes.flatMap((inbox) => inbox, () => ${arrayHelperDelivery});`,
+  ],
+  [
+    "self recursion",
+    `const deliverAll = () => condition ? [${arrayHelperDelivery}] : deliverAll();`,
+  ],
+  [
+    "mutual recursion",
+    `const deliverAll = () => inner(); const inner = () => condition ? [${arrayHelperDelivery}] : deliverAll();`,
+  ],
+  [
+    "conflicting bindings",
+    `let deliverAll = () => [${arrayHelperDelivery}]; deliverAll = () => ${arrayHelperDelivery};`,
+  ],
+] as const) {
+  test(
+    `${ruleName}: opaque array helper ${scenario} stays quiet through callers and callbacks`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    ${definition}
+    const outer = () => deliverAll();
+    await deliverAll();
+    deliverAll();
+    outer();
+    inboxes.forEach(deliverAll);
+    inboxes.forEach(outer);
+    await Promise.all(await deliverAll());
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const [scenario, definition, consumer, dropped] of [
+  [
+    "named flatMap aggregate completion",
+    `const deliverOne = () => [${arrayHelperDelivery}]; const deliver = async () => { await Promise.all(inboxes.flatMap(deliverOne)); };`,
+    "deliver();",
+    true,
+  ],
+  [
+    "named flatMap aggregate awaited",
+    `const deliverOne = () => [${arrayHelperDelivery}]; const deliver = async () => { await Promise.all(inboxes.flatMap(deliverOne)); };`,
+    "await deliver();",
+    false,
+  ],
+  [
+    "named flatMap aggregate returned",
+    `const deliverOne = () => [${arrayHelperDelivery}]; const deliver = () => Promise.all(inboxes.flatMap(deliverOne));`,
+    "deliver();",
+    true,
+  ],
+  [
+    "array IIFE directly awaited",
+    "",
+    `await (() => [${arrayHelperDelivery}])();`,
+    true,
+  ],
+  [
+    "array IIFE aggregated",
+    "",
+    `await Promise.all((() => [${arrayHelperDelivery}])());`,
+    false,
+  ],
+  ["array IIFE bare", "", `(() => [${arrayHelperDelivery}])();`, true],
+  [
+    "async array IIFE",
+    "",
+    `await (async () => [${arrayHelperDelivery}])();`,
+    false,
+  ],
+  [
+    "mixed array IIFE",
+    "",
+    `await (() => condition ? [${arrayHelperDelivery}] : ${arrayHelperDelivery})();`,
+    false,
+  ],
+  ["named array forEach", "", "inboxes.forEach(deliverAll);", true],
+  ["named array flatMap dropped", "", "inboxes.flatMap(deliverAll);", true],
+  [
+    "named array flatMap aggregated",
+    "",
+    "await Promise.all(inboxes.flatMap(deliverAll));",
+    false,
+  ],
+  [
+    "named array map nested",
+    "",
+    "await Promise.all(inboxes.map(deliverAll));",
+    false,
+  ],
+  [
+    "named array forEach thisArg",
+    "",
+    "inboxes.forEach(() => {}, deliverAll);",
+    false,
+  ],
+  [
+    "named array flatMap thisArg",
+    "",
+    "await inboxes.flatMap(() => [], deliverAll);",
+    false,
+  ],
+  [
+    "inline array flatMap thisArg",
+    "",
+    "await inboxes.flatMap(() => [], () => [ctx.sendActivity(sender, inbox, activity)]);",
+    false,
+  ],
+  [
+    "inline array forEach",
+    "",
+    "inboxes.forEach(() => [ctx.sendActivity(sender, inbox, activity)]);",
+    true,
+  ],
+  [
+    "inline array map nested",
+    "",
+    "await Promise.all(inboxes.map(() => [ctx.sendActivity(sender, inbox, activity)]));",
+    false,
+  ],
+  [
+    "async array flatMap",
+    "",
+    "await inboxes.flatMap(async () => [ctx.sendActivity(sender, inbox, activity)]);",
+    false,
+  ],
+  [
+    "async array and returned completion bindings",
+    `let deliver = async () => []; if (condition) { deliver = () => ${arrayHelperDelivery}; }`,
+    "deliver();",
+    true,
+  ],
+  [
+    "async array and returned completion callback",
+    `let deliver = async () => []; if (condition) { deliver = () => ${arrayHelperDelivery}; }`,
+    "inboxes.forEach(deliver);",
+    true,
+  ],
+  [
+    "awaited async array and returned completion",
+    `let deliver = async () => []; if (condition) { deliver = () => ${arrayHelperDelivery}; }`,
+    "await deliver();",
+    false,
+  ],
+  [
+    "mixed sync and async completion bindings",
+    `let deliver = async () => { await ${arrayHelperDelivery}; return []; }; if (condition) { deliver = () => ${arrayHelperDelivery}; }`,
+    "deliver();",
+    true,
+  ],
+  [
+    "mixed completion callback bindings",
+    `let deliver = async () => { await ${arrayHelperDelivery}; return []; }; if (condition) { deliver = () => ${arrayHelperDelivery}; }`,
+    "inboxes.forEach(deliver);",
+    true,
+  ],
+  [
+    "awaited mixed completion bindings",
+    `let deliver = async () => { await ${arrayHelperDelivery}; return []; }; if (condition) { deliver = () => ${arrayHelperDelivery}; }`,
+    "await deliver();",
+    false,
+  ],
+  [
+    "async helper independently awaits delivery",
+    `const deliver = async () => { await ${arrayHelperDelivery}; return []; };`,
+    "deliver();",
+    true,
+  ],
+  ...["return", "return await"].flatMap((returnSyntax) =>
+    [
+      ["dropped", "deliver();", true],
+      ["awaited", "await deliver();", false],
+      ["callback", "inboxes.forEach(deliver);", true],
+      ["chain", "const forward = () => deliver(); forward();", true],
+    ].map(
+      ([label, use, reports]) =>
+        [
+          `async mixed array adopts delivery: ${returnSyntax} ${label}`,
+          `async function deliver() { if (skip) return []; ${returnSyntax} ${arrayHelperDelivery}; }`,
+          use,
+          reports,
+        ] as const,
+    ),
+  ),
+  [
+    "async completion through a sync helper",
+    `const inner = async () => { await ${arrayHelperDelivery}; return []; }; const deliver = () => inner();`,
+    "deliver();",
+    true,
+  ],
+  [
+    "awaited async helper independently awaits delivery",
+    `const deliver = async () => { await ${arrayHelperDelivery}; return []; };`,
+    "await deliver();",
+    false,
+  ],
+  [
+    "async callback independently awaits delivery",
+    `const deliver = async () => { await ${arrayHelperDelivery}; return []; };`,
+    "inboxes.forEach(deliver);",
+    true,
+  ],
+  [
+    "returned aggregate",
+    `const deliver = () => Promise.all(deliverAll());`,
+    "await deliver();",
+    false,
+  ],
+  [
+    "dropped returned aggregate",
+    `const deliver = () => Promise.all(deliverAll());`,
+    "deliver();",
+    true,
+  ],
+  [
+    "awaited aggregate",
+    `const deliver = async () => { await Promise.all(deliverAll()); };`,
+    "await deliver();",
+    false,
+  ],
+  [
+    "dropped awaited aggregate",
+    `const deliver = async () => { await Promise.all(deliverAll()); };`,
+    "deliver();",
+    true,
+  ],
+  [
+    "dead unknown return",
+    `function deliver() { return deliverAll(); return unknown(); }`,
+    "await deliver();",
+    true,
+  ],
+  [
+    "dead branch",
+    `function deliver() { if (false) return unknown(); return deliverAll(); }`,
+    "await deliver();",
+    true,
+  ],
+  ["unused helper", "", "", false],
+  ["dead call", "", "if (false) deliverAll();", false],
+  [
+    "named array callback",
+    "",
+    "await Promise.all(inboxes.map(deliverAll));",
+    false,
+  ],
+  [
+    "promise chain callback",
+    "",
+    "await Promise.resolve().then(deliverAll);",
+    false,
+  ],
+] as const) {
+  test(
+    `${ruleName}: array helper ${scenario}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliverAll = () => [${arrayHelperDelivery}];
+    ${definition}
+    ${consumer}
+  });
+`,
+      rule,
+      ruleName,
+      ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+    }),
+  );
+}
+
+for (const write of [
+  "run = () => [];",
+  "if (false) run = () => [];",
+  "const unused = () => { run = () => []; };",
+  "const unused = { get value() { run = () => []; return 0; } };",
+  "const unused = (value = (run = () => [])) => value;",
+]) {
+  test(
+    `${ruleName}: any syntactic write excludes new array inference: ${write}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let run = () => [ctx.sendActivity(sender, inbox, activity)];
+    ${write}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const shadow of [
+  "{ let run = external; run = external; }",
+  "const unused = (run) => { run = external; };",
+  "class Holder { static { var run; run = external; } }",
+  "try {} catch (run) { run = external; }",
+  "{ const run = () => []; }",
+]) {
+  test(
+    `${ruleName}: writes to another binding preserve array evidence: ${shadow}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const run = () => [ctx.sendActivity(sender, inbox, activity)];
+    ${shadow}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+      expectedError: "Delivery is not awaited",
+    }),
+  );
+}
+
+for (const [outer, inner] of [
+  [
+    "const run = () => [ctx.sendActivity(sender, inbox, activity)];",
+    "var run = () => [];",
+  ],
+  [
+    "function run() { return [ctx.sendActivity(sender, inbox, activity)]; }",
+    "var run = () => [];",
+  ],
+  [
+    "const run = () => [ctx.sendActivity(sender, inbox, activity)];",
+    "var run = async () => {};",
+  ],
+] as const) {
+  test(
+    `${ruleName}: static block vars shadow outer helpers: ${outer} ${inner}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    ${outer}
+    await Promise.all(run());
+    class Holder {
+      static {
+        ${inner}
+        run();
+      }
+    }
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const binding of [
+  "let run = async (ctx, activity) => { await ctx.sendActivity(sender, inbox, activity); };",
+  "async function run(ctx, activity) { await ctx.sendActivity(sender, inbox, activity); }",
+]) {
+  test(
+    `${ruleName}: root literal writes invalidate enclosing bindings: ${binding}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+${binding}
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await run(ctx, activity);
+    run = () => [ctx.sendActivity(sender, inbox, activity)];
+    await Promise.all(run());
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const declaration of [
+  "function deliver() { return ctx.sendActivity(sender, inbox, activity); }",
+  "var deliver = () => ctx.sendActivity(sender, inbox, activity);",
+]) {
+  test(
+    `${ruleName}: property-held classes retain static block helpers: ${declaration}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    holder.value = class {
+      static {
+        ${declaration}
+        deliver();
+      }
+    };
+  });
+`,
+      rule,
+      ruleName,
+      expectedError: "Delivery is not awaited",
+    }),
+  );
+}
+
+for (const parameter of [
+  "run = () => ctx.sendActivity(sender, inbox, activity)",
+  "{ run } = { run: () => ctx.sendActivity(sender, inbox, activity) }",
+  "[run] = [() => ctx.sendActivity(sender, inbox, activity)]",
+]) {
+  test(
+    `${ruleName}: incoming root listener parameters invalidate helper shapes: ${parameter}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity, ${parameter}) => {
+    await run();
+    run = () => [ctx.sendActivity(sender, inbox, activity)];
+    await Promise.all(run());
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const [returned, consumer, dropped] of [
+  ["ctx.sendActivity(sender, inbox, activity)", "deliver();", true],
+  ["ctx.sendActivity(sender, inbox, activity)", "await deliver();", false],
+  ["[ctx.sendActivity(sender, inbox, activity)]", "await deliver();", true],
+  [
+    "[ctx.sendActivity(sender, inbox, activity)]",
+    "await Promise.all(deliver());",
+    false,
+  ],
+] as const) {
+  for (const property of [
+    "deliver.extra = () => {};",
+    "deliver['extra'] = () => {};",
+    "deliver.extra = { nested: () => {} };",
+    "for ([deliver.extra = () => {}] of [[]]) {}",
+    "({ value: deliver.extra = () => {} } = {});",
+  ]) {
+    test(
+      `${ruleName}: function properties preserve helper evidence: ${returned} ${property} ${consumer}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliver = () => ${returned};
+    ${property}
+    ${consumer}
+  });
+`,
+        rule,
+        ruleName,
+        ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+      }),
+    );
+  }
+}
+
+test(
+  `${ruleName}: switch discriminant excludes case-local helpers`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function run(ctx, activity) { await ctx.sendActivity(sender, inbox, activity); }
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    switch (!await run(ctx, activity)) {
+      case false:
+        function run() { return [ctx.sendActivity(sender, inbox, activity)]; }
+        await Promise.all(run());
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+for (const [parameters, argument] of [
+  ["run", "finish"],
+  ["{ run }", "{ run: finish }"],
+  ["[run]", "[finish]"],
+  ["run = finish", "undefined"],
+] as const) {
+  test(
+    `${ruleName}: incoming parameter values invalidate helper shapes: ${parameters}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    async function invoke(${parameters}) {
+      await run();
+      run = () => [ctx.sendActivity(sender, inbox, activity)];
+      await Promise.all(run());
+    }
+    await invoke(${argument});
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const [binding, thrown] of [
+  ["run", "finish"],
+  ["{ run }", "{ run: finish }"],
+  ["[run]", "[finish]"],
+] as const) {
+  test(
+    `${ruleName}: incoming catch values invalidate helper shapes: ${binding}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    try { throw ${thrown}; } catch (${binding}) {
+      await run();
+      run = () => [ctx.sendActivity(sender, inbox, activity)];
+      await Promise.all(run());
+    }
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const [returned, consumer, dropped] of [
+  ["ctx.sendActivity(sender, inbox, activity)", "deliver();", true],
+  ["ctx.sendActivity(sender, inbox, activity)", "await deliver();", false],
+  ["[ctx.sendActivity(sender, inbox, activity)]", "await deliver();", true],
+  [
+    "[ctx.sendActivity(sender, inbox, activity)]",
+    "await Promise.all(deliver());",
+    false,
+  ],
+] as const) {
+  test(
+    `${ruleName}: helpers share switch case scope: ${returned} ${consumer}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    switch (kind) {
+      case 0:
+        function deliver() { return ${returned}; }
+      case 1:
+        ${consumer}
+    }
+  });
+`,
+      rule,
+      ruleName,
+      ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+    }),
+  );
+}
+
+for (const loop of [
+  "for (let run of [finish])",
+  "for (let [run] of [[finish]])",
+  "for (let { run } of [{ run: finish }])",
+  "for (let run in { key: true })",
+]) {
+  test(
+    `${ruleName}: lexical loop inputs invalidate later helper shapes: ${loop}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    ${loop} {
+      await run();
+      run = () => [ctx.sendActivity(sender, inbox, activity)];
+      await Promise.all(run());
+    }
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const binding of [
+  "let run = finish",
+  "let { run } = { run: finish }",
+  "let [run] = [finish]",
+]) {
+  test(
+    `${ruleName}: initial lexical alias invalidates later helper inference: ${binding}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    ${binding};
+    await run();
+    run = () => [ctx.sendActivity(sender, inbox, activity)];
+    await Promise.all(run());
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const declaration of [
+  "var run = () => [ctx.sendActivity(sender, inbox, activity)];",
+  "var run; run = () => [ctx.sendActivity(sender, inbox, activity)];",
+  "var run; { run = () => [ctx.sendActivity(sender, inbox, activity)]; }",
+]) {
+  test(
+    `${ruleName}: static block var helpers do not escape: ${declaration}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    const run = finish;
+    const pending = [];
+    const Holder = class {
+      static {
+        ${declaration}
+        pending.push(...run());
+      }
+    };
+    await Promise.all(pending);
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const mutation of [
+  "const ignored = ({ get value() { run = finish; return 0; } }).value;",
+  "({ set value(value) { run = value; } }).value = finish;",
+  "const replace = () => { run = finish; }; function invoke() { { const replace = () => {}; } const call = replace; call(); } invoke();",
+  "const replace = () => { run = finish; }; function invoke() { { let replace = () => {}; } const call = replace; call(); } invoke();",
+  "const replace = () => { run = finish; }; function invoke() { { function replace() {} } const call = replace; call(); } invoke();",
+  "const key = { [Symbol.toPrimitive]() { run = finish; return 'value'; } }; const { [key]: value } = {};",
+  "const key = { toString() { run = finish; return 'value'; } }; const { [key]: value } = {};",
+  "const key = { [Symbol.toPrimitive]() { run = finish; return 'value'; } }; const invoke = ({ [key]: value }) => value; invoke({});",
+  "const key = { [Symbol.toPrimitive]() { run = finish; return 'value'; } }; try { throw {}; } catch ({ [key]: value }) {}",
+  "const { [{ toString() { run = finish; return 'value'; } }]: value } = {};",
+  "const replace = () => { run = finish; }; const { [replace``]: value } = {};",
+  "const replace = () => { run = finish; }; const invoke = ({ [replace``]: value }) => value; invoke({});",
+  "const replace = () => { run = finish; }; try { throw {}; } catch ({ [replace``]: value }) {}",
+  "const { [(() => { run = finish; })``]: value } = {};",
+  "function Replace() { run = finish; } const { [new Replace()]: value } = {};",
+  "function Replace() { run = finish; } const invoke = ({ [new Replace()]: value }) => value; invoke({});",
+  "function Replace() { run = finish; } try { throw {}; } catch ({ [new Replace()]: value }) {}",
+  "const { [new (function () { run = finish; })()]: value } = {};",
+  "const replace = () => { run = finish; }; function invoke() { { const replace = () => {}; } replace(); } invoke();",
+  "const replace = () => { run = finish; }; function invoke() { { let replace = () => {}; } replace(); } invoke();",
+  "const replace = () => { run = finish; }; function invoke() { { function replace() {} } replace(); } invoke();",
+  "const holder = { get key() { run = finish; return 'key'; } }; const value = holder.key;",
+  "const holder = { get key() { run = finish; return 'key'; } }; const { [holder.key]: value } = {};",
+  "const holder = { get key() { run = finish; return 'key'; } }; const invoke = ({ [holder.key]: value }) => value; invoke({});",
+  "const holder = { set current(value) { run = value; } }; ({ current: holder.current = finish } = {});",
+  "const holder = { set current(value) { run = value; } }; [holder.current = finish] = [];",
+  "const replace = () => { run = finish; }; function invoke(value = replace()) { const replace = () => {}; } invoke();",
+  "const replace = () => { run = finish; }; function invoke(callback = replace) { const replace = () => {}; callback(); } invoke();",
+  "const replace = () => { run = finish; }; function invoke({ [replace()]: value }) { const replace = () => {}; } invoke({});",
+  "const holder = { set current(value) { run = value; } }; for (holder.current of [finish]) {}",
+  "const holder = { set current(value) { run = finish; } }; for (holder.current in { key: true }) {}",
+  "const holder = { set current(value) { run = value; } }; for ([holder.current] of [[finish]]) {}",
+  "const replace = ({ [(() => { run = finish; return 'key'; })()]: value }) => value; replace({});",
+  "const replace = ({ [(function () { run = finish; return 'key'; })()]: value }) => value; replace({});",
+  "const { [(() => { run = finish; return 'key'; })()]: value } = {};",
+  "try { throw {}; } catch ({ [(() => { run = finish; return 'key'; })()]: value }) {}",
+  "const replace = () => { class Holder { static { var run; } } run = async () => { await ctx.sendActivity(sender, inbox, activity); }; }; replace();",
+  "const invoke = (callback = () => { run = finish; }) => callback(); invoke();",
+  "const invoke = (callback = function () { run = finish; }) => callback(); invoke();",
+  "const { callback = () => { run = finish; } } = {}; callback();",
+  "const [callback = () => { run = finish; }] = []; callback();",
+  "try { throw {}; } catch ({ callback = () => { run = finish; } }) { callback(); }",
+  "const holder = { set current(value) { run = value; } }; holder.current = finish;",
+  "const holder = { set current(value) { run = value; } }; holder['current'] = finish;",
+  "const replace = () => { run = finish; }; const invoke = (callback = replace) => callback(); invoke();",
+  "const replace = () => { run = finish; }; const { callback = replace } = {}; callback();",
+  "const replace = () => { run = finish; }; const [callback = replace] = []; callback();",
+  "const replace = () => { run = finish; }; try { throw {}; } catch ({ callback = replace }) { callback(); }",
+  "const replace = () => { run = finish; }; const { value = replace() } = {};",
+  "const replace = () => { run = finish; }; const [value = replace()] = [];",
+  "const replace = () => { run = finish; return 'value'; }; const { [replace()]: value } = {};",
+  "const { value = (run = () => ctx.sendActivity(sender, inbox, activity)) } = {};",
+  "try { throw {}; } catch ({ value = (run = finish) }) {}",
+  "const replace = () => { run = finish; }; try { throw {}; } catch ({ value = replace() }) {}",
+  "const replace = () => { run = finish; return 'value'; }; try { throw {}; } catch ({ [replace()]: value }) {}",
+]) {
+  test(
+    `${ruleName}: executable binding patterns invalidate helper shapes: ${mutation}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let run = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(run());
+    ${mutation}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+test(
+  `${ruleName}: declaration self-write invalidates enclosing helper shape`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    function run() {
+      run = () => ctx.sendActivity(sender, inbox, activity);
+      return [ctx.sendActivity(sender, inbox, activity)];
+    }
+    await Promise.all(run());
+    await run();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+for (const replacement of [
+  "([run!] = [finish]);",
+  "({ run: run! } = { run: finish });",
+]) {
+  // Deno's AST omits these asserted destructuring targets. Exercise them
+  // explicitly through ESLint, whose parser preserves the target nodes.
+  test(`${ruleName}: ESLint wrapped destructuring write: ${replacement}`, () => {
+    const code = `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let run = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(run());
+    ${replacement}
+    await run();
+  });`;
+    const messages = new Linter().verify(
+      `${FEDERATION_SETUP}\n\n${code}`,
+      [
+        {
+          files: ["**/*.ts"],
+          languageOptions: { parser: tsParser },
+          plugins: { fedify: { rules: { [ruleName]: rule.eslint } } },
+          rules: { [`fedify/${ruleName}`]: "error" },
+        },
+      ],
+      "listener.ts",
+    );
+    deepStrictEqual(messages, []);
+  });
+}
+for (const replace of [
+  "run! = finish;",
+  "(run as Runner) = finish;",
+  "run! = () => ctx.sendActivity(sender, inbox, activity);",
+  "const replace = () => { run = finish; }; const invoke = (value = replace()) => value; invoke();",
+  "const replace = () => { run = () => ctx.sendActivity(sender, inbox, activity); }; const invoke = (value = replace()) => value; invoke();",
+  "const replace = () => { run = finish; }; const middle = () => replace(); const invoke = (value = middle()) => value; invoke();",
+  "const replace = () => { run = finish; }; const invoke = ({ value = replace() } = {}) => value; invoke();",
+  "const replace = () => { run = finish; }; const middle = (value = replace()) => value; const invoke = (value = middle()) => value; invoke();",
+]) {
+  test(
+    `${ruleName}: wrapped writes and default-invoked helpers invalidate arrays: ${replace}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let run = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(run());
+    ${replace}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const replace of [
+  "const replace = () => { run = () => ctx.sendActivity(sender, inbox, activity); }; replace();",
+  "const replace = () => { run = async () => { await ctx.sendActivity(sender, inbox, activity); }; }; replace();",
+  "const replace = () => { const inner = () => { run = () => ctx.sendActivity(sender, inbox, activity); }; inner(); }; replace();",
+  "const replace = (value = (run = finish)) => value; replace();",
+  "const replace = ({ value = (run = finish) } = {}) => value; replace();",
+  "const replace = (value = (run = () => ctx.sendActivity(sender, inbox, activity))) => value; replace();",
+]) {
+  test(
+    `${ruleName}: used helper writes invalidate enclosing array inference: ${replace}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let run = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(run());
+    ${replace}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const declaration of ["let deliver;", "var deliver;"]) {
+  test(
+    `${ruleName}: local literal assignments in used helpers retain inference: ${declaration}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const outer = () => {
+      ${declaration}
+      deliver = () => ctx.sendActivity(sender, inbox, activity);
+      deliver();
+    };
+    outer();
+  });
+`,
+      rule,
+      ruleName,
+      expectedError: "Delivery is not awaited",
+    }),
+  );
+}
+
+for (const definition of [
+  "{ var deliver = () => ctx.sendActivity(sender, inbox, activity); CONSUMER }",
+  "for (var deliver = () => ctx.sendActivity(sender, inbox, activity); condition;) { CONSUMER }",
+  "{ var deliver = async () => { await ctx.sendActivity(sender, inbox, activity); }; CONSUMER }",
+  "{ var deliver = () => [ctx.sendActivity(sender, inbox, activity)]; CONSUMER }",
+]) {
+  for (const shadowed of [false, true]) {
+    const consumer = shadowed
+      ? "{ const deliver = external; await deliver(); }"
+      : "deliver();";
+    test(
+      `${ruleName}: function-scoped var helper retains inference (${shadowed}): ${definition}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    ${definition.replace("CONSUMER", consumer)}
+  });
+`,
+        rule,
+        ruleName,
+        ...(shadowed ? {} : { expectedError: "Delivery is not awaited" }),
+      }),
+    );
+  }
+}
+
+test(
+  `${ruleName}: nested function var still shadows an outer helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    var deliver = () => [ctx.sendActivity(sender, inbox, activity)];
+    await Promise.all(deliver());
+    async function inner() {
+      var deliver = external;
+      await deliver();
+    }
+    await inner();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+for (const replacement of [
+  "var run = finish;",
+  "{ var run = finish; }",
+  "for (var run of [finish]) {}",
+  "for (var { run } of [{ run: finish }]) {}",
+  "for (var run in {}) {}",
+]) {
+  test(
+    `${ruleName}: initialized var replacement invalidates array inference: ${replacement}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    var run = () => [ctx.sendActivity(sender, inbox, activity)];
+    await Promise.all(run());
+    ${replacement}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const local of [
+  "{ let run; run = () => [ctx.sendActivity(sender, inbox, activity)]; await Promise.all(run()); }",
+  "{ let run; { run = () => [ctx.sendActivity(sender, inbox, activity)]; } await Promise.all(run()); }",
+  "for (let run of [null]) { run = () => [ctx.sendActivity(sender, inbox, activity)]; await Promise.all(run()); }",
+]) {
+  test(
+    `${ruleName}: assignment helper does not escape its binding region: ${local}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    const run = finish;
+    ${local}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const declaration of [
+  "const deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];",
+  "function deliverAll() { return [ctx.sendActivity(sender, inbox, activity)]; }",
+]) {
+  for (const outside of [
+    "await deliverAll(ctx, activity);",
+    "inboxes.forEach(deliverAll);",
+    "const outer = () => deliverAll(ctx, activity); await outer();",
+  ]) {
+    test(
+      `${ruleName}: block-local array does not classify ${outside} (${declaration})`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+async function deliverAll(ctx, activity) { await ctx.sendActivity(sender, inbox, activity); }
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    { ${declaration} await Promise.all(deliverAll()); }
+    ${outside}
+  });
+`,
+        rule,
+        ruleName,
+      }),
+    );
+  }
+}
+
+test(
+  `${ruleName}: block-local array helper still reports its own dropped call`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    { const deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];
+      await deliverAll(); }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+for (const consumer of [
+  "{ const deliverAll = finish; await deliverAll(); }",
+  "{ let deliverAll = finish; await deliverAll(); }",
+  "{ const { run: deliverAll } = { run: finish }; await deliverAll(); }",
+  "{ const [deliverAll] = [finish]; await deliverAll(); }",
+  "for (const deliverAll of [finish]) { await deliverAll(); }",
+  "for (let deliverAll = finish; condition;) { await deliverAll(); }",
+  "try { throw finish; } catch (deliverAll) { await deliverAll(); }",
+  "switch (condition) { case true: { const deliverAll = finish; await deliverAll(); } }",
+  "{ const deliverAll = finish; inboxes.forEach(deliverAll); }",
+]) {
+  test(
+    `${ruleName}: shadow binding does not use outer array helper: ${consumer}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(deliverAll());
+    ${consumer}
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const declaration of [
+  "const { run } = { run: finish, other: () => [ctx.sendActivity(sender, inbox, activity)] };",
+  "const [run] = [finish, () => [ctx.sendActivity(sender, inbox, activity)]];",
+  "const { run = finish } = { other: () => [ctx.sendActivity(sender, inbox, activity)] };",
+]) {
+  test(
+    `${ruleName}: aggregate binding does not select an unrelated helper: ${declaration}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    ${declaration}
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const declaration of [
+  "var deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];",
+  "let deliverAll; deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];",
+]) {
+  for (const shadowed of [true, false]) {
+    test(
+      `${ruleName}: var or assignment helper respects shadowing (${shadowed}): ${declaration}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    ${declaration}
+    await Promise.all(deliverAll());
+    {
+      ${shadowed ? "const deliverAll = external;" : ""}
+      await deliverAll();
+    }
+  });
+`,
+        rule,
+        ruleName,
+        ...(shadowed || declaration.startsWith("let ")
+          ? {}
+          : { expectedError: "Delivery is not awaited" }),
+      }),
+    );
+  }
+}
+
+for (const replacement of [
+  "deliverAll = finish;",
+  "deliverAll = chooseHelper();",
+  "({ run: deliverAll } = { run: finish });",
+  "[deliverAll] = [finish];",
+  "const replace = () => { deliverAll = finish; }; replace();",
+  "for (deliverAll of [finish]) {}",
+  "for ({ run: deliverAll } of [{ run: finish }]) {}",
+  "for ([deliverAll] of [[finish]]) {}",
+  "for (deliverAll in {}) {} deliverAll = finish;",
+  "for (deliverAll in {}) {}",
+]) {
+  test(
+    `${ruleName}: unclassified reassignment invalidates array inference: ${replacement}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];
+    const finish = async () => { await ctx.sendActivity(sender, inbox, activity); };
+    await Promise.all(deliverAll());
+    ${replacement}
+    await deliverAll();
+  });
+`,
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+for (const invocation of [
+  "(async () => { await ctx.sendActivity(sender, inbox, activity); })()",
+  "(async function () { await ctx.sendActivity(sender, inbox, activity); })()",
+  "((async () => { await ctx.sendActivity(sender, inbox, activity); }) as () => Promise<void>)()",
+]) {
+  test(`${ruleName}: dropped async IIFE reports once: ${invocation}`, () => {
+    const code = `import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    ${invocation};
+  });`;
+    const messages = new Linter().verify(
+      `${FEDERATION_SETUP}\n\n${code}`,
+      [
+        {
+          files: ["**/*.ts"],
+          languageOptions: { parser: tsParser },
+          plugins: { fedify: { rules: { [ruleName]: rule.eslint } } },
+          rules: { [`fedify/${ruleName}`]: "error" },
+        },
+      ],
+      "listener.ts",
+    );
+    deepStrictEqual(
+      messages.map(({ ruleId, line }) => [ruleId, line]),
+      [[`fedify/${ruleName}`, 4 + FEDERATION_SETUP.split("\n").length + 1]],
+    );
+  });
+}
+
+test(`${ruleName}: array helper diagnostics identify only discarded call sites`, () => {
+  const code = `import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliverAll = () => [ctx.sendActivity(sender, inbox, activity)];
+    await Promise.all(deliverAll());
+    deliverAll();
+    await deliverAll();
+    Promise.all(deliverAll());
+    return deliverAll();
+  });`;
+  const messages = new Linter().verify(
+    `${FEDERATION_SETUP}\n\n${code}`,
+    [
+      {
+        files: ["**/*.ts"],
+        languageOptions: { parser: tsParser },
+        plugins: { fedify: { rules: { [ruleName]: rule.eslint } } },
+        rules: { [`fedify/${ruleName}`]: "error" },
+      },
+    ],
+    "listener.ts",
+  );
+  deepStrictEqual(
+    messages.map(({ ruleId, line, column }) => [ruleId, line, column]),
+    [6, 7, 8, 9].map((line) => [
+      `fedify/${ruleName}`,
+      line + FEDERATION_SETUP.split("\n").length + 1,
+      line === 7 ? 11 : line === 8 ? 17 : line === 9 ? 12 : 5,
+    ]),
+  );
+});
 
 test(
   `${ruleName}: ✅ Good - awaited sendActivity call`,

@@ -57,19 +57,28 @@ test("stopping a command waits for its output and kills descendants", async () =
     const pid = Number(await readFile(pidFile, "utf8"));
     await child.stop();
     await child.status;
-    // Linux may briefly retain a killed, reparented process as a zombie.
-    // Once it is reaped, opening its stat file fails with ENOENT, or reading
-    // an already opened one fails with ESRCH.
-    if (process.platform === "linux") {
-      try {
-        const stat = await readFile(`/proc/${pid}/stat`, "utf8");
-        equal(stat.split(") ")[1][0], "Z", "descendant is no longer running");
-      } catch (error) {
-        const { code } = error as NodeJS.ErrnoException;
-        if (code !== "ENOENT" && code !== "ESRCH") throw error;
-      }
-    } else {
+    if (process.platform === "win32") {
       throws(() => process.kill(pid, 0), { code: "ESRCH" });
+    } else {
+      // Both Linux and macOS can retain a killed, reparented descendant as
+      // a zombie. Signal 0 still succeeds then, although it cannot run.
+      const state = await commandOutput("ps", [
+        "-o",
+        "stat=",
+        "-p",
+        String(pid),
+      ]);
+      const stat = new TextDecoder().decode(state.stdout).trim();
+      if (state.code === 0) {
+        equal(
+          stat.startsWith("Z"),
+          true,
+          `descendant is no longer running: ${stat}`,
+        );
+      } else {
+        equal(state.code, 1, "ps reports a missing descendant");
+        equal(stat, "");
+      }
     }
   } finally {
     await child.stop();
