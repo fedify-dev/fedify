@@ -1,4 +1,5 @@
 import type { Rule } from "eslint";
+import { indexHelperBindings } from "../lib/helper-bindings.ts";
 import {
   createOutboxListenerVisitor,
   DELIVERY_METHOD_NAMES,
@@ -35,7 +36,11 @@ type Fate = "dropped" | "awaited" | "returned" | "handled";
  * or a `return`: the function that now carries the promise on to its own
  * callers.
  */
-type Outcome = { fate: Fate; owner: FunctionLikeNode | null };
+type Outcome = {
+  fate: Fate;
+  owner: FunctionLikeNode | null;
+  shape?: Shape;
+};
 
 const HANDLED: Outcome = { fate: "handled", owner: null };
 const DROPPED: Outcome = { fate: "dropped", owner: null };
@@ -248,13 +253,25 @@ type Analysis = {
  * Where the value a callback returns goes, judged by the call that receives
  * the callback.
  */
-function callbackResultOutcome(call: Node, analysis: Analysis): Outcome {
+function callbackResultOutcome(
+  call: Node,
+  analysis: Analysis,
+  callback: Node,
+  shape: Shape = "promise",
+): Outcome {
   const callee = unwrap(asNode(get(call, "callee")) ?? call);
   const name = memberName(callee);
   // `forEach()` discards what its callback returns, which is the one callback
   // consumer the rule knows for certain. An unknown one, such as
   // `setTimeout()`, may well keep it.
+  if (name === "forEach" || name === "map" || name === "flatMap") {
+    // The optional second argument is thisArg, not another callback.
+    if ((get(call, "arguments") as Node[])[0] !== callback) return HANDLED;
+  }
   if (name === "forEach") return DROPPED;
+  // Only flatMap flattens returned arrays; map and promise callbacks would
+  // need nested-array or Promise<Array> tracking, which remains unsupported.
+  if (shape === "promises" && name !== "flatMap") return HANDLED;
   if (name === "map" || name === "flatMap") {
     return fateOf(call, analysis, "promises");
   }
@@ -278,7 +295,7 @@ function returnedOutcome(
       return fateOf(parent, analysis, "promise");
     }
     if ((get(parent, "arguments") as unknown[]).includes(fn)) {
-      return callbackResultOutcome(parent, analysis);
+      return callbackResultOutcome(parent, analysis, fn);
     }
   }
   // A function declared or held under a name hands the promise to its
@@ -295,8 +312,21 @@ function returnedOutcome(
 function returnedContainerOutcome(
   fn: FunctionLikeNode | null,
   analysis: Analysis,
+  shape: Shape,
 ): Outcome {
-  return fn === analysis.listener ? DROPPED : HANDLED;
+  if (fn === analysis.listener) return DROPPED;
+  if (fn != null && shape === "promises" && get(fn, "async") !== true) {
+    const parent = parentOf(fn);
+    if (
+      parent?.type === "CallExpression" &&
+      (get(parent, "arguments") as Node[]).includes(fn)
+    ) {
+      return callbackResultOutcome(parent, analysis, fn, shape);
+    }
+  }
+  return fn != null && shape === "promises"
+    ? { fate: "returned", owner: fn, shape }
+    : HANDLED;
 }
 
 /** Follows the value of `expression` up through its parents to where it ends up. */
@@ -320,20 +350,35 @@ function fateOf(
       // Awaiting an array of promises, or an object holding one, waits for
       // none of them.
       case "AwaitExpression":
-        return currentShape === "promise"
-          ? { fate: "awaited", owner: enclosingFunction(parent) }
-          : DROPPED;
+        if (currentShape === "promise") {
+          return { fate: "awaited", owner: enclosingFunction(parent) };
+        }
+        // Await preserves an array value; its eventual consumer may still
+        // aggregate the deliveries, store the array, or discard it.
+        if (currentShape === "promises") {
+          current = parent;
+          continue;
+        }
+        return DROPPED;
 
       case "ReturnStatement":
         return currentShape === "promise"
           ? returnedOutcome(enclosingFunction(parent), analysis)
-          : returnedContainerOutcome(enclosingFunction(parent), analysis);
+          : returnedContainerOutcome(
+              enclosingFunction(parent),
+              analysis,
+              currentShape,
+            );
 
       case "ArrowFunctionExpression":
         if (get(parent, "body") !== current) return HANDLED;
         return currentShape === "promise"
           ? returnedOutcome(parent as FunctionLikeNode, analysis)
-          : returnedContainerOutcome(parent as FunctionLikeNode, analysis);
+          : returnedContainerOutcome(
+              parent as FunctionLikeNode,
+              analysis,
+              currentShape,
+            );
 
       case "ExpressionStatement":
         return DROPPED;
@@ -482,6 +527,192 @@ function fateOf(
   }
 }
 
+/** A small proof of no normal fallthrough, not a general control-flow graph. */
+function exitsFunction(node: Node): boolean {
+  switch (node.type) {
+    case "ReturnStatement":
+    case "ThrowStatement":
+      return true;
+    case "BlockStatement":
+      return (get(node, "body") as Node[]).some(exitsFunction);
+    case "IfStatement": {
+      const test = asNode(get(node, "test"));
+      const consequent = asNode(get(node, "consequent"));
+      const alternate = asNode(get(node, "alternate"));
+      if (test?.type === "Literal") {
+        const branch = test.value ? consequent : alternate;
+        return branch != null && exitsFunction(branch);
+      }
+      return (
+        consequent != null &&
+        alternate != null &&
+        exitsFunction(consequent) &&
+        exitsFunction(alternate)
+      );
+    }
+    default:
+      return false;
+  }
+}
+
+/**
+ * Classifies the container a helper returns independently of whether it
+ * contains a delivery. The carrying walk supplies that evidence separately.
+ * Unknown dependencies and recursive cycles never certify an array.
+ */
+function helperReturnShapes(
+  scopes: readonly UsedScope[],
+  isDeliveryCall: (call: CallExpression) => boolean,
+  helpersAt: (node: Node) => FunctionLikeNode[],
+): {
+  shapes: ReadonlyMap<FunctionLikeNode, Shape | null>;
+  arrayInvolved: ReadonlySet<FunctionLikeNode>;
+} {
+  const returns = new Map<FunctionLikeNode, (Node | null)[]>();
+  const scopesByFunction = new Map<FunctionLikeNode, UsedScope>();
+  for (const scope of scopes) {
+    const fn = scope.fn;
+    if (fn == null) continue;
+    scopesByFunction.set(fn, scope);
+    const body = fn.body as Node;
+    returns.set(
+      fn,
+      body.type !== "BlockStatement"
+        ? [body]
+        : [
+            ...scope.statements
+              .filter((node) => node.type === "ReturnStatement")
+              .map((node) => asNode(get(node, "argument"))),
+            ...(exitsFunction(body) ? [] : [null]),
+          ],
+    );
+  }
+
+  const helpersOf = (node: Node): FunctionLikeNode[] => {
+    const callee = unwrap(asNode(get(node, "callee")) ?? node);
+    return isFunctionLikeNode(callee) ? [callee] : helpersAt(callee);
+  };
+  // Keep array provenance even when a mixed or unsupported return has no
+  // shape. Otherwise legacy promise propagation could revive that helper.
+  const arrayInvolved = new Set<FunctionLikeNode>();
+  const involvesArray = (node: Node | null, scope: UsedScope): boolean => {
+    if (node == null) return false;
+    node = unwrap(node);
+    switch (node.type) {
+      case "ArrayExpression":
+        return true;
+      case "CallExpression": {
+        const name = memberName(unwrap(asNode(get(node, "callee")) ?? node));
+        return (
+          name === "map" ||
+          name === "flatMap" ||
+          helpersOf(node).some(
+            (fn) => get(fn, "async") !== true && arrayInvolved.has(fn),
+          )
+        );
+      }
+      case "ConditionalExpression":
+        return (
+          involvesArray(asNode(get(node, "consequent")), scope) ||
+          involvesArray(asNode(get(node, "alternate")), scope)
+        );
+      case "LogicalExpression":
+        return (
+          involvesArray(asNode(get(node, "left")), scope) ||
+          involvesArray(asNode(get(node, "right")), scope)
+        );
+      case "SequenceExpression":
+        return involvesArray(
+          (get(node, "expressions") as Node[]).at(-1) ?? null,
+          scope,
+        );
+      case "AwaitExpression":
+        return involvesArray(asNode(get(node, "argument")), scope);
+      default:
+        return false;
+    }
+  };
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const [fn, expressions] of returns) {
+      if (
+        !arrayInvolved.has(fn) &&
+        expressions.some((node) =>
+          involvesArray(node, scopesByFunction.get(fn)!),
+        )
+      ) {
+        arrayInvolved.add(fn);
+        changed = true;
+      }
+    }
+  }
+
+  const shapes = new Map<FunctionLikeNode, Shape | null>();
+  const active = new Set<FunctionLikeNode>();
+  const agree = (values: (Shape | null)[]): Shape | null =>
+    values.length > 0 &&
+    values[0] != null &&
+    values.every((value) => value === values[0])
+      ? values[0]
+      : null;
+  const expressionShape = (
+    node: Node | null,
+    scope: UsedScope,
+  ): Shape | null => {
+    if (node == null) return null;
+    node = unwrap(node);
+    switch (node.type) {
+      case "ArrayExpression":
+        return "promises";
+      case "ConditionalExpression":
+        return agree([
+          expressionShape(asNode(get(node, "consequent")), scope),
+          expressionShape(asNode(get(node, "alternate")), scope),
+        ]);
+      case "SequenceExpression":
+        return expressionShape(
+          (get(node, "expressions") as Node[]).at(-1) ?? null,
+          scope,
+        );
+      case "CallExpression": {
+        if (isDeliveryCall(node as CallExpression)) return "promise";
+        const callee = unwrap(asNode(get(node, "callee")) ?? node);
+        const name = memberName(callee);
+        if (name === "map" || name === "flatMap") return "promises";
+        const object = asNode(get(callee, "object"));
+        if (
+          object != null &&
+          unwrap(object).type === "Identifier" &&
+          get(unwrap(object), "name") === "Promise" &&
+          name != null &&
+          PROMISE_COMBINATORS.has(name)
+        )
+          return "promise";
+        return agree(helpersOf(node).map(functionShape));
+      }
+      default:
+        return null;
+    }
+  };
+  const functionShape = (fn: FunctionLikeNode): Shape | null => {
+    if (shapes.has(fn)) return shapes.get(fn)!;
+    if (active.has(fn)) return null;
+    const scope = scopesByFunction.get(fn);
+    if (scope == null || get(fn, "generator") === true) return null;
+    active.add(fn);
+    let shape = agree(
+      (returns.get(fn) ?? []).map((node) => expressionShape(node, scope)),
+    );
+    active.delete(fn);
+    // An async array return is Promise<Array>, not a completion promise.
+    if (shape === "promises" && get(fn, "async") === true) shape = null;
+    shapes.set(fn, shape);
+    return shape;
+  };
+  for (const fn of returns.keys()) functionShape(fn);
+  return { shapes, arrayInvolved };
+}
+
 /** Reports every place in `listener` where a delivery promise is dropped. */
 function checkListener(
   listener: FunctionLikeNode,
@@ -489,6 +720,32 @@ function checkListener(
 ): void {
   const scopes: UsedScope[] = [];
   walkUsedScopes(listener.body as Node, (scope) => scopes.push(scope));
+
+  const bindings = indexHelperBindings(listener);
+  const helpersAt = (node: Node): FunctionLikeNode[] => {
+    const fn = bindings.resolve(node);
+    return fn == null ? [] : [fn];
+  };
+  // Reachability's name map is deliberately broad. Supplement its used-body
+  // walk with the actual bindings of direct calls and named callbacks.
+  const seen = new Set(scopes.map((scope) => scope.fn));
+  for (const scope of scopes) {
+    const calls: CallExpression[] = [];
+    for (const statement of scope.statements) collectCalls(statement, calls);
+    for (const call of calls) {
+      for (const reference of [call.callee, ...call.arguments] as Node[]) {
+        for (const fn of bindings.completionCandidates(reference)) {
+          if (seen.has(fn)) continue;
+          walkUsedScopes(fn.body as Node, (nested) => {
+            const owner = nested.fn ?? fn;
+            if (seen.has(owner)) return;
+            seen.add(owner);
+            scopes.push({ ...nested, fn: owner });
+          });
+        }
+      }
+    }
+  }
 
   const targets = findDeliveryTargets(listener, scopes);
   if (targets.contextName == null && targets.aliases.size === 0) return;
@@ -509,6 +766,11 @@ function checkListener(
   const mentioned = new Set<string>();
   collectReferencedNames(listener.body, mentioned, true);
   const analysis: Analysis = { listener, mentioned };
+  const { shapes, arrayInvolved } = helperReturnShapes(
+    scopes,
+    isDeliveryCall,
+    helpersAt,
+  );
 
   const callsByScope = scopes.map((scope) => {
     const calls: CallExpression[] = [];
@@ -523,16 +785,45 @@ function checkListener(
   // inside a `map()` callback lands in whatever function awaits or returns
   // the `Promise.all()` around it.
   const carrying = new Map<FunctionLikeNode, Fate>();
-  const carriesDelivery = (call: CallExpression, scope: UsedScope): boolean => {
-    if (isDeliveryCall(call)) return true;
+  const carryingArrays = new Set<FunctionLikeNode>();
+  const carriesCompletion = (helpers: readonly FunctionLikeNode[]): boolean =>
+    helpers.some((fn) => carrying.has(fn)) &&
+    helpers.every((fn) => !arrayInvolved.has(fn) || get(fn, "async") === true);
+  const carriesArray = (helpers: readonly FunctionLikeNode[]): boolean =>
+    helpers.some((fn) => carryingArrays.has(fn)) &&
+    helpers.every((fn) => shapes.get(fn) === "promises");
+  const deliveryShape = (call: CallExpression): Shape | null => {
+    if (isDeliveryCall(call)) return "promise";
     const callee = unwrap(call.callee as Node);
-    if (callee.type !== "Identifier") return false;
-    const helpers = scope.functionsByName.get(callee.name);
-    return helpers?.some((helper) => carrying.has(helper)) ?? false;
+    const completionHelpers = isFunctionLikeNode(callee)
+      ? [callee]
+      : bindings.completionCandidates(callee);
+    if (carriesCompletion(completionHelpers)) return "promise";
+    const helpers = isFunctionLikeNode(callee) ? [callee] : helpersAt(callee);
+    if (helpers.length === 0) return null;
+    if (carriesArray(helpers)) return "promises";
+    return null;
   };
-  const noteCarrying = ({ fate, owner }: Outcome): boolean => {
+  const noteCarrying = ({
+    fate,
+    owner,
+    shape = "promise",
+  }: Outcome): boolean => {
     if (owner == null || owner === listener) return false;
     if (fate !== "awaited" && fate !== "returned") return false;
+    // Awaiting or adopting a delivery makes an async helper's own completion
+    // promise significant, even if another branch returns an array.
+    if (
+      arrayInvolved.has(owner) &&
+      !(shape === "promise" && get(owner, "async") === true)
+    ) {
+      if (shape !== "promises" || shapes.get(owner) !== "promises")
+        return false;
+      if (carryingArrays.has(owner)) return false;
+      carryingArrays.add(owner);
+      return true;
+    }
+    if (shape !== "promise") return false;
     const known = carrying.get(owner);
     if (known === "awaited" || known === fate) return false;
     carrying.set(owner, fate);
@@ -540,15 +831,34 @@ function checkListener(
   };
   for (let changed = true; changed;) {
     changed = false;
-    for (const [index, scope] of scopes.entries()) {
+    for (const [index] of scopes.entries()) {
       for (const call of callsByScope[index]) {
-        if (
-          carriesDelivery(call, scope) &&
-          noteCarrying(fateOf(call, analysis))
-        ) {
+        const shape = deliveryShape(call);
+        if (shape != null && noteCarrying(fateOf(call, analysis, shape))) {
           changed = true;
         }
+        for (const arg of call.arguments as Node[]) {
+          if (arg.type !== "Identifier") continue;
+          const helpers = helpersAt(arg);
+          const shape = carriesCompletion(bindings.completionCandidates(arg))
+            ? "promise"
+            : carriesArray(helpers)
+              ? "promises"
+              : null;
+          if (shape == null) continue;
+          const outcome = callbackResultOutcome(call, analysis, arg, shape);
+          if (noteCarrying(outcome)) {
+            changed = true;
+          }
+        }
       }
+    }
+    // An inline async map callback carries delivery through its own promise
+    // into the returned array, without a named call to seed that array.
+    for (const [fn, kind] of carrying) {
+      if (kind !== "awaited") continue;
+      const outcome = returnedOutcome(fn, analysis);
+      if (outcome.shape === "promises" && noteCarrying(outcome)) changed = true;
     }
   }
 
@@ -561,10 +871,11 @@ function checkListener(
 
   // A delivery call, or a call to a helper that delivers, whose promise is
   // dropped.
-  for (const [index, scope] of scopes.entries()) {
+  for (const [index] of scopes.entries()) {
     for (const call of callsByScope[index]) {
-      if (!carriesDelivery(call, scope)) continue;
-      if (fateOf(call, analysis).fate === "dropped") flag(call);
+      const shape = deliveryShape(call);
+      if (shape == null) continue;
+      if (fateOf(call, analysis, shape).fate === "dropped") flag(call);
     }
   }
 
@@ -577,19 +888,33 @@ function checkListener(
       kind === "awaited" &&
       returnedOutcome(fn, analysis).fate === "dropped"
     ) {
-      flag(fn);
+      const parent = parentOf(fn);
+      // The call-site pass also follows IIFE completion. Use the same node
+      // here so an unawaited invocation produces only one diagnostic.
+      flag(
+        parent?.type === "CallExpression" && get(parent, "callee") === fn
+          ? parent
+          : fn,
+      );
     }
   }
 
   // The same for a function that delivers when it is handed over by name,
   // as in `inboxes.forEach(deliver)`.
-  for (const [index, scope] of scopes.entries()) {
+  for (const [index] of scopes.entries()) {
     for (const call of callsByScope[index]) {
       for (const arg of call.arguments as Node[]) {
         if (arg.type !== "Identifier") continue;
-        const held = scope.functionsByName.get(arg.name);
-        if (held == null || !held.some((fn) => carrying.has(fn))) continue;
-        if (callbackResultOutcome(call, analysis).fate === "dropped") {
+        const held = helpersAt(arg);
+        const shape = carriesCompletion(bindings.completionCandidates(arg))
+          ? "promise"
+          : carriesArray(held)
+            ? "promises"
+            : null;
+        if (shape == null) continue;
+        if (
+          callbackResultOutcome(call, analysis, arg, shape).fate === "dropped"
+        ) {
           flag(arg);
         }
       }
