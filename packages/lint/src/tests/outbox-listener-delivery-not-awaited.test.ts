@@ -11,6 +11,68 @@ const ruleName = RULE_IDS.outboxListenerDeliveryNotAwaited;
 const arrayHelperDelivery = "ctx.sendActivity(sender, inbox, activity)";
 const arrayHelperMap = `inboxes.map((inbox) => ${arrayHelperDelivery})`;
 
+for (const [label, body, dropped] of [
+  [
+    "overload completion",
+    `function run(): Promise<void>; function run() { return ${arrayHelperDelivery}; } run();`,
+    true,
+  ],
+  [
+    "bare var after initializer",
+    `var run = () => ${arrayHelperDelivery}; var run; run();`,
+    true,
+  ],
+  [
+    "bare var before initializer",
+    `var run; var run = () => ${arrayHelperDelivery}; run();`,
+    true,
+  ],
+  [
+    "competing var initializers",
+    `var run = () => ${arrayHelperDelivery}; var run = external; run();`,
+    false,
+  ],
+  [
+    "parameter var incoming value",
+    `async function invoke(run) { await run(); var run = () => [${arrayHelperDelivery}]; await Promise.all(run()); } await invoke(() => {});`,
+    false,
+  ],
+  [
+    "constructor parameter property",
+    `const run = () => [${arrayHelperDelivery}]; await Promise.all(run()); class Runner { constructor(private run: () => void = () => {}) { run(); } } new Runner();`,
+    false,
+  ],
+  [
+    "iterator supplied value",
+    `for (let run of [() => {}]) { run(); run = () => ${arrayHelperDelivery}; await run(); }`,
+    false,
+  ],
+  [
+    "key supplied value",
+    `for (let run in values) { run(); run = () => ${arrayHelperDelivery}; await run(); }`,
+    false,
+  ],
+  [
+    "standalone assignment completion",
+    `let run; run = () => ${arrayHelperDelivery}; run();`,
+    true,
+  ],
+] as const) {
+  test(
+    `${ruleName}: declaration binding regression: ${label}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => { ${body} });
+`,
+      rule,
+      ruleName,
+      ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+    }),
+  );
+}
+
 for (const [producer, definition] of [
   ["map", `const deliverAll = () => ${arrayHelperMap};`],
   [

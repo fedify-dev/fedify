@@ -70,6 +70,11 @@ for (const [body, stable] of [
   ["const { probe } = { probe: () => [] }; probe();", false],
   ["const probe = external; probe();", false],
   [
+    "const probe = () => []; class C { constructor(private probe: () => void) { probe(); } }",
+    false,
+  ],
+  ["function invoke(probe) { var probe = () => []; probe(); }", false],
+  [
     "switch (kind) { case 0: function probe() { return []; } case 1: probe(); }",
     true,
   ],
@@ -95,6 +100,22 @@ test("completion alternatives do not certify an array helper", () => {
   equal(index.resolve(reference), null);
   equal(index.completionCandidates(reference).length, 2);
 });
+
+for (const [body, candidates] of [
+  ["function probe(): void; function probe() { delivery(); } probe();", 1],
+  ["var probe = () => delivery(); var probe; probe();", 1],
+  ["var probe; var probe = () => delivery(); probe();", 1],
+  ["var probe = () => delivery(); var probe = external; probe();", 0],
+  ["for (let probe of values) { probe = () => delivery(); probe(); }", 0],
+  ["for (var probe in values) { probe = () => delivery(); probe(); }", 0],
+  ["let probe; probe = () => delivery(); probe();", 1],
+  ["function invoke(probe) { var probe = () => delivery(); probe(); }", 0],
+] as const) {
+  test(`completion binding declarations: ${body}`, () => {
+    const { index, reference } = inspect(body);
+    equal(index.completionCandidates(reference).length, candidates);
+  });
+}
 
 test("unknown writes also disqualify completion alternatives", () => {
   const { index, reference } = inspect(`

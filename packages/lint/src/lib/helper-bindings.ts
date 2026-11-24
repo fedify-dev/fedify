@@ -4,6 +4,7 @@ import type { Node } from "./types.ts";
 
 interface Binding {
   definitions: number;
+  completionDefinitions: number;
   fn: FunctionLikeNode | null;
   written: boolean;
   replacements: FunctionLikeNode[];
@@ -15,6 +16,7 @@ interface Scope {
   parent: Scope | null;
   variables: boolean;
   bindings: Map<string, Binding>;
+  parameters?: Map<string, Binding>;
 }
 
 const get = (node: Node, key: string): unknown =>
@@ -41,6 +43,11 @@ function unwrap(node: Node): Node {
 /** Visits bound names, not property keys or member-assignment receivers. */
 function boundNames(pattern: Node, visit: (name: string) => void): void {
   pattern = unwrap(pattern);
+  // TypeScript-ESTree exposes this wrapper, but Deno's Node union omits it.
+  if ((pattern.type as string) === "TSParameterProperty") {
+    boundNames(get(pattern, "parameter") as Node, visit);
+    return;
+  }
   switch (pattern.type) {
     case "Identifier":
       visit(pattern.name);
@@ -79,6 +86,7 @@ export function indexHelperBindings(listener: FunctionLikeNode): {
 } {
   const scopes = new WeakMap<Node, Scope>();
   const nodes: Node[] = [];
+  const iterationDeclarations = new WeakSet<Node>();
   const makeScope = (parent: Scope | null, variables = false): Scope => ({
     parent,
     variables,
@@ -100,14 +108,24 @@ export function indexHelperBindings(listener: FunctionLikeNode): {
     pattern: Node | null,
     fn: FunctionLikeNode | null = null,
     uninitialized = false,
+    kind: "value" | "bare-var" | "signature" = "value",
   ): void => {
     if (pattern == null) return;
     boundNames(pattern, (name) => {
       const previous = scope.bindings.get(name);
-      if (previous != null) previous.definitions++;
-      else
+      if (previous != null) {
+        previous.definitions++;
+        if (kind === "value") {
+          if (previous.completionDefinitions === 0) {
+            previous.fn = fn;
+            previous.uninitialized = uninitialized;
+          }
+          previous.completionDefinitions++;
+        }
+      } else
         scope.bindings.set(name, {
           definitions: 1,
+          completionDefinitions: kind === "value" ? 1 : 0,
           fn,
           written: false,
           replacements: [],
@@ -140,6 +158,7 @@ export function indexHelperBindings(listener: FunctionLikeNode): {
       visit(node.params, parameters);
       // Defaults have no access to declarations in the body.
       const body = makeScope(parameters, true);
+      body.parameters = parameters.bindings;
       const root = asNode(node.body);
       if (root?.type === "BlockStatement") {
         scopes.set(root, body);
@@ -170,6 +189,10 @@ export function indexHelperBindings(listener: FunctionLikeNode): {
     ) {
       scope = makeScope(scope);
       scopes.set(node, scope);
+      if (node.type !== "ForStatement") {
+        const left = asNode(get(node, "left"));
+        if (left != null) iterationDeclarations.add(left);
+      }
     }
     if (node.type === "ClassDeclaration" || node.type === "ClassExpression") {
       if (node.type === "ClassDeclaration")
@@ -181,18 +204,27 @@ export function indexHelperBindings(listener: FunctionLikeNode): {
       return;
     }
     if (node.type === "VariableDeclaration") {
-      const target = get(node, "kind") === "var" ? variableScope(scope) : scope;
+      const variable = get(node, "kind") === "var";
+      const target = variable ? variableScope(scope) : scope;
+      const iteration = iterationDeclarations.has(node);
       for (const item of get(node, "declarations") as Node[]) {
         const pattern = asNode(get(item, "id"));
         const value = asNode(get(item, "init"));
         const fn = value == null ? null : unwrap(value);
+        if (variable && pattern != null)
+          boundNames(pattern, (name) => {
+            const parameter = target.parameters?.get(name);
+            if (parameter != null && !target.bindings.has(name))
+              target.bindings.set(name, parameter);
+          });
         bind(
           target,
           pattern,
           pattern?.type === "Identifier" && fn != null && isFunctionLikeNode(fn)
             ? fn
             : null,
-          pattern?.type === "Identifier" && value == null,
+          pattern?.type === "Identifier" && value == null && !iteration,
+          variable && value == null && !iteration ? "bare-var" : "value",
         );
       }
     }
@@ -203,7 +235,13 @@ export function indexHelperBindings(listener: FunctionLikeNode): {
       node.type === "TSDeclareFunction" ||
       node.type === "TSImportEqualsDeclaration"
     )
-      bind(scope, asNode(get(node, "id")));
+      bind(
+        scope,
+        asNode(get(node, "id")),
+        null,
+        false,
+        node.type === "TSDeclareFunction" ? "signature" : "value",
+      );
     // Deno's AST exposes fields through enumerable prototype accessors.
     for (const key in node) {
       if (key !== "parent") visit(get(node, key), scope);
@@ -258,7 +296,8 @@ export function indexHelperBindings(listener: FunctionLikeNode): {
       // Preserve legacy may-carry-completion evidence for known literal
       // alternatives. Never use this union to certify an array return shape.
       return binding != null &&
-        binding.definitions === 1 &&
+        (binding.completionDefinitions === 1 ||
+          (binding.completionDefinitions === 0 && binding.uninitialized)) &&
         (binding.fn != null || binding.uninitialized) &&
         !binding.unknownWrite
         ? [...(binding.fn == null ? [] : [binding.fn]), ...binding.replacements]
