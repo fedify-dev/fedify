@@ -11,6 +11,86 @@ const ruleName = RULE_IDS.outboxListenerDeliveryNotAwaited;
 const arrayHelperDelivery = "ctx.sendActivity(sender, inbox, activity)";
 const arrayHelperMap = `inboxes.map((inbox) => ${arrayHelperDelivery})`;
 
+for (const wrapped of [
+  "run as typeof run",
+  "run!",
+  "run satisfies typeof run",
+]) {
+  for (const [consumer, dropped] of [
+    [`inboxes.forEach(${wrapped});`, true],
+    [`const outer = () => inboxes.forEach(${wrapped}); outer();`, true],
+    [`await Promise.all(inboxes.flatMap(${wrapped}));`, false],
+    [`inboxes.forEach(() => {}, ${wrapped});`, false],
+  ] as const) {
+    test(
+      `${ruleName}: wrapped callback consumer: ${consumer}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const run = () => [${arrayHelperDelivery}];
+    ${consumer}
+  });
+`,
+        rule,
+        ruleName,
+        ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+      }),
+    );
+  }
+}
+
+for (const combinator of ["all", "allSettled", "race", "any"]) {
+  for (const [args, dropped] of [
+    ["run()", false],
+    ["[], run()", true],
+    ["...unknown, run()", false],
+    ["[], ...unknown, run()", true],
+    ["...unknown, [], run()", true],
+  ] as const) {
+    test(
+      `${ruleName}: combinator iterable slot: ${combinator}(${args})`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const run = () => [${arrayHelperDelivery}];
+    await Promise.${combinator}(${args});
+  });
+`,
+        rule,
+        ruleName,
+        ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+      }),
+    );
+  }
+}
+
+for (const [result, dropped] of [
+  [`({ pending: [${arrayHelperDelivery}] })`, false],
+  [`({ pending: [${arrayHelperDelivery}] } as const)`, false],
+  [`[${arrayHelperDelivery}]`, true],
+] as const) {
+  test(
+    `${ruleName}: flatMap result container: ${result}`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const run = () => inboxes.flatMap(() => ${result});
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+      ...(dropped ? { expectedError: "Delivery is not awaited" } : {}),
+    }),
+  );
+}
+
 for (const [label, body, dropped] of [
   [
     "overload completion",

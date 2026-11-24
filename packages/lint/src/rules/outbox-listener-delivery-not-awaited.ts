@@ -258,6 +258,7 @@ function callbackResultOutcome(
   analysis: Analysis,
   callback: Node,
   shape: Shape = "promise",
+  contained = false,
 ): Outcome {
   const callee = unwrap(asNode(get(call, "callee")) ?? call);
   const name = memberName(callee);
@@ -272,6 +273,8 @@ function callbackResultOutcome(
   // Only flatMap flattens returned arrays; map and promise callbacks would
   // need nested-array or Promise<Array> tracking, which remains unsupported.
   if (shape === "promises" && name !== "flatMap") return HANDLED;
+  // flatMap does not flatten an object containing a promise array.
+  if (name === "flatMap" && contained) return HANDLED;
   if (name === "map" || name === "flatMap") {
     return fateOf(call, analysis, "promises");
   }
@@ -313,6 +316,7 @@ function returnedContainerOutcome(
   fn: FunctionLikeNode | null,
   analysis: Analysis,
   shape: Shape,
+  contained = false,
 ): Outcome {
   if (fn === analysis.listener) return DROPPED;
   if (fn != null && shape === "promises" && get(fn, "async") !== true) {
@@ -321,7 +325,7 @@ function returnedContainerOutcome(
       parent?.type === "CallExpression" &&
       (get(parent, "arguments") as Node[]).includes(fn)
     ) {
-      return callbackResultOutcome(parent, analysis, fn, shape);
+      return callbackResultOutcome(parent, analysis, fn, shape, contained);
     }
   }
   return fn != null && shape === "promises"
@@ -337,6 +341,7 @@ function fateOf(
 ): Outcome {
   let current = expression;
   let currentShape = shape;
+  let contained = false;
   for (;;) {
     const parent = parentOf(current);
     if (parent == null) return HANDLED;
@@ -368,6 +373,7 @@ function fateOf(
               enclosingFunction(parent),
               analysis,
               currentShape,
+              contained,
             );
 
       case "ArrowFunctionExpression":
@@ -378,6 +384,7 @@ function fateOf(
               parent as FunctionLikeNode,
               analysis,
               currentShape,
+              contained,
             );
 
       case "ExpressionStatement":
@@ -428,6 +435,7 @@ function fateOf(
       // A promise in an object literal is an object holding a promise. An
       // array of promises in one is still an array of promises.
       case "ObjectExpression":
+        contained = true;
         if (currentShape === "promise") currentShape = "object";
         current = parent;
         continue;
@@ -486,6 +494,17 @@ function fateOf(
           name != null &&
           PROMISE_COMBINATORS.has(name)
         ) {
+          const args = get(parent, "arguments") as Node[];
+          const position = args.indexOf(current);
+          if (position < 0) return HANDLED;
+          if (position > 0) {
+            // A preceding spread might be empty, leaving this as the iterable.
+            return args
+              .slice(0, position)
+              .some((arg) => arg.type !== "SpreadElement")
+              ? DROPPED
+              : HANDLED;
+          }
           current = parent;
           currentShape = "promise";
           continue;
@@ -838,7 +857,7 @@ function checkListener(
           changed = true;
         }
         for (const arg of call.arguments as Node[]) {
-          if (arg.type !== "Identifier") continue;
+          if (unwrap(arg).type !== "Identifier") continue;
           const helpers = helpersAt(arg);
           const shape = carriesCompletion(bindings.completionCandidates(arg))
             ? "promise"
@@ -904,7 +923,7 @@ function checkListener(
   for (const [index] of scopes.entries()) {
     for (const call of callsByScope[index]) {
       for (const arg of call.arguments as Node[]) {
-        if (arg.type !== "Identifier") continue;
+        if (unwrap(arg).type !== "Identifier") continue;
         const held = helpersAt(arg);
         const shape = carriesCompletion(bindings.completionCandidates(arg))
           ? "promise"
